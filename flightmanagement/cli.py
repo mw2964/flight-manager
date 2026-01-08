@@ -181,7 +181,7 @@ def airports_menu():
         elif __choose_menu == "5":
 
             print("\n-- REMOVE AN AIRPORT --\n")
-            __id = int(input("Enter the ID of the aiport that you would like to delete: "))
+            __id = int(input("Enter the ID of the airport that you would like to delete: "))
             user_service.delete_airport(__id)
 
         elif __choose_menu == "6":
@@ -206,23 +206,46 @@ def aircraft_menu():
 
         if __choose_menu == "1":
 
-            pass
+            print("\n-- SHOW ALL AIRCRAFT --\n")
+            print(user_service.get_aircraft_list())
 
         elif __choose_menu == "2":
 
-            pass
+            print("\n-- SEARCH AIRCRAFT --\n")
+            __registration = input("Enter a registration: ")
+            result = user_service.search_aircraft("registration", __registration)
+            print(result)
 
         elif __choose_menu == "3":
 
-            pass
+            print("\n-- ADD AN AIRCRAFT --\n")
+            __registration = input("Enter the aircraft registration: ")
+            __manufacturer_serial_no = int(input("Enter the manufacturer serial number: "))
+            __icao_hex = input("Enter the ICAO hex code: ")
+            __manufacturer = input("Enter the manufacturer: ")
+            __model = input("Enter the model: ")
+            __icao_type = input("Enter the ICAO type: ")
+            __status = input("Enter the aircraft status: ")
+            user_service.add_aircraft(__registration, __manufacturer_serial_no, __icao_hex, __manufacturer, __model, __icao_type, __status)
 
         elif __choose_menu == "4":
 
-            pass
+            print("\n-- UPDATE AN AIRCRAFT --\n")
+            __id = int(input("Enter the ID of the aircraft that you would like to update: "))
+            __registration = input("Enter a new registration (or leave blank to skip): ")
+            __manufacturer_serial_no = int(input("Enter a new manufacturer serial number (or leave blank to skip): "))
+            __icao_hex = input("Enter a new ICAO hex code (or leave blank to skip): ")
+            __manufacturer = input("Enter a new manufacturer (or leave blank to skip): ")
+            __model = input("Enter a new model (or leave blank to skip): ")
+            __icao_type = input("Enter a new ICAO type (or leave blank to skip): ")
+            __status = input("Enter a new status (or leave blank to skip): ")
+            user_service.update_aircraft(__id, __registration, __manufacturer_serial_no, __icao_hex, __manufacturer, __model, __icao_type, __status)
 
         elif __choose_menu == "5":
 
-            pass
+            print("\n-- REMOVE AN AIRCRAFT --\n")
+            __id = int(input("Enter the ID of the aircraft that you would like to delete: "))
+            user_service.delete_aircraft(__id)
 
         elif __choose_menu == "6":
             break

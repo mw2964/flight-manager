@@ -185,11 +185,11 @@ class DBOperations:
         sql_populate_aircraft = """
             INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
             VALUES
-                ('G‑EUUH', 1245, '406BCA', 'Airbus', 'A320‑214', 'A320', 'Active'),
-                ('EI‑HAX', 62345, '4CA82F', 'Boeing', '737‑8 MAX', 'B38M', 'Active'),
-                ('G‑VDOT', 312, '4078F2', 'Airbus', 'A350‑941', 'A359', 'Active'),
-                ('N24974', 36478, 'A2B3C4', 'Boeing', '787‑9 Dreamliner', 'B789', 'Active'),
-                ('YL‑AAQ', 55089, '502D5F', 'Airbus', 'A220‑300', 'BCS3', 'Active')
+                ('G-EUUH', 1245, '406BCA', 'Airbus', 'A320-214', 'A320', 'Active'),
+                ('EI-HAX', 62345, '4CA82F', 'Boeing', '737-8 MAX', 'B38M', 'Active'),
+                ('G-VDOT', 312, '4078F2', 'Airbus', 'A350-941', 'A359', 'Active'),
+                ('N24974', 36478, 'A2B3C4', 'Boeing', '787-9 Dreamliner', 'B789', 'Active'),
+                ('YL-AAQ', 55089, '502D5F', 'Airbus', 'A220-300', 'BCS3', 'Active')
         """
 
         sql_create_airport = """

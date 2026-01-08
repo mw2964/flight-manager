@@ -1,4 +1,4 @@
-from flightmanagement.repositories.repositories import FlightRepository, PilotRepository, AirportRepository
+from flightmanagement.repositories.repositories import FlightRepository, PilotRepository, AirportRepository, AircraftRepository
 from flightmanagement.db.db import DBOperations
 
 class UserService:
@@ -7,6 +7,7 @@ class UserService:
         self.__flight_repository = FlightRepository()
         self.__pilot_repository = PilotRepository()
         self.__airport_repository = AirportRepository()
+        self.__aircraft_repository = AircraftRepository()
     
     # Flight functions
 
@@ -44,7 +45,7 @@ class UserService:
     def add_airport(self, code: str, name: str, city: str, country: str, region: str):
         self.__airport_repository.add_airport(code, name, city, country, region)
 
-    def update_airport(self, id, code, name, city, country, region):
+    def update_airport(self, id: int, code: str, name: str, city: str, country: str, region: str):
         updates = {}
         if code:
             updates["code"] = code
@@ -65,11 +66,41 @@ class UserService:
     def get_airport_list(self) -> str:
         return self.__airport_repository.display_all()
     
-    def search_airports(self, field_name, value) -> str:
+    def search_airports(self, field_name: str, value) -> str:
         return self.__airport_repository.search_airports(field_name, value)
 
     # Aircraft functions
 
+    def add_aircraft(self, registration: str, manufacturer_serial_no: int, icao_hex: str, manufacturer: str, model: str, icao_type: str, status: str):
+        self.__aircraft_repository.add_aircraft(registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
+
+    def update_aircraft(self, id: int, registration: str, manufacturer_serial_no: int, icao_hex: str, manufacturer: str, model: str, icao_type: str, status: str):
+        updates = {}
+        if registration:
+            updates["registration"] = registration
+        if manufacturer_serial_no:
+            updates["manufacturer_serial_no"] = manufacturer_serial_no
+        if icao_hex:
+            updates["icao_hex"] = icao_hex
+        if manufacturer:
+            updates["manufacturer"] = manufacturer
+        if model:
+            updates["model"] = model
+        if icao_type:
+            updates["icao_type"] = icao_type
+        if status:
+            updates["status"] = status
+        
+        self.__aircraft_repository.update_aircraft(id, updates)
+
+    def delete_aircraft(self, id: int):
+        self.__aircraft_repository.delete_aircraft(id)
+
+    def get_aircraft_list(self) -> str:
+        return self.__aircraft_repository.display_all()
+    
+    def search_aircraft(self, field_name, value) -> str:
+        return self.__aircraft_repository.search_aircraft(field_name, value)
 
     # Reporting functions
 

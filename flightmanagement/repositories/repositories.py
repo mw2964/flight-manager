@@ -235,3 +235,106 @@ class AirportRepository:
 > Region: {airport.region}
         """
         return record_string
+    
+class AircraftRepository:
+
+    def __init__(self):
+        self.__db = DBOperations()
+        self.__aircraft: list[Aircraft] = []
+        self.__load_aircraft()
+
+    def __str__(self) -> str:
+        aircraft_string = ""
+        for aircraft in self.__aircraft:
+            aircraft_string += str(aircraft) + "\n"
+        return aircraft_string
+
+    def __load_aircraft(self) -> None:
+        db = DBOperations()
+        rows = db.select_all("aircraft")
+
+        self.__aircraft = []
+        if rows != None:
+            for row in rows:
+                aircraft = Aircraft(
+                    id = row[0],
+                    registration = row[1],
+                    manufacturer_serial_no = row[2],
+                    icao_hex = row[3],
+                    manufacturer = row[4],
+                    model = row[5],
+                    icao_type = row[6],
+                    status = row[7]
+                )
+                self.__aircraft.append(aircraft)
+    
+    def __get_aircraft_by_id(self, id: int) -> Optional[Aircraft]:
+        for aircraft in self.__aircraft:
+            if aircraft.id == id:
+                return aircraft
+
+    def add_aircraft(self, registration: str, manufacturer_serial_no: int, icao_hex: str, manufacturer: str, model: str, icao_type: str, status: str) -> bool:        
+        
+        try:
+            # Add the new aircraft to the database
+            data = {
+                "registration": registration, 
+                "manufacturer_serial_no": manufacturer_serial_no,
+                "icao_hex": icao_hex, 
+                "manufacturer": manufacturer,
+                "model": model,
+                "icao_type": icao_type,
+                "status": status
+            }
+            self.__db.insert_data("aircraft", data)
+
+            # Refresh the repository list
+            self.__load_aircraft()
+
+            return True
+        except Exception as e:
+            print(e)
+            return False
+
+    def update_aircraft(self, id: int, updates: dict):
+        self.__db.update_row("aircraft", id, updates)
+        self.__load_aircraft()
+    
+    def delete_aircraft(self, id: int):
+        self.__db.delete_row("aircraft", id)
+        self.__load_aircraft()
+    
+    def search_aircraft(self, field_name: str, value) -> str:
+        result_id = self.__db.search_data("aircraft", field_name, value)
+        
+        if result_id is not None:
+            aircraft = self.__get_aircraft_by_id(result_id)
+            if aircraft is not None:
+                return "\nMatch found:\n" + self.display_record(aircraft)
+            else:
+                return "\nNo matching records"
+        else:
+            return "\nNo matching records"
+
+    def display_all(self) -> str:
+        
+        table = PrettyTable(["Aircraft ID", "Registration", "Manufacturer serial no", "ICAO hex code", "Manufacturer", "Model", "ICAO type", "Status"])
+        table.align = "l"
+
+        for aircraft in self.__aircraft:
+            table.add_row([aircraft.id, aircraft.registration, aircraft.manufacturer_serial_no, aircraft.icao_hex, aircraft.manufacturer, aircraft.model, aircraft.icao_type, aircraft.status])
+    
+        return str(table)
+    
+    def display_record(self, aircraft: Aircraft) -> str:
+        record_string = f"""
+> Aircraft ID: {aircraft.id}
+> Registration: {aircraft.registration}
+> Manufacturer serial no: {aircraft.manufacturer_serial_no}
+> ICAO hex code: {aircraft.icao_hex}
+> Manufacturer: {aircraft.manufacturer}
+> Model: {aircraft.model}
+> ICAO type: {aircraft.icao_type}
+> Status: {aircraft.status}
+        """
+        return record_string
