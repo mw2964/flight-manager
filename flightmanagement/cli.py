@@ -1,6 +1,16 @@
-from flightmanagement.services.userservice import UserService
+from flightmanagement.services.flight_service import FlightService
+from flightmanagement.services.aircraft_service import AircraftService
+from flightmanagement.services.airport_service import AirportService
+from flightmanagement.services.pilot_service import PilotService
+from flightmanagement.services.admin_service import AdminService
+from flightmanagement.services.report_service import ReportService
 
-user_service = UserService()
+__flight_service = FlightService()
+__aircraft_service = AircraftService()
+__airport_service = AirportService()
+__pilot_service = PilotService()
+__admin_service = AdminService()
+__report_service = ReportService()
 
 def main_menu():
     while True:
@@ -54,7 +64,7 @@ def flights_menu():
         if __choose_menu == "1":
 
             print("\n-- SHOW ALL FLIGHTS --\n")
-            print(user_service.get_flight_list())
+            print(__flight_service.get_flight_list())
 
         elif __choose_menu == "2":
 
@@ -67,7 +77,7 @@ def flights_menu():
             
             while True:
                 __aircraft = input("Enter the aircraft registration: ")
-                if user_service.search_aircraft("registration", __aircraft) != "\nNo matching records":
+                if __aircraft_service.search_aircraft("registration", __aircraft) != "\nNo matching records":
                     break
                 else:
                     print("No matching aircraft found. Please try again.")
@@ -79,7 +89,7 @@ def flights_menu():
             __departure_time = input("Enter the departure time (HH:MM): ")
             __arrival_date = input("Enter the arrival date (YYYY-MM-DD): ")
             __arrival_time = input("Enter the arrival time (HH:MM): ")
-            user_service.add_flight(__flight_number, __aircraft, __origin, __destination, __pilot_id, __copilot_id, __departure_date, __departure_time, __arrival_date, __arrival_time)
+            __flight_service.add_flight(__flight_number, __aircraft, __origin, __destination, __pilot_id, __copilot_id, __departure_date, __departure_time, __arrival_date, __arrival_time)
 
         elif __choose_menu == "4":
 
@@ -89,7 +99,7 @@ def flights_menu():
 
             print("\n-- REMOVE A FLIGHT --\n")
             __id = int(input("Enter the ID of the flight that you would like to delete: "))
-            user_service.delete_flight(__id)
+            __flight_service.delete_flight(__id)
 
         elif __choose_menu == "6":
             break
@@ -114,13 +124,13 @@ def pilots_menu():
         if __choose_menu == "1":
 
             print("\n-- SHOW ALL PILOTS --\n")
-            print(user_service.get_pilot_list())
+            print(__pilot_service.get_pilot_list())
 
         elif __choose_menu == "2":
 
             print("\n-- SEARCH PILOTS --\n")
             __family_name = input("Enter a family name: ")
-            result = user_service.search_pilots("family_name", __family_name)
+            result = __pilot_service.search_pilots("family_name", __family_name)
             print(result)
 
         elif __choose_menu == "3":
@@ -128,7 +138,7 @@ def pilots_menu():
             print("\n-- ADD A PILOT --\n")
             __first_name = input("Enter a first name: ")
             __family_name = input("Enter a family name: ")
-            user_service.add_pilot(__first_name, __family_name)
+            __pilot_service.add_pilot(__first_name, __family_name)
 
         elif __choose_menu == "4":
 
@@ -136,13 +146,13 @@ def pilots_menu():
             __id = int(input("Enter the ID of the pilot that you would like to update: "))
             __first_name = input("Enter a new first name (or leave blank to skip): ")
             __family_name = input("Enter a new family name (or leave blank to skip): ")
-            user_service.update_pilot(__id, __first_name, __family_name)
+            __pilot_service.update_pilot(__id, __first_name, __family_name)
 
         elif __choose_menu == "5":
 
             print("\n-- REMOVE A PILOT --\n")
             __id = int(input("Enter the ID of the pilot that you would like to delete: "))
-            user_service.delete_pilot(__id)
+            __pilot_service.delete_pilot(__id)
 
         elif __choose_menu == "6":
             break
@@ -167,13 +177,13 @@ def airports_menu():
         if __choose_menu == "1":
 
             print("\n-- SHOW ALL AIRPORTS --\n")
-            print(user_service.get_airport_list())
+            print(__airport_service.get_airport_list())
 
         elif __choose_menu == "2":
 
             print("\n-- SEARCH AIRPORTS --\n")
             __code = input("Enter an airport code: ")
-            result = user_service.search_airports("code", __code)
+            result = __airport_service.search_airports("code", __code)
             print(result)
 
         elif __choose_menu == "3":
@@ -184,7 +194,7 @@ def airports_menu():
             __city = input("Enter the city: ")
             __country = input("Enter the country: ")
             __region = input("Enter the region: ")
-            user_service.add_airport(__code, __name, __city, __country, __region)
+            __airport_service.add_airport(__code, __name, __city, __country, __region)
 
         elif __choose_menu == "4":
 
@@ -195,13 +205,13 @@ def airports_menu():
             __city = input("Enter a new city (or leave blank to skip): ")
             __country = input("Enter a new country (or leave blank to skip): ")
             __region = input("Enter a new region (or leave blank to skip): ")
-            user_service.update_airport(__id, __code, __name, __city, __country, __region)
+            __airport_service.update_airport(__id, __code, __name, __city, __country, __region)
 
         elif __choose_menu == "5":
 
             print("\n-- REMOVE AN AIRPORT --\n")
             __id = int(input("Enter the ID of the airport that you would like to delete: "))
-            user_service.delete_airport(__id)
+            __airport_service.delete_airport(__id)
 
         elif __choose_menu == "6":
             break
@@ -226,13 +236,13 @@ def aircraft_menu():
         if __choose_menu == "1":
 
             print("\n-- SHOW ALL AIRCRAFT --\n")
-            print(user_service.get_aircraft_list())
+            print(__aircraft_service.get_aircraft_list())
 
         elif __choose_menu == "2":
 
             print("\n-- SEARCH AIRCRAFT --\n")
             __registration = input("Enter a registration: ")
-            result = user_service.search_aircraft("registration", __registration)
+            result = __aircraft_service.search_aircraft("registration", __registration)
             print(result)
 
         elif __choose_menu == "3":
@@ -245,7 +255,7 @@ def aircraft_menu():
             __model = input("Enter the model: ")
             __icao_type = input("Enter the ICAO type: ")
             __status = input("Enter the aircraft status: ")
-            user_service.add_aircraft(__registration, __manufacturer_serial_no, __icao_hex, __manufacturer, __model, __icao_type, __status)
+            __aircraft_service.add_aircraft(__registration, __manufacturer_serial_no, __icao_hex, __manufacturer, __model, __icao_type, __status)
 
         elif __choose_menu == "4":
 
@@ -258,13 +268,13 @@ def aircraft_menu():
             __model = input("Enter a new model (or leave blank to skip): ")
             __icao_type = input("Enter a new ICAO type (or leave blank to skip): ")
             __status = input("Enter a new status (or leave blank to skip): ")
-            user_service.update_aircraft(__id, __registration, __manufacturer_serial_no, __icao_hex, __manufacturer, __model, __icao_type, __status)
+            __aircraft_service.update_aircraft(__id, __registration, __manufacturer_serial_no, __icao_hex, __manufacturer, __model, __icao_type, __status)
 
         elif __choose_menu == "5":
 
             print("\n-- REMOVE AN AIRCRAFT --\n")
             __id = int(input("Enter the ID of the aircraft that you would like to delete: "))
-            user_service.delete_aircraft(__id)
+            __aircraft_service.delete_aircraft(__id)
 
         elif __choose_menu == "6":
             break
@@ -304,12 +314,12 @@ def admin_menu():
 
         if __choose_menu == "1":
 
-            user_service.initialise_database()
+            __admin_service.initialise_database()
             
         elif __choose_menu == "2":
             break
         else:
             print("Invalid Choice")
 
+print("\nWELCOME TO FLIGHT CLUB!!!!")
 main_menu()
-
