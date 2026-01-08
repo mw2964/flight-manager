@@ -35,13 +35,11 @@ class DBOperations:
     def __init__(self):
         try:
             self.conn = sqlite3.connect(self.DB_PATH)
-            #self.cur = self.conn.cursor()
-            #self.cur.execute(self.sql_create_table_firsttime)
-            #self.conn.commit()
         except Exception as e:
             print(e)
         finally:
-            self.conn.close()
+            if self.conn:
+                self.conn.close()
 
     def get_connection(self):
         self.conn = sqlite3.connect(self.DB_PATH)
@@ -69,7 +67,25 @@ class DBOperations:
         finally:
             self.conn.close()
 
-    def insert_data(self, table_name: str, data: dict):
+    def get_row_by_id(self, table_name: str, id: int):
+        
+        try:
+            self.get_connection()
+
+            sql = f"SELECT * FROM {table_name} WHERE id = ?"
+            
+            self.cur.execute(sql, (id,))
+            result = result = self.cur.fetchone()
+            
+            return result
+        
+        except Exception as e:
+            print(e)
+        finally:
+            if self.conn:
+                self.conn.close()
+
+    def insert_row(self, table_name: str, data: dict):
         try:
             self.get_connection()
             self.cur.execute("PRAGMA foreign_keys = ON;")
@@ -100,6 +116,40 @@ class DBOperations:
             print(e)
         finally:
             self.conn.close()
+
+    def select_flights_view(self):
+        try:
+            self.get_connection()
+            sql = """
+                SELECT 
+                    f.id AS flight_id,
+                    f.flight_number,
+                    ac.registration AS aircraft_registration,
+                    CONCAT(ac.manufacturer, ' ', ac.model) AS aircraft_type,
+                    apo.code AS origin,
+                    apd.code AS destination,
+                    f.departure_time_scheduled,
+                    f.arrival_time_scheduled,
+                    CONCAT(p.first_name, ' ', p.family_name) AS pilot,
+                    CONCAT(cp.first_name, ' ', cp.family_name) AS copilot,
+                    f.status AS status
+                FROM flight f
+                LEFT JOIN aircraft ac ON ac.id = f.aircraft_id
+                LEFT JOIN pilot p ON p.id = f.pilot_id
+                LEFT JOIN pilot cp ON cp.id = f.copilot_id
+                LEFT JOIN airport apo ON apo.id = f.origin_id
+                LEFT JOIN airport apd ON apd.id = f.destination_id
+            """
+
+            self.cur.execute(sql)
+            result = self.cur.fetchall()
+            return result
+
+        except Exception as e:
+            print(e)
+        finally:
+            if self.conn:
+                self.conn.close()
 
     def search_data(self, table_name: str, field: str, value) -> Optional[int]:
         try:

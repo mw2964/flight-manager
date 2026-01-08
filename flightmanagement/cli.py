@@ -4,7 +4,7 @@ user_service = UserService()
 
 def main_menu():
     while True:
-        menu_title = "Main menu:"
+        menu_title = "Main menu"
         print(f"\n{menu_title}")
         print("*" * len(menu_title))
         print(" 1. Flights")
@@ -38,7 +38,7 @@ def main_menu():
 
 def flights_menu():
     while True:
-        menu_title = "Flights menu:"
+        menu_title = "Flights menu"
         print(f"\n{menu_title}")
         print("*" * len(menu_title))
         print(" 1. Show all flights")
@@ -54,7 +54,7 @@ def flights_menu():
         if __choose_menu == "1":
 
             print("\n-- SHOW ALL FLIGHTS --\n")
-            print(user_service.get_all_flight_details())
+            print(user_service.get_flight_list())
 
         elif __choose_menu == "2":
 
@@ -63,7 +63,24 @@ def flights_menu():
         elif __choose_menu == "3":
 
             print("\n-- ADD A FLIGHT --\n")
+            __flight_number = input("Enter the flight number: ")
             
+            while True:
+                __aircraft = input("Enter the aircraft registration: ")
+                if user_service.search_aircraft("registration", __aircraft) != "\nNo matching records":
+                    break
+                else:
+                    print("No matching aircraft found. Please try again.")
+            __origin = input("Enter the origin airport code: ")
+            __destination = input("Enter the destination airport code: ")
+            __pilot_id = int(input("Enter the pilot ID (see list above): "))
+            __copilot_id = int(input("Enter the copilot ID (see list above): "))
+            __departure_date = input("Enter the departure date (YYYY-MM-DD): ")
+            __departure_time = input("Enter the departure time (HH:MM): ")
+            __arrival_date = input("Enter the arrival date (YYYY-MM-DD): ")
+            __arrival_time = input("Enter the arrival time (HH:MM): ")
+            user_service.add_flight(__flight_number, __aircraft, __origin, __destination, __pilot_id, __copilot_id, __departure_date, __departure_time, __arrival_date, __arrival_time)
+
         elif __choose_menu == "4":
 
             print("\n-- UPDATE A FLIGHT --\n")
@@ -71,6 +88,8 @@ def flights_menu():
         elif __choose_menu == "5":
 
             print("\n-- REMOVE A FLIGHT --\n")
+            __id = int(input("Enter the ID of the flight that you would like to delete: "))
+            user_service.delete_flight(__id)
 
         elif __choose_menu == "6":
             break
@@ -79,7 +98,7 @@ def flights_menu():
 
 def pilots_menu():
     while True:
-        menu_title = "Pilots menu:"
+        menu_title = "Pilots menu"
         print(f"\n{menu_title}")
         print("*" * len(menu_title))
         print(" 1. Show all pilots")
@@ -132,7 +151,7 @@ def pilots_menu():
 
 def airports_menu():
     while True:
-        menu_title = "Airports menu:"
+        menu_title = "Airports menu"
         print(f"\n{menu_title}")
         print("*" * len(menu_title))
         print(" 1. Show all airports")
@@ -191,7 +210,7 @@ def airports_menu():
 
 def aircraft_menu():
     while True:
-        menu_title = "Aircraft menu:"
+        menu_title = "Aircraft menu"
         print(f"\n{menu_title}")
         print("*" * len(menu_title))
         print(" 1. Show all aircraft")
@@ -274,7 +293,7 @@ def reports_menu():
 
 def admin_menu():
     while True:
-        menu_title = "Admin menu:"
+        menu_title = "Admin menu"
         print(f"\n{menu_title}")
         print("*" * len(menu_title))
         print(" 1. Initialise database")
