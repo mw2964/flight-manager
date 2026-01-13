@@ -21,7 +21,26 @@ class AirportRepository:
                 region = result[5]
             )
             return airport
+
+    def get_airport_by_code(self, code: str) -> Airport | None:
+
+        id = self.__db.search_data("airport", "code", code)
         
+        if id:
+            return self.get_airport_by_id(id)
+
+    def get_airport_list(self) -> list[Airport] | None:
+        data = self.__db.select_all("airport")
+
+        if not data:
+            return None
+        
+        airport = []
+        for row in data:
+            airport.append(Airport(row[0], row[1], row[2], row[3], row[4], row[5]))
+
+        return airport
+
     def add_airport(self, code: str, name: str, city: str, country: str, region: str) -> bool:        
         
         try:

@@ -55,9 +55,6 @@ class FlightRepository:
 
         return str(table)
 
-    def get_pilot(self, flight: Flight):
-        pass
-
     def get_flights_view(self):
         
         data = self.__db.select_flights_view()
@@ -81,32 +78,60 @@ class FlightRepository:
             for row in data:
                 table.add_row(row)
     
-        return str(table)
+        indented_table = ""
+        for row in table.get_string().split("\n"):
+            indented_table += (" " * 5) + row + "\n"
+        
+        return str(indented_table)
 
-    '''
-    def add_flight(self, flight_number: str, aircraft: str, origin: str, destination: str, pilot_id: int, copilot_id: int, departure_date: str, departure_time: str, arrival_date: str, arrival_time: str) -> bool:        
+    def get_flight_list(self) -> list | None:
+        data = self.__db.select_flights_view()
+
+        if not data:
+            return None
+        
+        flights = []
+        for row in data:
+            flights.append((row[0], row[1], row[4], row[5], row[6], row[10]))
+
+        return flights
+
+    def add_flight(
+            self,
+            flight_number: str,
+            aircraft_id: int,
+            origin_id: int,
+            destination_id: int,
+            pilot_id: int | None,
+            copilot_id: int | None,
+            departure_date: str,
+            departure_time: str,
+            arrival_date: str,
+            arrival_time: str
+        ) -> bool:        
         
         try:
-            # Add the new aircraft to the database
+            # Add the new flight to the database
             data = {
-                "registration": registration, 
-                "manufacturer_serial_no": manufacturer_serial_no,
-                "icao_hex": icao_hex, 
-                "manufacturer": manufacturer,
-                "model": model,
-                "icao_type": icao_type,
-                "status": status
+                "flight_number": flight_number, 
+                "aircraft_id": aircraft_id,
+                "origin_id": origin_id, 
+                "destination_id": destination_id,
+                "pilot_id": pilot_id,
+                "copilot_id": copilot_id,
+                "departure_time_scheduled": departure_date + " " + departure_time,
+                "arrival_time_scheduled": arrival_date + " " + arrival_time,
+                "status": "Scheduled"
             }
-            self.__db.insert_row("aircraft", data)
-
-            # Refresh the repository list
-            self.__load_aircraft()
+            self.__db.insert_row("flight", data)
 
             return True
         except Exception as e:
             print(e)
             return False
-    '''
-            
+    
+    def update_flight(self, id: int, updates: dict): # Should be taking a flight object?
+        self.__db.update_row("flight", id, updates)
+
     def delete_flight(self, id: int):
         self.__db.delete_row("flight", id)

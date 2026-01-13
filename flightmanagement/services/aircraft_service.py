@@ -35,3 +35,14 @@ class AircraftService:
     
     def search_aircraft(self, field_name, value) -> str:
         return self.__aircraft_repository.search_aircraft(field_name, value)
+    
+    def get_aircraft_choices(self) -> list:
+        aircraft_list = self.__aircraft_repository.get_aircraft_list()
+        
+        aircraft_choices = []
+
+        if aircraft_list:
+            for aircraft in aircraft_list:
+                aircraft_choices.append((aircraft.id, f"{aircraft.registration} ({aircraft.manufacturer} {aircraft.model})"))
+
+        return aircraft_choices

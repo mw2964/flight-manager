@@ -30,6 +30,18 @@ class PilotRepository:
             print(e)
             return False
 
+    def get_pilot_list(self) -> list[Pilot] | None:
+        data = self.__db.select_all("pilot")
+
+        if not data:
+            return None
+        
+        pilots = []
+        for row in data:
+            pilots.append(Pilot(row[0], row[1], row[2]))
+
+        return pilots
+
     def update_pilot(self, id: int, updates: dict): # Should be taking a pilot object?
         self.__db.update_row("pilot", id, updates)
     
@@ -63,8 +75,12 @@ class PilotRepository:
             for row in data:
                 table.add_row(row)
     
-        return str(table)
+        indented_table = ""
+        for row in table.get_string().split("\n"):
+            indented_table += (" " * 5) + row + "\n"
+        
+        return str(indented_table)
     
     def display_record(self, pilot: Pilot) -> str:
-        return f"\n> Pilot ID: {pilot.id}\n> First name: {pilot.first_name}\n> Family name: {pilot.family_name}\n"
+        return f"\n> Pilot ID: {pilot.id}\n> First name: {pilot.first_name}\n> Family name: {pilot.family_name}"
     

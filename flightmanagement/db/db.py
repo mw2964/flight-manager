@@ -8,29 +8,6 @@ class DBOperations:
 
     PROJECT_ROOT = Path(__file__).resolve().parents[2]
     DB_PATH = PROJECT_ROOT / "data" / "FlightManagement.db"
-
-    sql_create_table = """
-        CREATE TABLE aircraft (
-            aircraft_id INTEGER PRIMARY KEY AUTOINCREMENT,
-            registration VARCHAR(20),
-            manufacturer_serial_no INTEGER,
-            icao_hex VARCHAR(20),
-            manufacturer VARCHAR(20),
-            model VARCHAR(20),
-            icao_type VARCHAR(20),
-            status VARCHAR(20) CHECK(status IN ('Active', 'Retired'))
-        )
-    """
-
-    """
-    sql_insert = "INSERT INTO aircraft (registration) VALUE ('G-EUUH')"
-    sql_select_all = "select * from FlightInfo"
-    sql_search = "select * from TableName where FlightID = ?"
-    sql_alter_data = ""
-    sql_update_data = ""
-    sql_delete_data = ""
-    sql_drop_table = ""
-    """
     
     def __init__(self):
         try:

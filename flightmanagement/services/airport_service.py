@@ -33,3 +33,14 @@ class AirportService:
     
     def search_airports(self, field_name: str, value) -> str:
         return self.__airport_repository.search_airports(field_name, value)
+
+    def get_airport_choices(self) -> list:
+        airports = self.__airport_repository.get_airport_list()
+        
+        airport_choices = []
+
+        if airports:
+            for airport in airports:
+                airport_choices.append((airport.id, f"{airport.code} ({airport.name}, {airport.city}, {airport.country})"))
+
+        return airport_choices

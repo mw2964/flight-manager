@@ -20,8 +20,22 @@ class PilotService:
     def delete_pilot(self, id: int):
         self.__pilot_repository.delete_pilot(id)
 
-    def get_pilot_list(self) -> str:
+    def get_pilot_table(self) -> str:
         return self.__pilot_repository.display_all()
+    
+    def get_pilot_choices(self) -> list:
+        pilots = self.__pilot_repository.get_pilot_list()
+        
+        pilot_choices = []
+
+        if pilots:
+            for pilot in pilots:
+                pilot_choices.append((pilot.id, f"{pilot.first_name} {pilot.family_name}"))
+
+        return pilot_choices
     
     def search_pilots(self, field_name: str, value) -> str:
         return self.__pilot_repository.search_pilots(field_name, value)
+    
+    def get_pilot_by_id(self, id: int):
+        return self.__pilot_repository.get_pilot_by_id(id)

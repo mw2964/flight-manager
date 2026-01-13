@@ -25,6 +25,25 @@ class AircraftRepository:
             )
             return aircraft
 
+    def get_aircraft_by_registration(self, registration: str) -> Aircraft | None:
+
+        id = self.__db.search_data("aircraft", "registration", registration)
+        
+        if id:
+            return self.get_aircraft_by_id(id)
+
+    def get_aircraft_list(self) -> list[Aircraft] | None:
+        data = self.__db.select_all("aircraft")
+
+        if not data:
+            return None
+        
+        aircraft = []
+        for row in data:
+            aircraft.append(Aircraft(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]))
+
+        return aircraft
+
     def add_aircraft(self, registration: str, manufacturer_serial_no: int, icao_hex: str, manufacturer: str, model: str, icao_type: str, status: str) -> bool:        
         
         try:
