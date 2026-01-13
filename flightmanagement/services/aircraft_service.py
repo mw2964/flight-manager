@@ -46,3 +46,6 @@ class AircraftService:
                 aircraft_choices.append((aircraft.id, f"{aircraft.registration} ({aircraft.manufacturer} {aircraft.model})"))
 
         return aircraft_choices
+
+    def get_aircraft_by_id(self, id: int):
+        return self.__aircraft_repository.get_aircraft_by_id(id)

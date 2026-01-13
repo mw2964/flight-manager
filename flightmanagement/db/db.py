@@ -205,7 +205,7 @@ class DBOperations:
                 manufacturer VARCHAR(20),
                 model VARCHAR(20),
                 icao_type VARCHAR(20),
-                status VARCHAR(20) CHECK(status IN ('Active', 'Retired'))
+                status VARCHAR(20) CHECK(status IN ('Active', 'Inactive', 'Decommissioned'))
             )
         """
 
