@@ -44,3 +44,6 @@ class AirportService:
                 airport_choices.append((airport.id, f"{airport.code} ({airport.name}, {airport.city}, {airport.country})"))
 
         return airport_choices
+
+    def get_airport_by_id(self, id: int):
+        return self.__airport_repository.get_airport_by_id(id)

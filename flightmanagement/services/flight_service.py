@@ -64,7 +64,7 @@ class FlightService:
             return airport.id
     
     def get_flight_choices(self, flight_number: str = "") -> list:
-        flights = self.__flight_repository.get_flight_list()
+        flights = self.__flight_repository.get_flight_list(None)
         
         flight_choices = []
 
@@ -74,3 +74,6 @@ class FlightService:
                     flight_choices.append((flight[0], f"{flight[1]} ({flight[2]} to {flight[3]}, departure: {flight[4]}, status: {flight[5]})"))
 
         return flight_choices
+
+    def search_flights(self, field_name: str, value) -> str:
+        return self.__flight_repository.search_flights(field_name, value)

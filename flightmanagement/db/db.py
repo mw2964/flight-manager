@@ -94,7 +94,7 @@ class DBOperations:
         finally:
             self.conn.close()
 
-    def select_flights_view(self):
+    def select_flights_view(self, flight_number: str | None):
         try:
             self.get_connection()
             sql = """
@@ -105,8 +105,10 @@ class DBOperations:
                     CONCAT(ac.manufacturer, ' ', ac.model) AS aircraft_type,
                     apo.code AS origin,
                     apd.code AS destination,
-                    f.departure_time_scheduled,
-                    f.arrival_time_scheduled,
+                    IFNULL(f.departure_time_scheduled, '') AS departure_time_scheduled,
+                    IFNULL(f.arrival_time_scheduled, '') AS arrival_time_scheduled,
+                    IFNULL(f.departure_time_actual, '') AS departure_time_actual,
+                    IFNULL(f.arrival_time_actual, '') AS arrival_time_actual,
                     CONCAT(p.first_name, ' ', p.family_name) AS pilot,
                     CONCAT(cp.first_name, ' ', cp.family_name) AS copilot,
                     f.status AS status
@@ -117,6 +119,9 @@ class DBOperations:
                 LEFT JOIN airport apo ON apo.id = f.origin_id
                 LEFT JOIN airport apd ON apd.id = f.destination_id
             """
+            
+            if flight_number:
+                sql += " WHERE f.flight_number = '" + flight_number + "'"
 
             self.cur.execute(sql)
             result = self.cur.fetchall()
@@ -205,7 +210,7 @@ class DBOperations:
                 manufacturer VARCHAR(20),
                 model VARCHAR(20),
                 icao_type VARCHAR(20),
-                status VARCHAR(20) CHECK(status IN ('Active', 'Retired'))
+                status VARCHAR(20) CHECK(status IN ('Active', 'Inactive', 'Decommissioned'))
             )
         """
 
