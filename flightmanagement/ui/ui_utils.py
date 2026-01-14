@@ -19,9 +19,6 @@ def prompt_or_cancel(session, message: str, cancel_message: str, default_value =
         return None
     return result
 
-def indent_string(string: str, spaces: int) -> str:
-    return " " * spaces + string
-
 def prompt_date(session, prompt: str, allow_blank: bool, default=None) -> str | None:
 
     if default:
@@ -59,3 +56,9 @@ def prompt_time(session, prompt: str, allow_blank: bool, default=None) -> str | 
         raise ValueError("Invalid time")
     
     return datetime.strftime(date, "%H:%M")
+
+def indent_string(string: str, spaces: int) -> str:
+    return " " * spaces + string
+
+def format_title(title: str) -> str:
+    return f"\n{title}\n{"*" * len(title)}"

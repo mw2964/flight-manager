@@ -1,108 +1,131 @@
 from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
-from flightmanagement.ui.ui_utils import prompt_or_cancel
+from flightmanagement.ui.ui_utils import prompt_or_cancel, format_title
 from flightmanagement.services.pilot_service import PilotService
 
-
 class PilotMenu:
+
+    __MENU_NAME = "Pilot menu"
+    __MENU_OPTIONS = [
+        ("show", "Show all pilots"),
+        ("search", "Search pilots"),
+        ("add", "Add a pilot"),
+        ("update", "Update a pilot"),
+        ("delete", "Remove a pilot"),
+        ("back", "Back to main menu")
+    ]
 
     def __init__(self, session: PromptSession, bindings: KeyBindings):
         self.__pilot_service = PilotService()
         self.__session = session
         self.__bindings = bindings
 
+    def __show_option(self) -> None:
+        print("\n>> Displaying all pilots\n")
+        print(self.__pilot_service.get_pilot_table())
+
+    def __search_option(self) -> bool:
+        print("\n>> Search for a pilot (or hit CTRL+C to cancel)\n")
+
+        family_name = prompt_or_cancel(self.__session, "Enter a family name: ", "Search cancelled.")
+        if family_name is None:                
+            return False
+        result = self.__pilot_service.search_pilots("family_name", family_name)
+        print(result)
+        return True
+
+    def __add_option(self) -> bool:
+        print("\n>> Add a pilot (or hit CTRL+C to cancel)\n")
+
+        first_name = prompt_or_cancel(self.__session, "Enter a first name: ", "Action cancelled.")
+        if first_name is None:
+            return False
+
+        family_name = prompt_or_cancel(self.__session, "Enter a family name: ", "Action cancelled.")
+        if family_name is None:
+            return False
+        
+        print()
+        self.__pilot_service.add_pilot(first_name, family_name)
+        return True
+
+    def __update_option(self) -> bool:
+        print("\n>> Update a pilot (or hit CTRL+C to cancel)\n")
+
+        id = choice(
+            message="Choose a pilot to update: ",
+            options=self.__pilot_service.get_pilot_choices(),
+            key_bindings=self.__bindings
+        )
+        if id == "__CANCEL__":
+            print("\nUpdate cancelled.")
+            return False
+
+        # Retrieve the pilot record
+        pilot = self.__pilot_service.get_pilot_by_id(id)
+
+        if pilot:
+
+            print(f"\nEditing information (pilot ID {id})\n")
+
+            first_name = prompt_or_cancel(self.__session, "First name: ", "Update cancelled", pilot.first_name)
+            if first_name is None:
+                return False
+
+            family_name = prompt_or_cancel(self.__session, "Family name: ", "Update cancelled", pilot.family_name)
+            if family_name is None:
+                return False
+
+            print()
+            self.__pilot_service.update_pilot(id, first_name, family_name)
+            
+        return True
+
+    def __delete_option(self) -> bool:
+        print("\n>> Delete a pilot (or hit CTRL+C to cancel)\n")
+
+        id = choice(
+            message="Choose a pilot to delete: ",
+            options=self.__pilot_service.get_pilot_choices(),
+            key_bindings=self.__bindings
+        )
+        if id == "__CANCEL__":
+            print("\nDelete cancelled.")
+            return False
+        
+        print()
+        if choice(message="Are you sure you want to delete this record?", options=[(1, "yes"),(0, "no")]) == 1:
+            print()
+            self.__pilot_service.delete_pilot(id)
+        else:
+            print("\nDelete cancelled.")
+
+        return True
+
     def load(self):
 
         while True:
 
-            menu_title = "\nPilots menu"
-            menu_title = f"{menu_title}\n{"*" * len(menu_title)}"
-
-            __menu_options = [
-                ("show", "Show all pilots"),
-                ("search", "Search pilots"),
-                ("add", "Add a pilot"),
-                ("update", "Update a pilot"),
-                ("delete", "Remove a pilot"),
-                ("back", "Back to main menu")
-            ]
-
             __choose_menu = choice(
-                message=menu_title,
-                options=__menu_options
+                message=format_title(self.__MENU_NAME),
+                options=self.__MENU_OPTIONS
             )
 
             if __choose_menu == "show":
-
-                print("\n>> Displaying all pilots\n")
-                print(self.__pilot_service.get_pilot_table())
-
-            elif __choose_menu == "search":
-
-                print("\n>> Search for a pilot (or hit CTRL+C to cancel)\n")
-                family_name = prompt_or_cancel(self.__session, "Enter a family name: ", "Search cancelled.")
-                if family_name is None:                
+                self.__show_option()
+            elif __choose_menu == "search":                
+                if not self.__search_option():
                     continue
-                result = self.__pilot_service.search_pilots("family_name", family_name)
-                print(result)
-
             elif __choose_menu == "add":
-
-                print("\n>> Add a pilot (or hit CTRL+C to cancel)\n")
-
-                first_name = prompt_or_cancel(self.__session, "Enter a first name: ", "Action cancelled.")
-                family_name = prompt_or_cancel(self.__session, "Enter a family name: ", "Action cancelled.")
-
-                if first_name is None or family_name is None:
+                if not self.__add_option():
                     continue
-                
-                print()
-                self.__pilot_service.add_pilot(first_name, family_name)
-
             elif __choose_menu == "update":
-
-                print("\n>> Update a pilot (or hit CTRL+C to cancel)\n")
-
-                id = choice(
-                    message="Choose a pilot to update: ",
-                    options=self.__pilot_service.get_pilot_choices(),
-                    key_bindings=self.__bindings
-                )
-
-                # Retrieve the pilot record
-                pilot = self.__pilot_service.get_pilot_by_id(id)
-
-                if pilot:
-
-                    print(f"\nEditing information (pilot ID {id})\n")
-
-                    first_name = prompt_or_cancel(self.__session, "First name: ", "Update cancelled", pilot.first_name)
-                    family_name = prompt_or_cancel(self.__session, "Family name: ", "Update cancelled", pilot.family_name)
-
-                    if first_name is None or family_name is None:
-                        continue
-
-                    print()
-                    self.__pilot_service.update_pilot(id, first_name, family_name)
-
+                if not self.__update_option():
+                    continue
             elif __choose_menu == "delete":
-
-                print("\n>> Delete a pilot (or hit CTRL+C to cancel)\n")
-
-                id = choice(
-                    message="Choose a pilot to delete: ",
-                    options=self.__pilot_service.get_pilot_choices(),
-                    key_bindings=self.__bindings
-                )
-
-                print()
-                if choice(message="Are you sure you want to delete this record?", options=[(1, "yes"),(0, "no")]) == 1:
-                    print()
-                    self.__pilot_service.delete_pilot(id)
-                else:
-                    print("\nDelete cancelled.")
-
+                if not self.__delete_option():
+                    continue
             elif __choose_menu == "back":
                 return
             else:

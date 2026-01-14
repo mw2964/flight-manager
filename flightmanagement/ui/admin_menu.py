@@ -2,8 +2,15 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
 from flightmanagement.services.admin_service import AdminService
+from flightmanagement.ui.ui_utils import format_title
 
 class AdminMenu:
+
+    __MENU_NAME = "Admin menu"
+    __MENU_OPTIONS = [
+        ("init_db", "Initialise database"),
+        ("back", "Back to main menu")
+    ]
 
     def __init__(self, session: PromptSession, bindings: KeyBindings):
         self.__admin_service = AdminService()
@@ -13,17 +20,9 @@ class AdminMenu:
     def load(self):
         while True:
 
-            menu_title = "\nAdmin menu"
-            menu_title = f"{menu_title}\n{"*" * len(menu_title)}"
-
-            __menu_options = [
-                ("init_db", "Initialise database"),
-                ("back", "Back to main menu")
-            ]
-
             __choose_menu = choice(
-                message=menu_title,
-                options=__menu_options
+                message=format_title(self.__MENU_NAME),
+                options=self.__MENU_OPTIONS
             )
 
             if __choose_menu == "init_db":

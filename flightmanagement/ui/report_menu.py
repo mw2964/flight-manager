@@ -2,8 +2,15 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
 from flightmanagement.services.report_service import ReportService
+from flightmanagement.ui.ui_utils import format_title
 
 class ReportMenu:
+
+    __MENU_NAME = "Reports menu"
+    __MENU_OPTIONS = [
+        ("pilot_stats", "Pilot statistics"),
+        ("back", "Back to main menu")
+    ]
 
     def __init__(self, session: PromptSession, bindings: KeyBindings):
         self.__report_service = ReportService()
@@ -14,17 +21,9 @@ class ReportMenu:
         
         while True:
 
-            menu_title = "\nReports menu"
-            menu_title = f"{menu_title}\n{"*" * len(menu_title)}"
-
-            __menu_options = [
-                ("pilot_stats", "Pilot statistics"),
-                ("back", "Back to main menu")
-            ]
-
             __choose_menu = choice(
-                message=menu_title,
-                options=__menu_options
+                message=format_title(self.__MENU_NAME),
+                options=self.__MENU_OPTIONS
             )
 
             if __choose_menu == "pilot_stats":

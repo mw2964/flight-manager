@@ -55,9 +55,9 @@ class FlightRepository:
 
         return str(table)
 
-    def get_flights_view(self):
+    def get_flights_view(self) -> str:
         
-        data = self.__db.select_flights_view()
+        data = self.__db.select_flights_view(None)
         
         table = PrettyTable([
             "Flight ID",
@@ -68,6 +68,8 @@ class FlightRepository:
             "Destination",
             "Scheduled departure",
             "Scheduled arrival",
+            "Actual departure",
+            "Actual arrival",
             "Pilot",
             "Copilot",
             "Flight status"
@@ -84,8 +86,8 @@ class FlightRepository:
         
         return str(indented_table)
 
-    def get_flight_list(self) -> list | None:
-        data = self.__db.select_flights_view()
+    def get_flight_list(self, flight_number: str | None) -> list | None:
+        data = self.__db.select_flights_view(flight_number)
 
         if not data:
             return None
@@ -135,3 +137,33 @@ class FlightRepository:
 
     def delete_flight(self, id: int):
         self.__db.delete_row("flight", id)
+
+    def search_flights(self, field_name: str, value) -> str:
+        data = self.__db.select_flights_view(value)
+        
+        table = PrettyTable([
+            "Flight ID",
+            "Flight number",
+            "Aircraft registration",
+            "Aircraft type",
+            "Origin",
+            "Destination",
+            "Scheduled departure",
+            "Scheduled arrival",
+            "Actual departure",
+            "Actual arrival",
+            "Pilot",
+            "Copilot",
+            "Flight status"
+        ])
+        table.align = "l"
+
+        if data:
+            for row in data:
+                table.add_row(row)
+    
+        indented_table = ""
+        for row in table.get_string().split("\n"):
+            indented_table += (" " * 5) + row + "\n"
+        
+        return str(indented_table)

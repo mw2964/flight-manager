@@ -7,8 +7,20 @@ from flightmanagement.ui.aircraft_menu import AircraftMenu
 from flightmanagement.ui.flight_menu import FlightMenu
 from flightmanagement.ui.report_menu import ReportMenu
 from flightmanagement.ui.admin_menu import AdminMenu
+from flightmanagement.ui.ui_utils import format_title
 
 class MainMenu:
+
+    __MENU_NAME = "Main menu"
+    __MENU_OPTIONS = [
+        ("flights", "Flights"),
+        ("pilots", "Pilots"),
+        ("airports", "Airports"),
+        ("aircraft", "Aircraft"),
+        ("reports", "Reports"),
+        ("admin", "Admin"),
+        ("exit", "Exit")
+    ]
 
     def __init__(self, session: PromptSession, bindings: KeyBindings):
         self.__session = session
@@ -17,22 +29,10 @@ class MainMenu:
     def load(self):
 
         while True:
-            menu_title = "\nMain menu"
-            menu_title = f"{menu_title}\n{"*" * len(menu_title)}"
-
-            __menu_options = [
-                ("flights", "Flights"),
-                ("pilots", "Pilots"),
-                ("airports", "Airports"),
-                ("aircraft", "Aircraft"),
-                ("reports", "Reports"),
-                ("admin", "Admin"),
-                ("exit", "Exit")
-            ]
 
             __choose_menu = choice(
-                message=menu_title,
-                options=__menu_options
+                message=format_title(self.__MENU_NAME),
+                options=self.__MENU_OPTIONS
             )
 
             if __choose_menu == "flights":
