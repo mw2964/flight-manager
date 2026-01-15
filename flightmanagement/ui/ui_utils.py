@@ -2,7 +2,7 @@ from datetime import datetime
 
 def prompt_or_cancel(session, message: str, cancel_message: str, default_value = None):
     
-    indented_message = indent_string(message, 5)
+    indented_message = indent_string(message, 1)
 
     if default_value:
         result = session.prompt(

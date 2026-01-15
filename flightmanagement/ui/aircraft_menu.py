@@ -16,14 +16,14 @@ class AircraftMenu:
         ("back", "Back to main menu")
     ]
 
-    def __init__(self, session: PromptSession, bindings: KeyBindings):
-        self.__aircraft_service = AircraftService()
+    def __init__(self, session: PromptSession, bindings: KeyBindings, conn):
+        self.__aircraft_service = AircraftService(conn)
         self.__session = session
         self.__bindings = bindings
 
     def __show_option(self) -> None:
         print("\n>> Displaying all aircraft\n")
-        print(self.__aircraft_service.get_aircraft_list())
+        print(self.__aircraft_service.get_aircraft_table())
 
     def __search_option(self) -> bool:
         print("\n>> Search for an aircraft (or hit CTRL+C to cancel)\n")

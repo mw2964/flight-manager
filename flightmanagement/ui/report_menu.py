@@ -12,8 +12,8 @@ class ReportMenu:
         ("back", "Back to main menu")
     ]
 
-    def __init__(self, session: PromptSession, bindings: KeyBindings):
-        self.__report_service = ReportService()
+    def __init__(self, session: PromptSession, bindings: KeyBindings, conn):
+        self.__report_service = ReportService(conn)
         self.__session = session
         self.__bindings = bindings
 

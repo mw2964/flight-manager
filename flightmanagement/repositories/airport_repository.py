@@ -1,103 +1,148 @@
-from prettytable import PrettyTable
 from flightmanagement.models.airport import Airport
-from flightmanagement.db.db import DBOperations
 
 class AirportRepository:
 
-    def __init__(self):
-        self.__db = DBOperations()
+    def __init__(self, conn):
+        self.conn = conn
 
-    def get_airport_by_id(self, id: int) -> Airport | None:
+    def get_by_id(self, airport_id: int) -> Airport | None:        
+        cursor = self.conn.execute(
+            """
+            SELECT * FROM airport WHERE id = ?
+            """,
+            (airport_id, )
+        )
+        result = cursor.fetchone()
         
-        result = self.__db.get_row_by_id("airport", id)
-        
-        if result:
-            airport = Airport(
-                id = result[0],
-                code = result[1],
-                name = result[2],
-                city = result[3],
-                country = result[4],
-                region = result[5]
-            )
-            return airport
-
-    def get_airport_by_code(self, code: str) -> Airport | None:
-
-        id = self.__db.search_data("airport", "code", code)
-        
-        if id:
-            return self.get_airport_by_id(id)
-
-    def get_airport_list(self) -> list[Airport] | None:
-        data = self.__db.select_all("airport")
-
-        if not data:
+        if result is None:
             return None
-        
-        airport = []
-        for row in data:
-            airport.append(Airport(row[0], row[1], row[2], row[3], row[4], row[5]))
 
+        airport = Airport(
+            result["id"],
+            result["code"],
+            result["name"],
+            result["city"],
+            result["country"],
+            result["region"]
+        )
         return airport
 
-    def add_airport(self, code: str, name: str, city: str, country: str, region: str) -> bool:        
+    def get_by_code(self, code: str) -> Airport | None:
+        cursor = self.conn.execute(
+            """
+            SELECT * FROM airport WHERE code = ?
+            """,
+            (code, )
+        )
+        result = cursor.fetchone()
         
-        try:
-            # Add the new airport to the database
-            data = {
-                "code": code, 
-                "name": name,
-                "city": city, 
-                "country": country,
-                "region": region
-            }
-            self.__db.insert_row("airport", data)
-
-            return True
-        except Exception as e:
-            print(e)
-            return False
-
-    def update_airport(self, id: int, updates: dict):
-        self.__db.update_row("airport", id, updates)
-    
-    def delete_airport(self, id: int):
-        self.__db.delete_row("airport", id)
-    
-    def search_airports(self, field_name: str, value) -> str:
-        result_id = self.__db.search_data("airport", field_name, value)
+        if result is None:
+            return None
         
-        if result_id:
-            airport = self.get_airport_by_id(result_id)
-            if airport:
-                return "\nMatch found:\n" + self.display_record(airport)
-            else:
-                return "\nNo matching records"
-        else:
-            return "\nNo matching records"
+        airport = Airport(
+            result["id"],
+            result["code"],
+            result["name"],
+            result["city"],
+            result["country"],
+            result["region"]
+        )
+        return airport
 
-    def display_all(self) -> str:
+    def get_airport_list(self) -> list[Airport] | None:
+        cursor = self.conn.execute(
+            """
+            SELECT * FROM airport ORDER BY code
+            """
+        )
+        results = cursor.fetchall()
+
+        if results is None:
+            return None
         
-        data = self.__db.select_all("airport")
+        result_list = []
+        for row in results:
+            result_list.append(
+                Airport(
+                    row["id"],
+                    row["code"],
+                    row["name"],
+                    row["city"],
+                    row["country"],
+                    row["region"]
+                )
+            )
 
-        table = PrettyTable(["Airport ID", "Code", "Name", "City", "Country", "Region"])
-        table.align = "l"
+        return result_list
 
-        if data:
-            for row in data:
-                table.add_row(row)
+    def add_airport(self, airport: Airport) -> None:        
+        data = {
+            "code": airport.code, 
+            "name": airport.name,
+            "city": airport.city, 
+            "country": airport.country,
+            "region": airport.region
+        }
+
+        self.conn.execute(
+            """
+            INSERT INTO airport
+                (code, name, city, country, region)
+            VALUES
+                (:code, :name, :city, :country, :region)
+            """,
+            data
+        )
+
+    def update_airport(self, airport: Airport):
+        self.conn.execute(
+            """
+            UPDATE airport
+            SET
+                code = ?,
+                name = ?,
+                city = ?,
+                country = ?,
+                region = ?
+            WHERE id = ?
+            """,
+            (airport.code, airport.name, airport.city, airport.country, airport.region, airport.id)
+        )
     
-        return str(table)
+    def delete_airport(self, airport_id: int):
+        self.conn.execute(
+            """
+            DELETE FROM airport
+            WHERE id = ?
+            """,
+            (airport_id, )
+        )
     
-    def display_record(self, airport: Airport) -> str:
-        record_string = f"""
-> Airport ID: {airport.id}
-> Code: {airport.code}
-> Name: {airport.name}
-> City: {airport.city}
-> Country: {airport.country}
-> Region: {airport.region}
+    def search_on_field(self, field_name: str, value) -> list[Airport] | None:
+        sql = f"""
+            SELECT *
+            FROM airport
+            WHERE {field_name} = ?
+            ORDER BY code
         """
-        return record_string
+        cursor = self.conn.execute(sql, (value, ))
+        results = cursor.fetchall()
+        
+        if results is None:
+            return None
+
+        result_list = []
+        for row in results:
+            result_list.append(
+                Airport(
+                    row["id"],
+                    row["code"],
+                    row["name"],
+                    row["city"],
+                    row["country"],
+                    row["region"]
+                )
+            )
+
+        return result_list
     

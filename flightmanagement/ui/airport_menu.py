@@ -16,8 +16,8 @@ class AirportMenu:
         ("back", "Back to main menu")
     ]
 
-    def __init__(self, session: PromptSession, bindings: KeyBindings):
-        self.__airport_service = AirportService()
+    def __init__(self, session: PromptSession, bindings: KeyBindings, conn):
+        self.__airport_service = AirportService(conn)
         self.__session = session
         self.__bindings = bindings
 

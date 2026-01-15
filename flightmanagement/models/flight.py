@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 @dataclass
 class Flight:
-    id: int
+    id: int | None
     flight_number: str
     aircraft_id: int
     origin_id: int

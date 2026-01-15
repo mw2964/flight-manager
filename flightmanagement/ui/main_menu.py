@@ -22,9 +22,10 @@ class MainMenu:
         ("exit", "Exit")
     ]
 
-    def __init__(self, session: PromptSession, bindings: KeyBindings):
+    def __init__(self, session: PromptSession, bindings: KeyBindings, conn):
         self.__session = session
         self.__bindings = bindings
+        self.conn = conn
 
     def load(self):
 
@@ -36,17 +37,17 @@ class MainMenu:
             )
 
             if __choose_menu == "flights":
-                FlightMenu(self.__session, self.__bindings).load()
+                FlightMenu(self.__session, self.__bindings, self.conn).load()
             elif __choose_menu == "pilots":
-                PilotMenu(self.__session, self.__bindings).load()
+                PilotMenu(self.__session, self.__bindings, self.conn).load()
             elif __choose_menu == "airports":
-                AirportMenu(self.__session, self.__bindings).load()
+                AirportMenu(self.__session, self.__bindings, self.conn).load()
             elif __choose_menu == "aircraft":
-                AircraftMenu(self.__session, self.__bindings).load()
+                AircraftMenu(self.__session, self.__bindings, self.conn).load()
             elif __choose_menu == "reports":
-                ReportMenu(self.__session, self.__bindings).load()
+                ReportMenu(self.__session, self.__bindings, self.conn).load()
             elif __choose_menu == "admin":
-                AdminMenu(self.__session, self.__bindings).load()
+                AdminMenu(self.__session, self.__bindings, self.conn).load()
             elif __choose_menu == "exit":
                 exit(0)
             else:
