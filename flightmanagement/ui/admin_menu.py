@@ -12,8 +12,8 @@ class AdminMenu:
         ("back", "Back to main menu")
     ]
 
-    def __init__(self, session: PromptSession, bindings: KeyBindings):
-        self.__admin_service = AdminService()
+    def __init__(self, session: PromptSession, bindings: KeyBindings, conn):
+        self.__admin_service = AdminService(conn)
         self.__session = session
         self.__bindings = bindings
 

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 @dataclass
 class Aircraft:
-        id: int
+        id: int | None
         registration: str
         manufacturer_serial_no: int | None
         icao_hex: str | None

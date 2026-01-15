@@ -1,109 +1,161 @@
-from prettytable import PrettyTable
-from typing import Optional
 from flightmanagement.models.aircraft import Aircraft
-from flightmanagement.db.db import DBOperations
 
 class AircraftRepository:
 
-    def __init__(self):
-        self.__db = DBOperations()
+    def __init__(self, conn):
+        self.conn = conn
 
-    def get_aircraft_by_id(self, id: int):
+    def get_by_id(self, aircraft_id: int) -> Aircraft | None:
 
-        result = self.__db.get_row_by_id("aircraft", id)
+        cursor = self.conn.execute(
+            """
+            SELECT * FROM aircraft WHERE id = ?
+            """,
+            (aircraft_id, )
+        )
+        result = cursor.fetchone()
         
-        if result:
-            aircraft = Aircraft(
-                id = result[0],
-                registration = result[1],
-                manufacturer_serial_no = result[2],
-                icao_hex = result[3],
-                manufacturer = result[4],
-                model = result[5],
-                icao_type = result[6],
-                status = result[7]
-            )
-            return aircraft
-
-    def get_aircraft_by_registration(self, registration: str) -> Aircraft | None:
-
-        id = self.__db.search_data("aircraft", "registration", registration)
-        
-        if id:
-            return self.get_aircraft_by_id(id)
-
-    def get_aircraft_list(self) -> list[Aircraft] | None:
-        data = self.__db.select_all("aircraft")
-
-        if not data:
+        if result is None:
             return None
         
-        aircraft = []
-        for row in data:
-            aircraft.append(Aircraft(row[0], row[1], row[2], row[3], row[4], row[5], row[6], row[7]))
-
+        aircraft = Aircraft(
+            result["id"],
+            result["registration"],
+            result["manufacturer_serial_no"],
+            result["icao_hex"],
+            result["manufacturer"],
+            result["model"],
+            result["icao_type"],
+            result["status"]
+        )
         return aircraft
 
-    def add_aircraft(self, registration: str, manufacturer_serial_no: int, icao_hex: str, manufacturer: str, model: str, icao_type: str, status: str) -> bool:        
+    def get_by_registration(self, registration: str) -> Aircraft | None:
+        cursor = self.conn.execute(
+            """
+            SELECT * FROM aircraft WHERE registration = ?
+            """,
+            (registration, )
+        )
+        result = cursor.fetchone()
         
-        try:
-            # Add the new aircraft to the database
-            data = {
-                "registration": registration, 
-                "manufacturer_serial_no": manufacturer_serial_no,
-                "icao_hex": icao_hex, 
-                "manufacturer": manufacturer,
-                "model": model,
-                "icao_type": icao_type,
-                "status": status
-            }
-            self.__db.insert_row("aircraft", data)
-
-            return True
-        except Exception as e:
-            print(e)
-            return False
-
-    def update_aircraft(self, id: int, updates: dict):
-        self.__db.update_row("aircraft", id, updates)
-    
-    def delete_aircraft(self, id: int):
-        self.__db.delete_row("aircraft", id)
-    
-    def search_aircraft(self, field_name: str, value) -> str:
-        result_id = self.__db.search_data("aircraft", field_name, value)
+        if result is None:
+            return None
         
-        if result_id is not None:
-            aircraft = self.get_aircraft_by_id(result_id)
-            if aircraft is not None:
-                return "\nMatch found:\n" + self.display_record(aircraft)
-            else:
-                return "\nNo matching records"
-        else:
-            return "\nNo matching records"
+        aircraft = Aircraft(
+            result["id"],
+            result["registration"],
+            result["manufacturer_serial_no"],
+            result["icao_hex"],
+            result["manufacturer"],
+            result["model"],
+            result["icao_type"],
+            result["status"]
+        )
+        return aircraft
 
-    def display_all(self) -> str:
+    def get_aircraft_list(self) -> list[Aircraft] | None:
+        cursor = self.conn.execute(
+            """
+            SELECT * FROM aircraft ORDER BY registration
+            """
+        )
+        results = cursor.fetchall()
         
-        data = self.__db.select_all("aircraft")
+        if results is None:
+            return None
+        
+        result_list = []
+        for row in results:
+            result_list.append(
+                Aircraft(
+                    row["id"],
+                    row["registration"],
+                    row["manufacturer_serial_no"],
+                    row["icao_hex"],
+                    row["manufacturer"],
+                    row["model"],
+                    row["icao_type"],
+                    row["status"]
+                )
+            )
 
-        table = PrettyTable(["Aircraft ID", "Registration", "Manufacturer serial no", "ICAO hex code", "Manufacturer", "Model", "ICAO type", "Status"])
-        table.align = "l"
+        return result_list
 
-        if data:
-            for row in data:
-                table.add_row(row)
+    def add_aircraft(self, aircraft: Aircraft) -> None:        
+        data = {
+            "registration": aircraft.registration, 
+            "manufacturer_serial_no": aircraft.manufacturer_serial_no,
+            "icao_hex": aircraft.icao_hex, 
+            "manufacturer": aircraft.manufacturer,
+            "model": aircraft.model,
+            "icao_type": aircraft.icao_type,
+            "status": aircraft.status
+        }
+
+        self.conn.execute(
+            """
+            INSERT INTO aircraft
+                (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
+            VALUES
+                (:registration, :manufacturer_serial_no, :icao_hex, :manufacturer, :model, :icao_type, :status)
+            """,
+            data
+        )
+
+    def update_aircraft(self, aircraft: Aircraft):
+        self.conn.execute(
+            """
+            UPDATE aircraft
+            SET
+                registration = ?,
+                manufacturer_serial_no = ?,
+                icao_hex = ?,
+                manufacturer = ?,
+                model = ?,
+                icao_type = ?,
+                status = ?
+            WHERE id = ?
+            """,
+            (aircraft.registration, aircraft.manufacturer_serial_no, aircraft.icao_hex, aircraft.manufacturer, aircraft.model, aircraft.icao_type, aircraft.status, aircraft.id)
+        )
     
-        return str(table)
+    def delete_aircraft(self, aircraft_id: int):
+        self.conn.execute(
+            """
+            DELETE FROM aircraft
+            WHERE id = ?
+            """,
+            (aircraft_id, )
+        )
     
-    def display_record(self, aircraft: Aircraft) -> str:
-        record_string = f"""
-> Aircraft ID: {aircraft.id}
-> Registration: {aircraft.registration}
-> Manufacturer serial no: {aircraft.manufacturer_serial_no}
-> ICAO hex code: {aircraft.icao_hex}
-> Manufacturer: {aircraft.manufacturer}
-> Model: {aircraft.model}
-> ICAO type: {aircraft.icao_type}
-> Status: {aircraft.status}
+    def search_on_field(self, field_name: str, value) -> list[Aircraft] | None:
+        sql = f"""
+            SELECT *
+            FROM aircraft
+            WHERE {field_name} = ?
+            ORDER BY registration
         """
-        return record_string
+        cursor = self.conn.execute(sql, (value, ))
+        results = cursor.fetchall()
+        
+        if results is None:
+            return None
+
+        result_list = []
+        for row in results:
+            result_list.append(
+                Aircraft(
+                    row["id"],
+                    row["registration"],
+                    row["manufacturer_serial_no"],
+                    row["icao_hex"],
+                    row["manufacturer"],
+                    row["model"],
+                    row["icao_type"],
+                    row["status"]
+                )
+            )
+
+        return result_list
+    

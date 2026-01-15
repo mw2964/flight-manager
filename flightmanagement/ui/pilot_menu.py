@@ -16,8 +16,8 @@ class PilotMenu:
         ("back", "Back to main menu")
     ]
 
-    def __init__(self, session: PromptSession, bindings: KeyBindings):
-        self.__pilot_service = PilotService()
+    def __init__(self, session: PromptSession, bindings: KeyBindings, conn):
+        self.__pilot_service = PilotService(conn)
         self.__session = session
         self.__bindings = bindings
 

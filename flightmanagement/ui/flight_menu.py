@@ -20,18 +20,17 @@ class FlightMenu:
         ("back", "Back to main menu")
     ]
 
-
-    def __init__(self, session: PromptSession, bindings: KeyBindings):
-        self.__flight_service = FlightService()
-        self.__aircraft_service = AircraftService()
-        self.__airport_service = AirportService()
-        self.__pilot_service = PilotService()
+    def __init__(self, session: PromptSession, bindings: KeyBindings, conn):
+        self.__flight_service = FlightService(conn)
+        self.__aircraft_service = AircraftService(conn)
+        self.__airport_service = AirportService(conn)
+        self.__pilot_service = PilotService(conn)
         self.__session = session
         self.__bindings = bindings
 
     def __show_option(self) -> None:
         print("\n>> Displaying all flights\n")
-        print(self.__flight_service.get_flight_list())
+        print(self.__flight_service.get_flight_table())
 
     def __search_option(self) -> bool:
         print("\n>> Search for a flight (or hit CTRL+C to cancel)\n")
@@ -117,7 +116,8 @@ class FlightMenu:
 
         while True:
                 try:
-                    arrival_date = prompt_date(self.__session, "Scheduled arrival date (dd/mm/yyyy): ", True, departure_date)
+                    default = datetime.strftime(datetime.strptime(departure_date, "%Y-%m-%d"), "%d/%m/%Y")
+                    arrival_date = prompt_date(self.__session, "Scheduled arrival date (dd/mm/yyyy): ", True, default)
                     break
                 except ValueError:
                     print("\tInvalid date - please try again.")
@@ -155,7 +155,7 @@ class FlightMenu:
             return False
         
         # Retrieve the flight record
-        flight = self.__flight_service.get_flight(id)
+        flight = self.__flight_service.get_flight_by_id(id)
 
         print(f"\nEditing information (flight ID {id})\n")
 

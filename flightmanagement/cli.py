@@ -1,20 +1,37 @@
+from pathlib import Path
 from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from flightmanagement.ui.main_menu import MainMenu
+from flightmanagement.db.db import get_connection
 
-CANCEL = "__CANCEL__"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DB_PATH = PROJECT_ROOT / "data" / "FlightManagement.db"
 
-bindings = KeyBindings()
+def main():
 
-@bindings.add('c-c')
-def _(event):
-    event.app.exit(result=CANCEL)            
+    try:
+        # Initialise UI prompt session
+        bindings = KeyBindings()
 
-session = PromptSession(key_bindings=bindings)
+        @bindings.add('c-c')
+        def _(event):
+            event.app.exit(result="__CANCEL__")
 
-print("\n***********\nFLIGHT CLUB\nV0.1\n***********")
+        session = PromptSession(key_bindings=bindings)
 
-try:
-    MainMenu(session, bindings).load()
-except RuntimeError as e:
-    print(e)
+        # Print the welcome screen
+        print("""
+***********
+FLIGHT CLUB
+V0.1.0
+***********""")
+    
+        # Initialise the database connection
+        conn = get_connection(DB_PATH)
+
+        MainMenu(session, bindings, conn).load()
+    except RuntimeError as e:
+        print(e)
+
+if __name__ == "__main__":
+    main()
