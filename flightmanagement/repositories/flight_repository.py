@@ -26,10 +26,10 @@ class FlightRepository:
             result["destination_id"],
             result["pilot_id"],
             result["copilot_id"],
-            datetime.strptime(result["departure_time_scheduled"], '%Y-%m-%d %H:%M'),
-            datetime.strptime(result["arrival_time_scheduled"], '%Y-%m-%d %H:%M'),
-            datetime.strptime(result["departure_time_actual"], '%Y-%m-%d %H:%M') if result[9] else None,
-            datetime.strptime(result["arrival_time_actual"], '%Y-%m-%d %H:%M') if result[10] else None,
+            datetime.strptime(result["departure_time_scheduled"], '%Y-%m-%d %H:%M') if result["departure_time_scheduled"] else None,
+            datetime.strptime(result["arrival_time_scheduled"], '%Y-%m-%d %H:%M') if result["arrival_time_scheduled"] else None,
+            datetime.strptime(result["departure_time_actual"], '%Y-%m-%d %H:%M') if result["departure_time_actual"] else None,
+            datetime.strptime(result["arrival_time_actual"], '%Y-%m-%d %H:%M') if result["arrival_time_actual"] else None,
             result["status"]
         )
         return flight
@@ -58,10 +58,10 @@ class FlightRepository:
                     row["destination_id"],
                     row["pilot_id"],
                     row["copilot_id"],
-                    row["departure_time_scheduled"],
-                    row["arrival_time_scheduled"],
-                    row["departure_time_actual"],
-                    row["arrival_time_actual"],
+                    datetime.strptime(row["departure_time_scheduled"], "%Y-%m-%d %H:%M") if row["departure_time_scheduled"] else None,
+                    datetime.strptime(row["arrival_time_scheduled"], "%Y-%m-%d %H:%M") if row["arrival_time_scheduled"] else None,
+                    datetime.strptime(row["departure_time_actual"], "%Y-%m-%d %H:%M") if row["departure_time_actual"] else None,
+                    datetime.strptime(row["arrival_time_actual"], "%Y-%m-%d %H:%M") if row["arrival_time_actual"] else None,
                     row["status"]
                 )
             )
@@ -71,7 +71,7 @@ class FlightRepository:
     def get_flight_list(self) -> list[Flight] | None:
         cursor = self.conn.execute(
             """
-            SELECT * FROM flight ORDER BY departure_time_scheduled DESC
+            SELECT * FROM flight
             """
         )
         results = cursor.fetchall()
@@ -90,10 +90,10 @@ class FlightRepository:
                     row["destination_id"],
                     row["pilot_id"],
                     row["copilot_id"],
-                    row["departure_time_scheduled"],
-                    row["arrival_time_scheduled"],
-                    row["departure_time_actual"],
-                    row["arrival_time_actual"],
+                    datetime.strptime(row["departure_time_scheduled"], "%Y-%m-%d %H:%M") if row["departure_time_scheduled"] else None,
+                    datetime.strptime(row["arrival_time_scheduled"], "%Y-%m-%d %H:%M") if row["arrival_time_scheduled"] else None,
+                    datetime.strptime(row["departure_time_actual"], "%Y-%m-%d %H:%M") if row["departure_time_actual"] else None,
+                    datetime.strptime(row["arrival_time_actual"], "%Y-%m-%d %H:%M") if row["arrival_time_actual"] else None,
                     row["status"]
                 )
             )
@@ -108,10 +108,10 @@ class FlightRepository:
             "destination_id": flight.destination_id,
             "pilot_id": flight.pilot_id,
             "copilot_id": flight.copilot_id,
-            "departure_time_scheduled": flight.departure_time_scheduled,
-            "arrival_time_scheduled": flight.arrival_time_scheduled,
-            "departure_time_actual": flight.departure_time_actual,
-            "arrival_time_actual": flight.arrival_time_actual,
+            "departure_time_scheduled": datetime.strftime(flight.departure_time_scheduled, "%Y-%m-%d %H:%M") if flight.departure_time_scheduled else None,
+            "arrival_time_scheduled": datetime.strftime(flight.arrival_time_scheduled, "%Y-%m-%d %H:%M") if flight.arrival_time_scheduled else None,
+            "departure_time_actual": datetime.strftime(flight.departure_time_actual, "%Y-%m-%d %H:%M") if flight.departure_time_actual else None,
+            "arrival_time_actual": datetime.strftime(flight.arrival_time_actual, "%Y-%m-%d %H:%M") if flight.arrival_time_actual else None,
             "status": flight.status
         }
         self.conn.execute(
@@ -149,10 +149,10 @@ class FlightRepository:
                 flight.destination_id,
                 flight.pilot_id,
                 flight.copilot_id,
-                flight.departure_time_scheduled,
-                flight.arrival_time_scheduled,
-                flight.departure_time_actual,
-                flight.arrival_time_actual,
+                datetime.strftime(flight.departure_time_scheduled, "%Y-%m-%d %H:%M") if flight.departure_time_scheduled else None,
+                datetime.strftime(flight.arrival_time_scheduled, "%Y-%m-%d %H:%M") if flight.arrival_time_scheduled else None,
+                datetime.strftime(flight.departure_time_actual, "%Y-%m-%d %H:%M") if flight.departure_time_actual else None,
+                datetime.strftime(flight.arrival_time_actual, "%Y-%m-%d %H:%M") if flight.arrival_time_actual else None,
                 flight.status,
                 flight.id
             )

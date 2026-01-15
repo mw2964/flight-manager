@@ -116,7 +116,8 @@ class FlightMenu:
 
         while True:
                 try:
-                    arrival_date = prompt_date(self.__session, "Scheduled arrival date (dd/mm/yyyy): ", True, departure_date)
+                    default = datetime.strftime(datetime.strptime(departure_date, "%Y-%m-%d"), "%d/%m/%Y")
+                    arrival_date = prompt_date(self.__session, "Scheduled arrival date (dd/mm/yyyy): ", True, default)
                     break
                 except ValueError:
                     print("\tInvalid date - please try again.")

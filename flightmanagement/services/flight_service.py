@@ -90,7 +90,7 @@ class FlightService:
         if flights:
             for flight in flights:
                 if flight_number == "" or flight.flight_number == flight_number:
-                    flight_choices.append((flight.id, f"{flight.flight_number} ({flight.origin_id} to {flight.destination_id}, departure: {flight.departure_time_actual}, status: {flight.status})"))
+                    flight_choices.append((flight.id, f"{flight.flight_number} ({flight.origin_id} to {flight.destination_id}, departure: {flight.departure_time_scheduled}, status: {flight.status})"))
 
         return flight_choices
     
@@ -123,10 +123,10 @@ class FlightService:
                 flight.destination_id,
                 flight.pilot_id,
                 flight.copilot_id,
-                flight.departure_time_scheduled,
-                flight.arrival_time_scheduled,
-                flight.departure_time_actual,
-                flight.arrival_time_actual,
+                datetime.strftime(flight.departure_time_scheduled, "%Y-%m-%d %H:%M") if flight.departure_time_scheduled else "",
+                datetime.strftime(flight.arrival_time_scheduled, "%Y-%m-%d %H:%M") if flight.arrival_time_scheduled else "",
+                datetime.strftime(flight.departure_time_actual, "%Y-%m-%d %H:%M") if flight.departure_time_actual else "",
+                datetime.strftime(flight.arrival_time_actual, "%Y-%m-%d %H:%M") if flight.arrival_time_actual else "",
                 flight.status
             ])
         
