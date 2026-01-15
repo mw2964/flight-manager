@@ -1,8 +1,9 @@
 from datetime import datetime
-from prettytable import PrettyTable
+from prettytable import PrettyTable, TableStyle, ALL, NONE
 from flightmanagement.repositories.aircraft_repository import AircraftRepository
 from flightmanagement.repositories.airport_repository import AirportRepository
 from flightmanagement.repositories.flight_repository import FlightRepository
+from flightmanagement.repositories.pilot_repository import PilotRepository
 from flightmanagement.models.flight import Flight
 from flightmanagement.db.db import transaction
 
@@ -13,6 +14,7 @@ class FlightService:
         self.__flight_repository = FlightRepository(self.conn)
         self.__aircraft_repository = AircraftRepository(self.conn)
         self.__airport_repository = AirportRepository(self.conn)
+        self.__pilot_repository = PilotRepository(self.conn)
 
     def add_flight(self, flight_number: str, aircraft_id: int, origin_id: int, destination_id: int, pilot_id: int, copilot_id: int, departure_date: str, departure_time: str, arrival_date: str, arrival_time: str):
         with transaction(self.conn):
@@ -59,7 +61,7 @@ class FlightService:
         if flights is None:
             return ""
         
-        return self.list_to_table(flights)
+        return self.get_results_view(flights)
 
     def get_flight_by_id(self, id: int):
         return self.__flight_repository.get_by_id(id)
@@ -74,13 +76,8 @@ class FlightService:
         if airport:
             return airport.id
     
-    def search_flights(self, field_name: str, value) -> str:
-        results = self.__flight_repository.search_on_field(field_name, value)
-        
-        if results is None:
-            return "No matching records."
-        
-        return self.list_to_table(results)
+    def search_flights(self, field_name: str, value) -> list[Flight] | None:
+        return self.__flight_repository.search_on_field(field_name, value)
 
     def get_flight_choices(self, flight_number: str = "") -> list:
         flights = self.__flight_repository.get_flight_list()
@@ -90,45 +87,54 @@ class FlightService:
         if flights:
             for flight in flights:
                 if flight_number == "" or flight.flight_number == flight_number:
-                    flight_choices.append((flight.id, f"{flight.flight_number} ({flight.origin_id} to {flight.destination_id}, departure: {flight.departure_time_scheduled}, status: {flight.status})"))
+                    flight_choices.append((flight.id, str(flight)))
 
         return flight_choices
     
-    def list_to_table(self, flights: list[Flight]) -> str:
+    def get_results_view(self, flights: list[Flight]) -> str:
         if flights is None:
             return ""
         
+        # Initialise the table
         table = PrettyTable([
             "Flight ID",
             "Flight number",
-            "Aircraft ID",
-            "Origin ID",
-            "Destination ID",
-            "Pilot ID",
-            "Copilot ID",
-            "Departure time (scheduled)",
-            "Arrival time (scheduled)",
-            "Departure time (actual)",
-            "Arrival time (actual)",
+            "Aircraft",
+            "Origin",
+            "Destination",
+            "Pilot",
+            "Copilot",
+            "Departure (scheduled)",
+            "Arrival (scheduled)",
+            "Departure (actual)",
+            "Arrival (actual)",
             "Status"
-        ])        
-        table.align = "l"
-
+            ],
+        )        
+        
+        # Populate table rows
         for flight in flights:
             table.add_row([
                 flight.id,
                 flight.flight_number,
-                flight.aircraft_id,
-                flight.origin_id,
-                flight.destination_id,
-                flight.pilot_id,
-                flight.copilot_id,
+                str(self.__aircraft_repository.get_by_id(flight.aircraft_id)).replace(" (", "\n("),
+                str(self.__airport_repository.get_by_id(flight.origin_id)).replace(" (", "\n("),
+                str(self.__airport_repository.get_by_id(flight.destination_id)).replace(" (", "\n("),
+                self.__pilot_repository.get_by_id(flight.pilot_id) if flight.pilot_id else "",
+                self.__pilot_repository.get_by_id(flight.copilot_id) if flight.copilot_id else "",
                 datetime.strftime(flight.departure_time_scheduled, "%Y-%m-%d %H:%M") if flight.departure_time_scheduled else "",
                 datetime.strftime(flight.arrival_time_scheduled, "%Y-%m-%d %H:%M") if flight.arrival_time_scheduled else "",
                 datetime.strftime(flight.departure_time_actual, "%Y-%m-%d %H:%M") if flight.departure_time_actual else "",
                 datetime.strftime(flight.arrival_time_actual, "%Y-%m-%d %H:%M") if flight.arrival_time_actual else "",
                 flight.status
             ])
+
+        # Set table formatting
+        table.set_style(TableStyle.SINGLE_BORDER)
+        table.align = "l"
+        table.max_width = 20
+        table.hrules = ALL
+        table.vrules = NONE
         
         indented_table = ""
         for row in table.get_string().split("\n"):

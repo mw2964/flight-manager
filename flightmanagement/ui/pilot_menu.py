@@ -31,8 +31,20 @@ class PilotMenu:
         family_name = prompt_or_cancel(self.__session, "Enter a family name: ", "Search cancelled.")
         if family_name is None:                
             return False
+        
         result = self.__pilot_service.search_pilots("family_name", family_name)
-        print(result)
+
+        if result is None:
+            print("\n     No matching results.")
+            return True
+
+        match_count = len(result)
+        if match_count == 1:
+            print(f"\n     {len(result)} match found:\n")
+        else:            
+            print(f"\n     {len(result)} matches found:\n")
+
+        print(self.__pilot_service.get_results_view(result))
         return True
 
     def __add_option(self) -> bool:

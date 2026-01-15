@@ -33,7 +33,18 @@ class AircraftMenu:
             return False
 
         result = self.__aircraft_service.search_aircraft("registration", registration)
-        print(result)
+
+        if result is None:
+            print("\n     No matching results.")
+            return True
+
+        match_count = len(result)
+        if match_count == 1:
+            print(f"\n     {len(result)} match found:\n")
+        else:            
+            print(f"\n     {len(result)} matches found:\n")
+
+        print(self.__aircraft_service.get_results_view(result))
         return True
 
     def __add_option(self) -> bool:

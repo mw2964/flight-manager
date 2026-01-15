@@ -40,7 +40,18 @@ class FlightMenu:
             return False
 
         result = self.__flight_service.search_flights("flight_number", flight_number)
-        print(result)
+
+        if result is None:
+            print("\n     No matching results.")
+            return True
+
+        match_count = len(result)
+        if match_count == 1:
+            print(f"\n     {len(result)} match found:\n")
+        else:            
+            print(f"\n     {len(result)} matches found:\n")
+
+        print(self.__flight_service.get_results_view(result))
         return True
 
     def __add_option(self) -> bool:

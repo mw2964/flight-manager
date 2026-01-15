@@ -14,7 +14,7 @@ class AirportRepository:
         )
         result = cursor.fetchone()
         
-        if result is None:
+        if result is None or len(result) == 0:
             return None
 
         airport = Airport(
@@ -36,7 +36,7 @@ class AirportRepository:
         )
         result = cursor.fetchone()
         
-        if result is None:
+        if result is None or len(result) == 0:
             return None
         
         airport = Airport(
@@ -57,7 +57,7 @@ class AirportRepository:
         )
         results = cursor.fetchall()
 
-        if results is None:
+        if results is None or len(results) == 0:
             return None
         
         result_list = []
@@ -128,7 +128,7 @@ class AirportRepository:
         cursor = self.conn.execute(sql, (value, ))
         results = cursor.fetchall()
         
-        if results is None:
+        if results is None or len(results) == 0:
             return None
 
         result_list = []

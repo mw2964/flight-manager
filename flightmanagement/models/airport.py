@@ -8,3 +8,6 @@ class Airport:
     city: str | None
     country: str | None
     region: str | None
+
+    def __str__(self):
+        return f"{self.code} ({self.name})"

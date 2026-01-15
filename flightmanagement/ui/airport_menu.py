@@ -23,7 +23,7 @@ class AirportMenu:
 
     def __show_option(self) -> None:
         print("\n>> Displaying all airports\n")
-        print(self.__airport_service.get_airport_list())
+        print(self.__airport_service.get_airport_table())
 
     def __search_option(self) -> bool:
         print("\n>> Search for an airport (or hit CTRL+C to cancel)\n")
@@ -33,7 +33,18 @@ class AirportMenu:
             return False
 
         result = self.__airport_service.search_airports("code", code)
-        print(result)
+
+        if result is None:
+            print("\n     No matching results.")
+            return True
+
+        match_count = len(result)
+        if match_count == 1:
+            print(f"\n     {len(result)} match found:\n")
+        else:            
+            print(f"\n     {len(result)} matches found:\n")
+
+        print(self.__airport_service.get_results_view(result))
         return True
 
     def __add_option(self) -> bool:

@@ -1,4 +1,4 @@
-from prettytable import PrettyTable
+from prettytable import PrettyTable, TableStyle, ALL, NONE
 from flightmanagement.repositories.aircraft_repository import AircraftRepository
 from flightmanagement.models.aircraft import Aircraft
 from flightmanagement.db.db import transaction
@@ -29,15 +29,10 @@ class AircraftService:
         if aircraft is None:
             return ""
         
-        return self.list_to_table(aircraft)
+        return self.get_results_view(aircraft)
     
-    def search_aircraft(self, field_name, value) -> str:
-        results = self.__aircraft_repository.search_on_field(field_name, value)
-
-        if results is None:
-            return "No matching records."
-        
-        return self.list_to_table(results)
+    def search_aircraft(self, field_name, value) -> list[Aircraft] | None:
+        return self.__aircraft_repository.search_on_field(field_name, value)
     
     def get_aircraft_choices(self) -> list:
         aircraft_list = self.__aircraft_repository.get_aircraft_list()
@@ -46,17 +41,18 @@ class AircraftService:
 
         if aircraft_list:
             for aircraft in aircraft_list:
-                aircraft_choices.append((aircraft.id, f"{aircraft.registration} ({aircraft.manufacturer} {aircraft.model})"))
+                aircraft_choices.append((aircraft.id, str(aircraft)))
 
         return aircraft_choices
 
     def get_aircraft_by_id(self, id: int):
         return self.__aircraft_repository.get_by_id(id)
     
-    def list_to_table(self, aircraft: list[Aircraft]) -> str:
+    def get_results_view(self, aircraft: list[Aircraft]) -> str:
         if aircraft is None:
             return ""
         
+        # Initialise the table
         table = PrettyTable([
             "Aircraft ID",
             "Registration",
@@ -67,8 +63,8 @@ class AircraftService:
             "ICAO type",
             "Status"
         ])
-        table.align = "l"
 
+        # Populate table rows
         for item in aircraft:
             table.add_row([
                 item.id,
@@ -80,7 +76,14 @@ class AircraftService:
                 item.icao_type,
                 item.status
             ])
-    
+              
+        # Set table formatting
+        table.set_style(TableStyle.SINGLE_BORDER)
+        table.align = "l"
+        table.max_width = 20
+        table.hrules = ALL
+        table.vrules = NONE
+
         indented_table = ""
         for row in table.get_string().split("\n"):
             indented_table += (" " * 5) + row + "\n"

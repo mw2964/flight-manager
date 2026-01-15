@@ -15,7 +15,7 @@ class AircraftRepository:
         )
         result = cursor.fetchone()
         
-        if result is None:
+        if result is None or len(result) == 0:
             return None
         
         aircraft = Aircraft(
@@ -39,7 +39,7 @@ class AircraftRepository:
         )
         result = cursor.fetchone()
         
-        if result is None:
+        if result is None or len(result) == 0:
             return None
         
         aircraft = Aircraft(
@@ -62,7 +62,7 @@ class AircraftRepository:
         )
         results = cursor.fetchall()
         
-        if results is None:
+        if results is None or len(results) == 0:
             return None
         
         result_list = []
@@ -139,7 +139,7 @@ class AircraftRepository:
         cursor = self.conn.execute(sql, (value, ))
         results = cursor.fetchall()
         
-        if results is None:
+        if results is None or len(results) == 0:
             return None
 
         result_list = []

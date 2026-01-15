@@ -1,4 +1,4 @@
-from prettytable import PrettyTable
+from prettytable import PrettyTable, TableStyle, ALL, NONE
 from flightmanagement.repositories.airport_repository import AirportRepository
 from flightmanagement.models.airport import Airport
 from flightmanagement.db.db import transaction
@@ -29,15 +29,10 @@ class AirportService:
         if airports is None:
             return ""
         
-        return self.list_to_table(airports)
+        return self.get_results_view(airports)
     
-    def search_airports(self, field_name: str, value) -> str:
-        results = self.__airport_repository.search_on_field(field_name, value)
-
-        if results is None:
-            return "No matching records."
-        
-        return self.list_to_table(results)
+    def search_airports(self, field_name: str, value) -> list[Airport] | None:
+        return self.__airport_repository.search_on_field(field_name, value)
 
     def get_airport_choices(self) -> list:
         airports = self.__airport_repository.get_airport_list()
@@ -46,17 +41,18 @@ class AirportService:
 
         if airports:
             for airport in airports:
-                airport_choices.append((airport.id, f"{airport.code} ({airport.name}, {airport.city}, {airport.country})"))
+                airport_choices.append((airport.id, str(airport)))
 
         return airport_choices
 
     def get_airport_by_id(self, id: int):
         return self.__airport_repository.get_by_id(id)
     
-    def list_to_table(self, airports: list[Airport]) -> str:
+    def get_results_view(self, airports: list[Airport]) -> str:
         if airports is None:
             return ""
         
+        # Initialise the table
         table = PrettyTable([
             "Airport ID",
             "Code",
@@ -65,13 +61,20 @@ class AirportService:
             "Country",
             "Region"
         ])
-        table.align = "l"
-
+ 
+        # Populate table rows
         for airport in airports:
             table.add_row([airport.id, airport.code, airport.name, airport.city, airport.country, airport.region])
-    
+               
+        # Set table formatting
+        table.set_style(TableStyle.SINGLE_BORDER)
+        table.align = "l"
+        table.max_width = 20
+        table.hrules = ALL
+        table.vrules = NONE
+
         indented_table = ""
         for row in table.get_string().split("\n"):
             indented_table += (" " * 5) + row + "\n"
-        
+
         return str(indented_table)
