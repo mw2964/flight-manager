@@ -57,8 +57,8 @@ class PilotMenu:
         family_name = prompt_or_cancel(self.__session, "Enter a family name: ", "Action cancelled.")
         if family_name is None:
             return False
-        
         print()
+
         self.__pilot_service.add_pilot(first_name, family_name)
         return True
 
@@ -66,7 +66,7 @@ class PilotMenu:
         print("\n>> Update a pilot (or hit CTRL+C to cancel)\n")
 
         id = choice(
-            message="Choose a pilot to update: ",
+            message="Choose a pilot to update:\n",
             options=self.__pilot_service.get_pilot_choices(),
             key_bindings=self.__bindings
         )
@@ -88,8 +88,8 @@ class PilotMenu:
             family_name = prompt_or_cancel(self.__session, "Family name: ", "Update cancelled", pilot.family_name)
             if family_name is None:
                 return False
-
             print()
+            
             self.__pilot_service.update_pilot(id, first_name, family_name)
             
         return True
@@ -98,7 +98,7 @@ class PilotMenu:
         print("\n>> Delete a pilot (or hit CTRL+C to cancel)\n")
 
         id = choice(
-            message="Choose a pilot to delete: ",
+            message="Choose a pilot to delete:\n",
             options=self.__pilot_service.get_pilot_choices(),
             key_bindings=self.__bindings
         )
@@ -107,7 +107,7 @@ class PilotMenu:
             return False
         
         print()
-        if choice(message="Are you sure you want to delete this record?", options=[(1, "yes"),(0, "no")]) == 1:
+        if choice(message="Are you sure you want to delete this record?\n", options=[(1, "yes"),(0, "no")]) == 1:
             print()
             self.__pilot_service.delete_pilot(id)
         else:
@@ -141,4 +141,4 @@ class PilotMenu:
             elif __choose_menu == "back":
                 return
             else:
-                print("Invalid choice")
+                print("Invalid choice.")

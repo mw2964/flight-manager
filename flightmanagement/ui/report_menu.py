@@ -27,7 +27,6 @@ class ReportMenu:
             )
 
             if __choose_menu == "pilot_stats":
-
                 pass
 
             elif __choose_menu == "back":

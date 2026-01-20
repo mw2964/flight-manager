@@ -16,8 +16,8 @@ class AircraftMenu:
         ("back", "Back to main menu")
     ]
 
-    def __init__(self, session: PromptSession, bindings: KeyBindings, conn):
-        self.__aircraft_service = AircraftService(conn)
+    def __init__(self, session: PromptSession, bindings: KeyBindings, conn=None, aircraft_service=None):
+        self.__aircraft_service = aircraft_service or AircraftService(conn)
         self.__session = session
         self.__bindings = bindings
 
@@ -34,12 +34,12 @@ class AircraftMenu:
 
         result = self.__aircraft_service.search_aircraft("registration", registration)
 
-        if result is None:
+        match_count = len(result)
+
+        if match_count == 0:
             print("\n     No matching results.")
             return True
-
-        match_count = len(result)
-        if match_count == 1:
+        elif match_count == 1:
             print(f"\n     {len(result)} match found:\n")
         else:            
             print(f"\n     {len(result)} matches found:\n")
@@ -95,7 +95,7 @@ class AircraftMenu:
         print("\n>> Update an aircraft (or hit CTRL+C to cancel)\n")
 
         id = choice(
-            message="Choose an aircraft to update: ",
+            message="Choose an aircraft to update:\n",
             options=self.__aircraft_service.get_aircraft_choices(),
             key_bindings=self.__bindings
         )
@@ -145,7 +145,7 @@ class AircraftMenu:
             
             print()
             status = choice(
-                message="Select an aircraft status: ",
+                message="Select an aircraft status:\n",
                 options=[
                     ("Active", ("Active")),
                     ("Inactive", ("Inactive")),
@@ -167,7 +167,7 @@ class AircraftMenu:
         print("\n>> Delete an aircraft (or hit CTRL+C to cancel)\n")
 
         id = choice(
-            message="Choose an aircraft to delete: ",
+            message="Choose an aircraft to delete:\n",
             options=self.__aircraft_service.get_aircraft_choices(),
             key_bindings=self.__bindings
         )
@@ -176,7 +176,7 @@ class AircraftMenu:
             return False
 
         print()
-        if choice(message="Are you sure you want to delete this record?", options=[(1, "yes"),(0, "no")]) == 1:
+        if choice(message="Are you sure you want to delete this record?\n", options=[(1, "yes"),(0, "no")]) == 1:
             print()
             self.__aircraft_service.delete_aircraft(id)
         else:

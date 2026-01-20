@@ -18,9 +18,9 @@ class PilotRepository:
             return None
 
         pilot = Pilot(
-            result["id"],
-            result["first_name"],
-            result["family_name"]
+            id=result["id"],
+            first_name=result["first_name"],
+            family_name=result["family_name"]
         )
         return pilot
 
@@ -39,9 +39,9 @@ class PilotRepository:
         for row in results:
             result_list.append(
                 Pilot(
-                    row["id"],
-                    row["first_name"],
-                    row["family_name"]
+                    id=row["id"],
+                    first_name=row["first_name"],
+                    family_name=row["family_name"]
                 )
             )
 
@@ -100,9 +100,9 @@ class PilotRepository:
         for row in results:
             result_list.append(
                 Pilot(
-                    row["id"],
-                    row["first_name"],
-                    row["family_name"]
+                    id=row["id"],
+                    first_name=row["first_name"],
+                    family_name=row["family_name"]
                 )
             )
 

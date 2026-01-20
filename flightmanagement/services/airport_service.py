@@ -11,12 +11,25 @@ class AirportService:
 
     def add_airport(self, code: str, name: str, city: str, country: str, region: str):
         with transaction(self.conn):
-            airport = Airport(None, code, name, city, country, region)
+            airport = Airport(
+                code=code,
+                name=name,
+                city=city,
+                country=country,
+                region=region
+            )
             self.__airport_repository.add_airport(airport)        
 
     def update_airport(self, id: int, code: str, name: str, city: str, country: str, region: str):
         with transaction(self.conn):
-            airport = Airport(id, code, name, city, country, region)
+            airport = Airport(
+                id=id,
+                code=code,
+                name=name,
+                city=city,
+                country=country,
+                region=region
+            )
             self.__airport_repository.update_airport(airport)
 
     def delete_airport(self, id: int):

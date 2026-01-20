@@ -78,7 +78,7 @@ class AirportMenu:
         print("\n>> Update an airport (or hit CTRL+C to cancel)\n")
 
         id = choice(
-            message="Choose an airport to update: ",
+            message="Choose an airport to update:\n",
             options=self.__airport_service.get_airport_choices(),
             key_bindings=self.__bindings
         )
@@ -122,7 +122,7 @@ class AirportMenu:
         print("\n>> Delete an airport (or hit CTRL+C to cancel)\n")
 
         id = choice(
-            message="Choose an airport to delete: ",
+            message="Choose an airport to delete:\n",
             options=self.__airport_service.get_airport_choices(),
             key_bindings=self.__bindings
         )
@@ -130,7 +130,7 @@ class AirportMenu:
             return False
 
         print()
-        if choice(message="Are you sure you want to delete this record?", options=[(1, "yes"),(0, "no")]) == 1:
+        if choice(message="Are you sure you want to delete this record?\n", options=[(1, "yes"),(0, "no")]) == 1:
             print()
             self.__airport_service.delete_airport(id)
         else:

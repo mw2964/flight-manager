@@ -28,7 +28,7 @@ def prompt_date(session, prompt: str, allow_blank: bool, default=None) -> str | 
 
     if not value:
         if allow_blank:
-            return None        
+            return ""        
         raise ValueError("Invalid date")
 
     try:
@@ -47,7 +47,7 @@ def prompt_time(session, prompt: str, allow_blank: bool, default=None) -> str | 
 
     if not value:
         if allow_blank:
-            return None        
+            return ""        
         raise ValueError("Invalid time")
 
     try:
@@ -61,4 +61,4 @@ def indent_string(string: str, spaces: int) -> str:
     return " " * spaces + string
 
 def format_title(title: str) -> str:
-    return f"\n{title}\n{"*" * len(title)}"
+    return f"\n{title}\n{"*" * len(title)}\n"

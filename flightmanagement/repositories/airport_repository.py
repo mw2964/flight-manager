@@ -18,12 +18,12 @@ class AirportRepository:
             return None
 
         airport = Airport(
-            result["id"],
-            result["code"],
-            result["name"],
-            result["city"],
-            result["country"],
-            result["region"]
+            id=result["id"],
+            code=result["code"],
+            name=result["name"],
+            city=result["city"],
+            country=result["country"],
+            region=result["region"]
         )
         return airport
 
@@ -40,12 +40,12 @@ class AirportRepository:
             return None
         
         airport = Airport(
-            result["id"],
-            result["code"],
-            result["name"],
-            result["city"],
-            result["country"],
-            result["region"]
+            id=result["id"],
+            code=result["code"],
+            name=result["name"],
+            city=result["city"],
+            country=result["country"],
+            region=result["region"]
         )
         return airport
 
@@ -64,12 +64,12 @@ class AirportRepository:
         for row in results:
             result_list.append(
                 Airport(
-                    row["id"],
-                    row["code"],
-                    row["name"],
-                    row["city"],
-                    row["country"],
-                    row["region"]
+                    id=row["id"],
+                    code=row["code"],
+                    name=row["name"],
+                    city=row["city"],
+                    country=row["country"],
+                    region=row["region"]
                 )
             )
 
@@ -135,12 +135,12 @@ class AirportRepository:
         for row in results:
             result_list.append(
                 Airport(
-                    row["id"],
-                    row["code"],
-                    row["name"],
-                    row["city"],
-                    row["country"],
-                    row["region"]
+                    id=row["id"],
+                    code=row["code"],
+                    name=row["name"],
+                    city=row["city"],
+                    country=row["country"],
+                    region=row["region"]
                 )
             )
 

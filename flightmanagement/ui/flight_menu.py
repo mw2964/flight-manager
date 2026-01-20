@@ -63,7 +63,7 @@ class FlightMenu:
         print()
 
         aircraft_id = choice(
-            message="Select the aircraft: ",
+            message="Select the aircraft:\n",
             options=self.__aircraft_service.get_aircraft_choices(),
             key_bindings=self.__bindings
         )
@@ -72,7 +72,7 @@ class FlightMenu:
         print()
 
         origin_id = choice(
-            message="Select the origin airport: ",
+            message="Select the origin airport:\n",
             options=self.__airport_service.get_airport_choices(),
             key_bindings=self.__bindings
         )
@@ -81,7 +81,7 @@ class FlightMenu:
         print()
 
         destination_id = choice(
-            message="Select the destination airport: ",
+            message="Select the destination airport:\n",
             options=self.__airport_service.get_airport_choices(),
             key_bindings=self.__bindings
         )
@@ -90,7 +90,7 @@ class FlightMenu:
         print()
 
         pilot_id = choice(
-            message="Select the pilot: ",
+            message="Select the pilot:\n",
             options=self.__pilot_service.get_pilot_choices(),
             key_bindings=self.__bindings
         )
@@ -99,7 +99,7 @@ class FlightMenu:
         print()
 
         copilot_id = choice(
-            message="Select the copilot: ",
+            message="Select the copilot:\n",
             options=self.__pilot_service.get_pilot_choices(),
             key_bindings=self.__bindings
         )
@@ -109,7 +109,7 @@ class FlightMenu:
 
         while True:
             try:
-                departure_date = prompt_date(self.__session, "Scheduled departure date (dd/mm/yyyy): ", True)
+                departure_date = prompt_date(self.__session, "Scheduled departure date (DD/MM/YYYY): ", False)
                 break
             except ValueError:
                 print("\tInvalid date - please try again.")
@@ -118,7 +118,7 @@ class FlightMenu:
 
         while True:
             try:
-                departure_time = prompt_time(self.__session, "Scheduled departure time (HH:MM): ", True)
+                departure_time = prompt_time(self.__session, "Scheduled departure time (HH:MM): ", False)
                 break
             except ValueError:
                 print("\tInvalid time - please try again.")
@@ -127,8 +127,11 @@ class FlightMenu:
 
         while True:
                 try:
-                    default = datetime.strftime(datetime.strptime(departure_date, "%Y-%m-%d"), "%d/%m/%Y")
-                    arrival_date = prompt_date(self.__session, "Scheduled arrival date (dd/mm/yyyy): ", True, default)
+                    if departure_date == '':
+                        default = ''
+                    else:
+                        default = datetime.strftime(datetime.strptime(departure_date, "%Y-%m-%d"), "%d/%m/%Y")
+                    arrival_date = prompt_date(self.__session, "Scheduled arrival date (DD/MM/YYY): ", False, default)
                     break
                 except ValueError:
                     print("\tInvalid date - please try again.")
@@ -137,14 +140,14 @@ class FlightMenu:
 
         while True:
             try:
-                arrival_time = prompt_time(self.__session, "Scheduled arrival time (HH:MM): ", True)
+                arrival_time = prompt_time(self.__session, "Scheduled arrival time (HH:MM): ", False)
                 break
             except ValueError:
                 print("\tInvalid time - please try again.")
         if arrival_time is None:
             return False
-
         print()
+
         self.__flight_service.add_flight(flight_number, aircraft_id, origin_id, destination_id, pilot_id, copilot_id, departure_date, departure_time, arrival_date, arrival_time)
         return True
 
@@ -158,7 +161,7 @@ class FlightMenu:
         print()
 
         id = choice(
-            message="Select the flight to update: ",
+            message="Select the flight to update:\n",
             options=self.__flight_service.get_flight_choices(flight_no_search),
             key_bindings=self.__bindings
         )
@@ -173,7 +176,7 @@ class FlightMenu:
         if flight:
 
             while True:
-                flight_number = prompt_or_cancel("Flight number: ", "Update cancelled.", flight.flight_number)
+                flight_number = prompt_or_cancel(self.__session, "Flight number: ", "Update cancelled.", flight.flight_number)
                 if flight_number:
                     break
                 else:
@@ -183,7 +186,7 @@ class FlightMenu:
             print()
             
             aircraft_id = choice(
-                message="Select an aircraft: ",
+                message="Select an aircraft:\n",
                 options=self.__aircraft_service.get_aircraft_choices(),
                 default=flight.aircraft_id,
                 key_bindings=self.__bindings
@@ -193,7 +196,7 @@ class FlightMenu:
             print()
         
             origin_id = choice(
-                message="Select an origin airport: ",
+                message="Select an origin airport:\n",
                 options=self.__airport_service.get_airport_choices(),
                 default=flight.origin_id,
                 key_bindings=self.__bindings
@@ -203,7 +206,7 @@ class FlightMenu:
             print()
                     
             destination_id = choice(
-                message="Select a destination airport: ",
+                message="Select a destination airport:\n",
                 options=self.__airport_service.get_airport_choices(),
                 default=flight.destination_id,
                 key_bindings=self.__bindings
@@ -213,7 +216,7 @@ class FlightMenu:
             print()
 
             pilot_id = choice(
-                message="Select a pilot: ",
+                message="Select a pilot:\n",
                 options=self.__pilot_service.get_pilot_choices(),
                 default=flight.pilot_id,
                 key_bindings=self.__bindings
@@ -223,7 +226,7 @@ class FlightMenu:
             print()
 
             copilot_id = choice(
-                message="Select a copilot: ",
+                message="Select a copilot:\n",
                 options=self.__pilot_service.get_pilot_choices(),
                 default=flight.copilot_id,
                 key_bindings=self.__bindings
@@ -237,7 +240,7 @@ class FlightMenu:
                     default = ""
                     if flight.departure_time_scheduled:
                         default = datetime.strftime(flight.departure_time_scheduled, "%d/%m/%Y")
-                    departure_date_scheduled = prompt_date(self.__session, "Scheduled departure date (dd/mm/yyyy): ", True, default)
+                    departure_date_scheduled = prompt_date(self.__session, "Scheduled departure date (DD/MM/YYY): ", False, default)
                     break
                 except ValueError:
                     print("\tInvalid date - please try again.")
@@ -249,7 +252,7 @@ class FlightMenu:
                     default = ""
                     if flight.departure_time_scheduled:
                         default = datetime.strftime(flight.departure_time_scheduled, "%H:%M")
-                    departure_time_scheduled = prompt_time(self.__session, "Scheduled departure time (HH:MM): ", True, default)
+                    departure_time_scheduled = prompt_time(self.__session, "Scheduled departure time (HH:MM): ", False, default)
                     break
                 except ValueError:
                     print("\tInvalid time - please try again.")
@@ -261,7 +264,7 @@ class FlightMenu:
                     default = ""
                     if flight.arrival_time_scheduled:
                         default = datetime.strftime(flight.arrival_time_scheduled, "%d/%m/%Y")
-                    arrival_date_scheduled = prompt_date(self.__session, "Scheduled arrival date (dd/mm/yyyy): ", True, default)
+                    arrival_date_scheduled = prompt_date(self.__session, "Scheduled arrival date (DD/MM/YYY): ", True, default)
                     break
                 except ValueError:
                     print("\tInvalid date - please try again.")
@@ -279,14 +282,14 @@ class FlightMenu:
                     print("\tInvalid time - please try again.")
             if arrival_time_scheduled is None:
                 return False
-            
+
             while True:
                 try:
                     default = ""
                     if flight.departure_time_actual:
                         default = datetime.strftime(flight.departure_time_actual, "%d/%m/%Y")
-                    departure_date_actual = prompt_date(self.__session, "Actual departure date (dd/mm/yyyy): ", True, default)
-                    break
+                    departure_date_actual = prompt_date(self.__session, "Actual departure date (DD/MM/YYY): ", True, default)
+                    break # TODO CANCEL is returning '' instead of None so not working!
                 except ValueError:
                     print("\tInvalid date - please try again.")
             if departure_date_actual is None:
@@ -309,7 +312,7 @@ class FlightMenu:
                     default = ""
                     if flight.arrival_time_actual:
                         default = datetime.strftime(flight.arrival_time_actual, "%d/%m/%Y")
-                    arrival_date_actual = prompt_date(self.__session, "Actual arrival date (dd/mm/yyyy): ", True, default)
+                    arrival_date_actual = prompt_date(self.__session, "Actual arrival date (DD/MM/YYY): ", True, default)
                     break
                 except ValueError:
                     print("\tInvalid date - please try again.")
@@ -327,9 +330,10 @@ class FlightMenu:
                     print("\tInvalid time - please try again.")
             if arrival_time_actual is None:
                 return False
+            print()
 
             status = choice(
-                message="Select a flight status: ",
+                message="Select a flight status:\n",
                 options=[
                     ("Scheduled", ("Scheduled")),
                     ("Delayed", ("Delayed")),
@@ -346,24 +350,41 @@ class FlightMenu:
                 return False
             print()
 
-            self.__flight_service.update_flight(
-                id,                    
-                flight_number,
-                aircraft_id,
-                origin_id,
-                destination_id,
-                pilot_id,
-                copilot_id,
-                departure_date_scheduled,
-                departure_time_scheduled,
-                arrival_date_scheduled,
-                arrival_time_scheduled,
-                departure_date_actual,
-                departure_time_actual,
-                arrival_date_actual,
-                arrival_time_actual,
-                status
-            )
+            if arrival_date_scheduled == "":
+                arrival_date_scheduled = None
+            if departure_date_actual == "":
+                departure_date_actual = None
+            if arrival_date_actual == "":
+                arrival_date_actual = None
+            if arrival_time_scheduled == "":
+                arrival_time_scheduled = None
+            if departure_time_actual == "":
+                departure_time_actual = None
+            if arrival_time_actual == "":
+                arrival_time_actual = None
+
+            try:
+                self.__flight_service.update_flight(
+                    id,                    
+                    flight_number,
+                    aircraft_id,
+                    origin_id,
+                    destination_id,
+                    pilot_id,
+                    copilot_id,
+                    departure_date_scheduled,
+                    departure_time_scheduled,
+                    arrival_date_scheduled,
+                    arrival_time_scheduled,
+                    departure_date_actual,
+                    departure_time_actual,
+                    arrival_date_actual,
+                    arrival_time_actual,
+                    status
+                )
+                print("Flight details successfully updated.")
+            except ValueError as e:
+                print(f"Error: {e}. Your changes could not be saved.")
         
         return True
 
@@ -371,7 +392,7 @@ class FlightMenu:
         print("\n>> Delete a flight (or hit CTRL+C to cancel)\n")
 
         id = choice(
-            message="Choose a flight to delete: ",
+            message="Choose a flight to delete:\n",
             options=self.__flight_service.get_flight_choices(),
             key_bindings=self.__bindings
         )
@@ -379,7 +400,7 @@ class FlightMenu:
             return False
 
         print()
-        if choice(message="Are you sure you want to delete this record?", options=[(1, "yes"),(0, "no")]) == 1:
+        if choice(message="Are you sure you want to delete this record?\n", options=[(1, "yes"),(0, "no")]) == 1:
             print()
             self.__flight_service.delete_flight(id)
         else:
@@ -413,4 +434,4 @@ class FlightMenu:
             elif __choose_menu == "back":
                 return
             else:
-                print("Invalid choice")
+                print("Invalid choice.")

@@ -11,12 +11,30 @@ class AircraftService:
 
     def add_aircraft(self, registration: str, manufacturer_serial_no: int, icao_hex: str, manufacturer: str, model: str, icao_type: str, status: str):
         with transaction(self.conn):
-            aircraft = Aircraft(None, registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
+            aircraft = Aircraft(
+                id=None,
+                registration=registration,
+                manufacturer_serial_no=manufacturer_serial_no,
+                icao_hex=icao_hex,
+                manufacturer=manufacturer,
+                model=model,
+                icao_type=icao_type,
+                status=status
+            )
             self.__aircraft_repository.add_aircraft(aircraft)
 
     def update_aircraft(self, id: int, registration: str, manufacturer_serial_no: int, icao_hex: str, manufacturer: str, model: str, icao_type: str, status: str):
         with transaction(self.conn):
-            aircraft = Aircraft(id, registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
+            aircraft = Aircraft(
+                id=id,
+                registration=registration,
+                manufacturer_serial_no=manufacturer_serial_no,
+                icao_hex=icao_hex,
+                manufacturer=manufacturer,
+                model=model,
+                icao_type=icao_type,
+                status=status
+            )
             self.__aircraft_repository.update_aircraft(aircraft)
 
     def delete_aircraft(self, id: int):
@@ -25,13 +43,9 @@ class AircraftService:
 
     def get_aircraft_table(self) -> str:
         aircraft = self.__aircraft_repository.get_aircraft_list()
-
-        if aircraft is None:
-            return ""
-        
         return self.get_results_view(aircraft)
     
-    def search_aircraft(self, field_name, value) -> list[Aircraft] | None:
+    def search_aircraft(self, field_name, value) -> list[Aircraft]:
         return self.__aircraft_repository.search_on_field(field_name, value)
     
     def get_aircraft_choices(self) -> list:
@@ -41,7 +55,7 @@ class AircraftService:
 
         if aircraft_list:
             for aircraft in aircraft_list:
-                aircraft_choices.append((aircraft.id, str(aircraft)))
+                aircraft_choices.append((aircraft.id, str(aircraft) + " - " + aircraft.status))
 
         return aircraft_choices
 
@@ -49,7 +63,7 @@ class AircraftService:
         return self.__aircraft_repository.get_by_id(id)
     
     def get_results_view(self, aircraft: list[Aircraft]) -> str:
-        if aircraft is None:
+        if aircraft is None or len(aircraft) == 0:
             return ""
         
         # Initialise the table

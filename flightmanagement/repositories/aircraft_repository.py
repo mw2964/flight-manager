@@ -2,6 +2,16 @@ from flightmanagement.models.aircraft import Aircraft
 
 class AircraftRepository:
 
+    ALLOWED_SEARCH_FIELDS = {
+        'registration',
+        'manufacturer_serial_no',
+        'icao_hex',
+        'manufacturer',
+        'model',
+        'icao_type',
+        'status'
+    }
+
     def __init__(self, conn):
         self.conn = conn
 
@@ -19,14 +29,14 @@ class AircraftRepository:
             return None
         
         aircraft = Aircraft(
-            result["id"],
-            result["registration"],
-            result["manufacturer_serial_no"],
-            result["icao_hex"],
-            result["manufacturer"],
-            result["model"],
-            result["icao_type"],
-            result["status"]
+            id=result["id"],
+            registration=result["registration"],
+            manufacturer_serial_no=result["manufacturer_serial_no"],
+            icao_hex=result["icao_hex"],
+            manufacturer=result["manufacturer"],
+            model=result["model"],
+            icao_type=result["icao_type"],
+            status=result["status"]
         )
         return aircraft
 
@@ -43,18 +53,18 @@ class AircraftRepository:
             return None
         
         aircraft = Aircraft(
-            result["id"],
-            result["registration"],
-            result["manufacturer_serial_no"],
-            result["icao_hex"],
-            result["manufacturer"],
-            result["model"],
-            result["icao_type"],
-            result["status"]
+            id=result["id"],
+            registration=result["registration"],
+            manufacturer_serial_no=result["manufacturer_serial_no"],
+            icao_hex=result["icao_hex"],
+            manufacturer=result["manufacturer"],
+            model=result["model"],
+            icao_type=result["icao_type"],
+            status=result["status"]
         )
         return aircraft
 
-    def get_aircraft_list(self) -> list[Aircraft] | None:
+    def get_aircraft_list(self) -> list[Aircraft]:
         cursor = self.conn.execute(
             """
             SELECT * FROM aircraft ORDER BY registration
@@ -62,21 +72,18 @@ class AircraftRepository:
         )
         results = cursor.fetchall()
         
-        if results is None or len(results) == 0:
-            return None
-        
         result_list = []
         for row in results:
             result_list.append(
                 Aircraft(
-                    row["id"],
-                    row["registration"],
-                    row["manufacturer_serial_no"],
-                    row["icao_hex"],
-                    row["manufacturer"],
-                    row["model"],
-                    row["icao_type"],
-                    row["status"]
+                    id=row["id"],
+                    registration=row["registration"],
+                    manufacturer_serial_no=row["manufacturer_serial_no"],
+                    icao_hex=row["icao_hex"],
+                    manufacturer=row["manufacturer"],
+                    model=row["model"],
+                    icao_type=row["icao_type"],
+                    status=row["status"]
                 )
             )
 
@@ -129,7 +136,11 @@ class AircraftRepository:
             (aircraft_id, )
         )
     
-    def search_on_field(self, field_name: str, value) -> list[Aircraft] | None:
+    def search_on_field(self, field_name: str, value) -> list[Aircraft]:
+        
+        if field_name not in self.ALLOWED_SEARCH_FIELDS:
+            raise ValueError(f"Invalid search field: {field_name}")
+
         sql = f"""
             SELECT *
             FROM aircraft
@@ -139,21 +150,18 @@ class AircraftRepository:
         cursor = self.conn.execute(sql, (value, ))
         results = cursor.fetchall()
         
-        if results is None or len(results) == 0:
-            return None
-
         result_list = []
         for row in results:
             result_list.append(
                 Aircraft(
-                    row["id"],
-                    row["registration"],
-                    row["manufacturer_serial_no"],
-                    row["icao_hex"],
-                    row["manufacturer"],
-                    row["model"],
-                    row["icao_type"],
-                    row["status"]
+                    id=row["id"],
+                    registration=row["registration"],
+                    manufacturer_serial_no=row["manufacturer_serial_no"],
+                    icao_hex=row["icao_hex"],
+                    manufacturer=row["manufacturer"],
+                    model=row["model"],
+                    icao_type=row["icao_type"],
+                    status=row["status"]
                 )
             )
 

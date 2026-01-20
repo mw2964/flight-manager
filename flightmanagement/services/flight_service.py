@@ -19,36 +19,38 @@ class FlightService:
     def add_flight(self, flight_number: str, aircraft_id: int, origin_id: int, destination_id: int, pilot_id: int, copilot_id: int, departure_date: str, departure_time: str, arrival_date: str, arrival_time: str):
         with transaction(self.conn):
             flight = Flight(
-                None,
-                flight_number, 
-                aircraft_id,
-                origin_id, 
-                destination_id,
-                pilot_id,
-                copilot_id,
-                datetime.strptime(departure_date + " " + departure_time, "%Y-%m-%d %H:%M"),
-                datetime.strptime(arrival_date + " " + arrival_time, "%Y-%m-%d %H:%M"),
-                None,
-                None,
-                "Scheduled"
+                flight_number=flight_number, 
+                aircraft_id=aircraft_id,
+                origin_id=origin_id, 
+                destination_id=destination_id,
+                pilot_id=pilot_id,
+                copilot_id=copilot_id,
+                departure_time_scheduled=datetime.strptime(departure_date + " " + departure_time, "%Y-%m-%d %H:%M"),
+                arrival_time_scheduled=datetime.strptime(arrival_date + " " + arrival_time, "%Y-%m-%d %H:%M")
             )
         self.__flight_repository.add_flight(flight)
 
-    def update_flight(self, id: int, flight_number: str, aircraft_id: int, origin_id: int, destination_id: int, pilot_id: int, copilot_id: int, departure_date_scheduled: str | None, departure_time_scheduled: str | None, arrival_date_scheduled: str | None, arrival_time_scheduled: str | None, departure_date_actual: str | None, departure_time_actual: str | None, arrival_date_actual: str | None, arrival_time_actual: str | None, status: str):
+    def update_flight(self, id: int, flight_number: str, aircraft_id: int, origin_id: int, destination_id: int, pilot_id: int, copilot_id: int, departure_date_scheduled: str, departure_time_scheduled: str, arrival_date_scheduled: str | None, arrival_time_scheduled: str | None, departure_date_actual: str | None, departure_time_actual: str | None, arrival_date_actual: str | None, arrival_time_actual: str | None, status: str):
         with transaction(self.conn):
+
+            departure_datetime_scheduled = self.combine_date(departure_date_scheduled, departure_time_scheduled)
+            arrival_datetime_scheduled = self.combine_date(arrival_date_scheduled, arrival_time_scheduled) if arrival_date_scheduled and arrival_time_scheduled else None
+            departure_datetime_actual = self.combine_date(departure_date_actual, departure_time_actual) if departure_date_actual and departure_time_actual else None
+            arrival_datetime_actual = self.combine_date(arrival_date_actual, arrival_time_actual) if arrival_date_actual and arrival_time_actual else None
+
             flight = Flight(
-                None,
-                flight_number, 
-                aircraft_id,
-                origin_id, 
-                destination_id,
-                pilot_id,
-                copilot_id,
-                datetime.strptime(departure_date_scheduled, "%Y-%m-%d %H:%M") if departure_date_scheduled is not None else None,
-                datetime.strptime(arrival_date_scheduled, "%Y-%m-%d %H:%M") if arrival_date_scheduled is not None else None,
-                datetime.strptime(departure_date_actual, "%Y-%m-%d %H:%M") if departure_date_actual is not None else None,
-                datetime.strptime(arrival_date_actual, "%Y-%m-%d %H:%M") if arrival_date_actual is not None else None,
-                status
+                id=id,
+                flight_number=flight_number, 
+                aircraft_id=aircraft_id,
+                origin_id=origin_id, 
+                destination_id=destination_id,
+                pilot_id=pilot_id,
+                copilot_id=copilot_id,
+                departure_time_scheduled=departure_datetime_scheduled,
+                arrival_time_scheduled=arrival_datetime_scheduled,
+                departure_time_actual=departure_datetime_actual,
+                arrival_time_actual=arrival_datetime_actual,
+                status=status
             )
             self.__flight_repository.update_flight(flight)
 
@@ -86,8 +88,8 @@ class FlightService:
 
         if flights:
             for flight in flights:
-                if flight_number == "" or flight.flight_number == flight_number:
-                    flight_choices.append((flight.id, str(flight)))
+                if flight_number == "" or flight.flight_number == flight_number:                    
+                    flight_choices.append((flight.id, self.get_flight_summary(flight)))
 
         return flight_choices
     
@@ -141,3 +143,27 @@ class FlightService:
             indented_table += (" " * 5) + row + "\n"
         
         return str(indented_table)
+    
+    def combine_date(self, date: str, time: str) -> datetime:
+        
+        # If either date or time are empty, return None
+        if date is None or time is None:
+            return None
+        
+        return datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
+    
+    def get_flight_summary(self, flight: Flight) -> str:
+        origin_airport = self.__airport_repository.get_by_id(flight.origin_id)        
+        destination_airport = self.__airport_repository.get_by_id(flight.destination_id)
+
+        origin_code = origin_airport.code if origin_airport is not None else ""
+        destination_code = destination_airport.code if destination_airport is not None else ""
+
+        if flight.departure_time_scheduled is None:
+            departure = ""
+        else:
+            departure = datetime.strftime(flight.departure_time_scheduled, "%Y-%m-%d %H:%M")
+
+        spaces = 10 - len(flight.flight_number)
+
+        return f"{flight.flight_number}{' ' * spaces}{origin_code} to {destination_code} | Departure: {departure} | Status: {flight.status}"
