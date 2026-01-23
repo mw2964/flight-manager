@@ -15,7 +15,7 @@ class AircraftRepository:
     def __init__(self, conn):
         self.conn = conn
 
-    def get_by_id(self, aircraft_id: int) -> Aircraft | None:
+    def get_item_by_id(self, aircraft_id: int) -> Aircraft | None:
 
         cursor = self.conn.execute(
             """
@@ -40,7 +40,7 @@ class AircraftRepository:
         )
         return aircraft
 
-    def get_by_registration(self, registration: str) -> Aircraft | None:
+    def get_item_by_registration(self, registration: str) -> Aircraft | None:
         cursor = self.conn.execute(
             """
             SELECT * FROM aircraft WHERE registration = ?
@@ -89,7 +89,7 @@ class AircraftRepository:
 
         return result_list
 
-    def add_aircraft(self, aircraft: Aircraft) -> None:        
+    def insert_item(self, aircraft: Aircraft) -> None:        
         data = {
             "registration": aircraft.registration, 
             "manufacturer_serial_no": aircraft.manufacturer_serial_no,
@@ -110,7 +110,7 @@ class AircraftRepository:
             data
         )
 
-    def update_aircraft(self, aircraft: Aircraft):
+    def update_item(self, aircraft: Aircraft):
         self.conn.execute(
             """
             UPDATE aircraft
@@ -127,13 +127,13 @@ class AircraftRepository:
             (aircraft.registration, aircraft.manufacturer_serial_no, aircraft.icao_hex, aircraft.manufacturer, aircraft.model, aircraft.icao_type, aircraft.status, aircraft.id)
         )
     
-    def delete_aircraft(self, aircraft_id: int):
+    def delete_item(self, aircraft: Aircraft):
         self.conn.execute(
             """
             DELETE FROM aircraft
             WHERE id = ?
             """,
-            (aircraft_id, )
+            (aircraft.id, )
         )
     
     def search_on_field(self, field_name: str, value) -> list[Aircraft]:

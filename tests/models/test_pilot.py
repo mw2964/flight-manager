@@ -2,93 +2,99 @@ import pytest
 from dataclasses import FrozenInstanceError
 from flightmanagement.models.pilot import Pilot
 
-def test_pilot_creation_with_required_fields():
-    pilot = Pilot(
-        first_name="Jane",
-        family_name="Goodall"
-    )
+class TestCreation:
 
-    assert pilot.first_name == "Jane"
-    assert pilot.family_name == "Goodall"
+    def test_pilot_creation_with_required_fields(self):
+        pilot = Pilot(
+            first_name="Jane",
+            family_name="Goodall"
+        )
 
-def test_pilot_optional_field_defaults():
-    pilot = Pilot(
-        first_name="Jane",
-        family_name="Goodall"
-    )
+        assert pilot.first_name == "Jane"
+        assert pilot.family_name == "Goodall"
 
-    assert pilot.id is None
+    def test_pilot_optional_field_defaults(self):
+        pilot = Pilot(
+            first_name="Jane",
+            family_name="Goodall"
+        )
 
-@pytest.mark.parametrize("first_name", ["sonia", "Sonia", "Jim-Bob", "Ellie May"])
-def test_valid_first_names_are_accepted(first_name):
-    pilot = Pilot(
-        first_name=first_name,
-        family_name="Goodall"
-    )
+        assert pilot.id is None
 
-    assert pilot.first_name == first_name
+class TestAttributeValidation:
 
-@pytest.mark.parametrize("first_name", ["", "123", "Jim2", "Jim2Ben", "Jim@Ben"])
-def test_invalid_first_name_raises_value_error(first_name):
-    with pytest.raises(ValueError, match="Invalid first name"):
-        Pilot(
+    @pytest.mark.parametrize("first_name", ["sonia", "Sonia", "Jim-Bob", "Ellie May"])
+    def test_valid_first_names_are_accepted(self, first_name):
+        pilot = Pilot(
             first_name=first_name,
             family_name="Goodall"
         )
 
-@pytest.mark.parametrize("family_name", ["smith", "Smith", "Fotherington-Thomas", "Saint John"])
-def test_valid_family_names_are_accepted(family_name):
-    pilot = Pilot(
-        first_name="Jane",
-        family_name=family_name
-    )
+        assert pilot.first_name == first_name
 
-    assert pilot.family_name == family_name
+    @pytest.mark.parametrize("first_name", ["", "123", "Jim2", "Jim2Ben", "Jim@Ben"])
+    def test_invalid_first_name_raises_value_error(self, first_name):
+        with pytest.raises(ValueError, match="Invalid first name"):
+            Pilot(
+                first_name=first_name,
+                family_name="Goodall"
+            )
 
-@pytest.mark.parametrize("family_name", ["", "123", "Jones2", "Jones2Smith", "Jones%Smith"])
-def test_invalid_family_name_raises_value_error(family_name):
-    with pytest.raises(ValueError, match="Invalid family name"):
-        Pilot(
+    @pytest.mark.parametrize("family_name", ["smith", "Smith", "Fotherington-Thomas", "Saint John"])
+    def test_valid_family_names_are_accepted(self, family_name):
+        pilot = Pilot(
             first_name="Jane",
             family_name=family_name
         )
 
-def test_pilot_is_immutable():
-    pilot = Pilot(
-        first_name="Jane",
-        family_name="Goodall"
-    )
+        assert pilot.family_name == family_name
 
-    with pytest.raises(FrozenInstanceError):
-        pilot.first_name = "Jim" # type: ignore
+    @pytest.mark.parametrize("family_name", ["", "123", "Jones2", "Jones2Smith", "Jones%Smith"])
+    def test_invalid_family_name_raises_value_error(self, family_name):
+        with pytest.raises(ValueError, match="Invalid family name"):
+            Pilot(
+                first_name="Jane",
+                family_name=family_name
+            )
 
-def test_pilot_str_representation():
-    pilot = Pilot(
-        id=1,
-        first_name="Mary Jane",
-        family_name="Goodall"
-    )
+class TestCharacteristics:
 
-    assert str(pilot) == "Mary Jane Goodall"
+    def test_pilot_is_immutable(self):
+        pilot = Pilot(
+            first_name="Jane",
+            family_name="Goodall"
+        )
 
-def test_pilot_equality():
-    pilot1 = Pilot(
-        first_name="Jane",
-        family_name="Goodall"
-    )
+        with pytest.raises(FrozenInstanceError):
+            pilot.first_name = "Jim" # type: ignore
 
-    pilot2 = Pilot(
-        first_name="Jane",
-        family_name="Goodall"
-    )
+    def test_pilot_str_representation(self):
+        pilot = Pilot(
+            id=1,
+            first_name="Mary Jane",
+            family_name="Goodall"
+        )
 
-    assert pilot1 == pilot2
+        assert str(pilot) == "Mary Jane Goodall"
 
-def test_pilot_is_hashable():
-    pilot = Pilot(
-        first_name="Jane",
-        family_name="Goodall"
-    )
-    pilot_set = {pilot}
+    def test_pilot_equality(self):
+        pilot1 = Pilot(
+            first_name="Jane",
+            family_name="Goodall"
+        )
 
-    assert pilot in pilot_set
+        pilot2 = Pilot(
+            first_name="Jane",
+            family_name="Goodall"
+        )
+
+        assert pilot1 == pilot2
+
+    def test_pilot_is_hashable(self):
+        pilot = Pilot(
+            first_name="Jane",
+            family_name="Goodall"
+        )
+        pilot_set = {pilot}
+
+        assert pilot in pilot_set

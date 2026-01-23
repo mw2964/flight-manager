@@ -16,17 +16,20 @@ def prompt_or_cancel(session, message: str, cancel_message: str, default_value =
 
     if result == "__CANCEL__":
         print(f"\n{cancel_message}")
-        return None
+
     return result
 
-def prompt_date(session, prompt: str, allow_blank: bool, default=None) -> str | None:
+def prompt_date(session, prompt: str, allow_blank: bool, default=None):
 
     if default:
         value = prompt_or_cancel(session, prompt, "Update cancelled", default)
     else:
         value = prompt_or_cancel(session, prompt, "Update cancelled")
 
-    if not value:
+    if value == "__CANCEL__":
+        return value
+
+    if value is None:
         if allow_blank:
             return ""        
         raise ValueError("Invalid date")
@@ -38,12 +41,15 @@ def prompt_date(session, prompt: str, allow_blank: bool, default=None) -> str | 
     
     return datetime.strftime(date, "%Y-%m-%d")
 
-def prompt_time(session, prompt: str, allow_blank: bool, default=None) -> str | None:
+def prompt_time(session, prompt: str, allow_blank: bool, default=None):
 
     if default:
         value = prompt_or_cancel(session, prompt, "Update cancelled", default)
     else:
         value = prompt_or_cancel(session, prompt, "Update cancelled")
+
+    if value == "__CANCEL__":
+        return value
 
     if not value:
         if allow_blank:

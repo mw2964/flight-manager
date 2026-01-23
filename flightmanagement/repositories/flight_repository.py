@@ -6,7 +6,7 @@ class FlightRepository:
     def __init__(self, conn):
         self.conn = conn
     
-    def get_by_id(self, flight_id: int) -> Flight | None:
+    def get_item_by_id(self, flight_id: int) -> Flight | None:
         cursor = self.conn.execute(
             """
             SELECT * FROM flight WHERE id = ?
@@ -34,7 +34,7 @@ class FlightRepository:
         )
         return flight
 
-    def search_on_field(self, field_name: str, value) -> list[Flight] | None:
+    def search_on_field(self, field_name: str, value) -> list[Flight]:
         sql = f"""
             SELECT *
             FROM flight
@@ -44,9 +44,6 @@ class FlightRepository:
         cursor = self.conn.execute(sql, (value, ))
         results = cursor.fetchall()
         
-        if results is None or len(results) == 0:
-            return None
-
         result_list = []
         for row in results:
             result_list.append(
@@ -68,7 +65,7 @@ class FlightRepository:
 
         return result_list
 
-    def get_flight_list(self) -> list[Flight] | None:
+    def get_flight_list(self) -> list[Flight]:
         cursor = self.conn.execute(
             """
             SELECT * FROM flight
@@ -76,9 +73,6 @@ class FlightRepository:
         )
         results = cursor.fetchall()
         
-        if results is None or len(results) == 0:
-            return None
-
         result_list = []
         for row in results:
             result_list.append(
@@ -100,7 +94,7 @@ class FlightRepository:
 
         return result_list
 
-    def add_flight(self, flight: Flight) -> None:        
+    def insert_item(self, flight: Flight) -> None:        
         data = {
             "flight_number": flight.flight_number, 
             "aircraft_id": flight.aircraft_id,
@@ -124,7 +118,7 @@ class FlightRepository:
             data
         )
     
-    def update_flight(self, flight: Flight):
+    def update_item(self, flight: Flight):
         self.conn.execute(
             """
             UPDATE flight
@@ -158,11 +152,11 @@ class FlightRepository:
             )
         )
 
-    def delete_flight(self, flight_id: int):
+    def delete_item(self, flight: Flight):
         self.conn.execute(
             """
             DELETE FROM flight
             WHERE id = ?
             """,
-            (flight_id, )
+            (flight.id, )
         )

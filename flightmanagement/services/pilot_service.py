@@ -5,23 +5,25 @@ from flightmanagement.db.db import transaction
 
 class PilotService:
 
-    def __init__(self, conn):
+    def __init__(self, conn, pilot_repository=None):
         self.conn = conn
-        self.__pilot_repository = PilotRepository(self.conn)
+        self.__pilot_repository = (
+            pilot_repository or PilotRepository(self.conn)
+        )
 
-    def add_pilot(self, first_name: str, family_name: str):
+    def add_pilot(self, pilot: Pilot):
         with transaction(self.conn):
-            pilot = Pilot(None, first_name, family_name)
-            self.__pilot_repository.add_pilot(pilot)
+            self.__pilot_repository.insert_item(pilot)
 
-    def update_pilot(self, id: int, first_name: str, family_name: str):
+    def update_pilot(self, pilot: Pilot):
         with transaction(self.conn):
-            pilot = Pilot(id, first_name, family_name)
-            self.__pilot_repository.update_pilot(pilot)
+            self.__pilot_repository.update_item(pilot)
 
-    def delete_pilot(self, id: int):
+    def delete_pilot(self, pilot: Pilot):
+        if pilot.id is None:
+            raise ValueError("Pilot to delete lacks an ID")
         with transaction(self.conn):
-            self.__pilot_repository.delete_pilot(id)
+            self.__pilot_repository.delete_item(pilot)
 
     def get_pilot_table(self) -> str:
         pilots = self.__pilot_repository.get_pilot_list()
@@ -42,14 +44,14 @@ class PilotService:
 
         return pilot_choices
     
-    def search_pilots(self, field_name: str, value) -> list[Pilot] | None:
+    def search_pilots(self, field_name: str, value) -> list[Pilot]:
         return self.__pilot_repository.search_on_field(field_name, value)
 
     def get_pilot_by_id(self, id: int):
-        return self.__pilot_repository.get_by_id(id)
+        return self.__pilot_repository.get_item_by_id(id)
     
     def get_results_view(self, pilots: list[Pilot]) -> str:
-        if pilots is None:
+        if pilots is None or len(pilots) == 0:
             return ""
         
         # Initialise the table

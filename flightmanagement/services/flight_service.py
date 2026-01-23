@@ -9,53 +9,28 @@ from flightmanagement.db.db import transaction
 
 class FlightService:
 
-    def __init__(self, conn):
+    def __init__(self, conn, flight_repository=None):
         self.conn = conn
-        self.__flight_repository = FlightRepository(self.conn)
+        self.__flight_repository = (
+            flight_repository or FlightRepository(self.conn)
+        )
         self.__aircraft_repository = AircraftRepository(self.conn)
         self.__airport_repository = AirportRepository(self.conn)
         self.__pilot_repository = PilotRepository(self.conn)
 
-    def add_flight(self, flight_number: str, aircraft_id: int, origin_id: int, destination_id: int, pilot_id: int, copilot_id: int, departure_date: str, departure_time: str, arrival_date: str, arrival_time: str):
+    def add_flight(self, flight: Flight):
         with transaction(self.conn):
-            flight = Flight(
-                flight_number=flight_number, 
-                aircraft_id=aircraft_id,
-                origin_id=origin_id, 
-                destination_id=destination_id,
-                pilot_id=pilot_id,
-                copilot_id=copilot_id,
-                departure_time_scheduled=datetime.strptime(departure_date + " " + departure_time, "%Y-%m-%d %H:%M"),
-                arrival_time_scheduled=datetime.strptime(arrival_date + " " + arrival_time, "%Y-%m-%d %H:%M")
-            )
-        self.__flight_repository.add_flight(flight)
+            self.__flight_repository.insert_item(flight)
 
-    def update_flight(self, id: int, flight_number: str, aircraft_id: int, origin_id: int, destination_id: int, pilot_id: int, copilot_id: int, departure_date_scheduled: str, departure_time_scheduled: str, arrival_date_scheduled: str | None, arrival_time_scheduled: str | None, departure_date_actual: str | None, departure_time_actual: str | None, arrival_date_actual: str | None, arrival_time_actual: str | None, status: str):
+    def update_flight(self,flight: Flight):
         with transaction(self.conn):
+            self.__flight_repository.update_item(flight)
 
-            departure_datetime_scheduled = self.combine_date(departure_date_scheduled, departure_time_scheduled)
-            arrival_datetime_scheduled = self.combine_date(arrival_date_scheduled, arrival_time_scheduled) if arrival_date_scheduled and arrival_time_scheduled else None
-            departure_datetime_actual = self.combine_date(departure_date_actual, departure_time_actual) if departure_date_actual and departure_time_actual else None
-            arrival_datetime_actual = self.combine_date(arrival_date_actual, arrival_time_actual) if arrival_date_actual and arrival_time_actual else None
-
-            flight = Flight(
-                id=id,
-                flight_number=flight_number, 
-                aircraft_id=aircraft_id,
-                origin_id=origin_id, 
-                destination_id=destination_id,
-                pilot_id=pilot_id,
-                copilot_id=copilot_id,
-                departure_time_scheduled=departure_datetime_scheduled,
-                arrival_time_scheduled=arrival_datetime_scheduled,
-                departure_time_actual=departure_datetime_actual,
-                arrival_time_actual=arrival_datetime_actual,
-                status=status
-            )
-            self.__flight_repository.update_flight(flight)
-
-    def delete_flight(self, id: int):
-        self.__flight_repository.delete_flight(id)
+    def delete_flight(self, flight: Flight):
+        if flight.id is None:
+            raise ValueError("Flight to delete lacks an ID")
+        with transaction(self.conn):
+            self.__flight_repository.delete_item(flight)
 
     def get_flight_table(self) -> str:
         flights = self.__flight_repository.get_flight_list()
@@ -66,19 +41,19 @@ class FlightService:
         return self.get_results_view(flights)
 
     def get_flight_by_id(self, id: int):
-        return self.__flight_repository.get_by_id(id)
+        return self.__flight_repository.get_item_by_id(id)
 
     def get_aircraft(self, aircraft_registration: str) -> int | None:
-        aircraft = self.__aircraft_repository.get_by_registration(aircraft_registration)        
+        aircraft = self.__aircraft_repository.get_item_by_registration(aircraft_registration)        
         if aircraft:
             return aircraft.id
         
     def get_airport(self, airport_code: str) -> int | None:
-        airport = self.__airport_repository.get_by_code(airport_code)        
+        airport = self.__airport_repository.get_item_by_code(airport_code)        
         if airport:
             return airport.id
     
-    def search_flights(self, field_name: str, value) -> list[Flight] | None:
+    def search_flights(self, field_name: str, value) -> list[Flight]:
         return self.__flight_repository.search_on_field(field_name, value)
 
     def get_flight_choices(self, flight_number: str = "") -> list:
@@ -94,7 +69,7 @@ class FlightService:
         return flight_choices
     
     def get_results_view(self, flights: list[Flight]) -> str:
-        if flights is None:
+        if flights is None or len(flights) == 0:
             return ""
         
         # Initialise the table
@@ -119,11 +94,11 @@ class FlightService:
             table.add_row([
                 flight.id,
                 flight.flight_number,
-                str(self.__aircraft_repository.get_by_id(flight.aircraft_id)).replace(" (", "\n("),
-                str(self.__airport_repository.get_by_id(flight.origin_id)).replace(" (", "\n("),
-                str(self.__airport_repository.get_by_id(flight.destination_id)).replace(" (", "\n("),
-                self.__pilot_repository.get_by_id(flight.pilot_id) if flight.pilot_id else "",
-                self.__pilot_repository.get_by_id(flight.copilot_id) if flight.copilot_id else "",
+                str(self.__aircraft_repository.get_item_by_id(flight.aircraft_id)).replace(" (", "\n("),
+                str(self.__airport_repository.get_item_by_id(flight.origin_id)).replace(" (", "\n("),
+                str(self.__airport_repository.get_item_by_id(flight.destination_id)).replace(" (", "\n("),
+                self.__pilot_repository.get_item_by_id(flight.pilot_id) if flight.pilot_id else "",
+                self.__pilot_repository.get_item_by_id(flight.copilot_id) if flight.copilot_id else "",
                 datetime.strftime(flight.departure_time_scheduled, "%Y-%m-%d %H:%M") if flight.departure_time_scheduled else "",
                 datetime.strftime(flight.arrival_time_scheduled, "%Y-%m-%d %H:%M") if flight.arrival_time_scheduled else "",
                 datetime.strftime(flight.departure_time_actual, "%Y-%m-%d %H:%M") if flight.departure_time_actual else "",
@@ -144,17 +119,9 @@ class FlightService:
         
         return str(indented_table)
     
-    def combine_date(self, date: str, time: str) -> datetime:
-        
-        # If either date or time are empty, return None
-        if date is None or time is None:
-            return None
-        
-        return datetime.strptime(f"{date} {time}", "%Y-%m-%d %H:%M")
-    
     def get_flight_summary(self, flight: Flight) -> str:
-        origin_airport = self.__airport_repository.get_by_id(flight.origin_id)        
-        destination_airport = self.__airport_repository.get_by_id(flight.destination_id)
+        origin_airport = self.__airport_repository.get_item_by_id(flight.origin_id)        
+        destination_airport = self.__airport_repository.get_item_by_id(flight.destination_id)
 
         origin_code = origin_airport.code if origin_airport is not None else ""
         destination_code = destination_airport.code if destination_airport is not None else ""

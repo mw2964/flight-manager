@@ -1,186 +1,226 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+
+from flightmanagement.ui.aircraft_menu import AircraftMenu
+from flightmanagement.models.aircraft import Aircraft
 
 @pytest.fixture
-def mock_service(monkeypatch):
+def mock_session():
     return MagicMock()
 
 @pytest.fixture
-def mock_prompt(monkeypatch):
-    def _responses(values):
-        it = iter(values)
-
-        def fake_prompt(*args, **kwargs):
-            value = next(it)
-            if value == "__CANCEL__":
-                return None   # emulate prompt_or_cancel behaviour
-            return value
-
-        monkeypatch.setattr(
-            "flightmanagement.ui.aircraft_menu.prompt_or_cancel",
-            fake_prompt
-        )
-
-    return _responses
+def mock_bindings():
+    return MagicMock()
 
 @pytest.fixture
-def mock_choice(monkeypatch):
-    def _set_choices(choices):
-        iterator = iter(choices)
-
-        def fake_choice(*args, **kwargs):
-            return next(iterator)
-
-        monkeypatch.setattr(
-            "flightmanagement.ui.aircraft_menu.choice",
-            fake_choice
-        )
-
-    return _set_choices
-
-from flightmanagement.ui.aircraft_menu import AircraftMenu
+def mock_aircraft_service():
+    service = MagicMock()
+    service.get_aircraft_table.return_value = "AIRCRAFT TABLE"
+    service.get_aircraft_choices.return_value = [(1, "G-ABCD"), (2, "G-BCDE")]
+    service.get_aircraft_by_id.side_effect = lambda x: Aircraft(id=x, registration="N123", manufacturer="Boeing", model="747")
+    return service
 
 @pytest.fixture
-def menu(mock_service):
+def menu(mock_session, mock_bindings, mock_aircraft_service):
     return AircraftMenu(
-        session=MagicMock(),
-        bindings=MagicMock(),
-        aircraft_service=mock_service
+        session=mock_session,
+        bindings=mock_bindings,
+        aircraft_service=mock_aircraft_service,
     )
 
-def test_show_option_prints_table(menu, mock_service, capsys):
-    mock_service.get_aircraft_table.return_value = "TABLE"
+class FakePrompt:
+    def __init__(self, value=None, cancelled=False):
+        self.value = value
+        self.is_cancelled = cancelled
 
-    menu._AircraftMenu__show_option()
+class TestLoad:
 
-    out = capsys.readouterr().out
-    assert "Displaying all aircraft" in out
-    assert "TABLE" in out
+    def test_load_back_exits_menu(self, menu, mocker):
+        mocker.patch(
+            "flightmanagement.ui.aircraft_menu.choice",
+            return_value="back"
+        )
 
-def test_search_cancelled(menu, mock_prompt):
-    mock_prompt(["__CANCEL__"])
+        # Should simply exit without error
+        menu.load()
 
-    result = menu._AircraftMenu__search_option()
+    def test_load_show_calls_show_option(self, menu, mocker):
+        mocker.patch(
+            "flightmanagement.ui.aircraft_menu.choice",
+            side_effect=["show", "back"]
+        )
+        spy = mocker.spy(menu, "_AircraftMenu__show_option")
+        menu.load()
 
-    assert result is False
+        spy.assert_called_once()
 
-def test_search_no_results(menu, mock_prompt, mock_service, capsys):
-    mock_prompt(["G-TEST"])
-    mock_service.search_aircraft.return_value = []
+class TestShow:
 
-    result = menu._AircraftMenu__search_option()
+    def test_show_option_prints_table(self, menu, mocker):
+        menu._AircraftMenu__aircraft_service.get_aircraft_table.return_value = "TABLE"
+        mock_print = mocker.patch("builtins.print")
+        menu._AircraftMenu__show_option()
 
-    out = capsys.readouterr().out
-    assert "No matching results" in out
-    assert result is True
+        mock_print.assert_any_call("TABLE")
 
-def test_search_with_results(menu, mock_prompt, mock_service):
-    mock_prompt(["G-TEST"])
-    mock_service.search_aircraft.return_value = ["aircraft"]
-    mock_service.get_results_view.return_value = "RESULTS"
+class TestSearch:
 
-    result = menu._AircraftMenu__search_option()
+    def test_search_option_cancelled(self, menu, mocker):
+        mocker.patch(
+            "flightmanagement.ui.aircraft_menu.UserPrompt",
+            return_value=FakePrompt(cancelled=True)
+        )
+        result = menu._AircraftMenu__search_option()
 
-    mock_service.get_results_view.assert_called_once()
-    assert result is True
+        assert result is False
 
-def test_add_aircraft_success(menu, mock_prompt, mock_service):
-    mock_prompt([
-        "G-TEST",      # registration
-        "123",         # msn
-        "HEX",
-        "Boeing",
-        "737",
-        "B737",
-        "Active"
-    ])
+    def test_search_option_no_results(self, menu, mocker):
+        mocker.patch(
+            "flightmanagement.ui.aircraft_menu.UserPrompt",
+            return_value=FakePrompt("G-TEST")
+        )
+        menu._AircraftMenu__aircraft_service.search_aircraft.return_value = []
+        result = menu._AircraftMenu__search_option()
 
-    result = menu._AircraftMenu__add_option()
+        assert result is True
 
-    mock_service.add_aircraft.assert_called_once()
-    assert result is True
+    def test_search_option_with_results(self, menu, mocker):
+        mocker.patch(
+            "flightmanagement.ui.aircraft_menu.UserPrompt",
+            return_value=FakePrompt("G-TEST")
+        )
 
-def test_add_aircraft_cancelled(menu, mock_prompt, mock_service):
-    mock_prompt(["__CANCEL__"])
+        aircraft = Aircraft(
+            id=1,
+            registration="G-TEST",
+            manufacturer_serial_no=1,
+            icao_hex="ABC",
+            manufacturer="Boeing",
+            model="737",
+            icao_type="B737",
+            status="Active"
+        )
+        menu._AircraftMenu__aircraft_service.search_aircraft.return_value = [aircraft]
+        menu._AircraftMenu__aircraft_service.get_results_view.return_value = "RESULTS"
+        result = menu._AircraftMenu__search_option()
 
-    result = menu._AircraftMenu__add_option()
+        assert result is True
 
-    mock_service.add_aircraft.assert_not_called()
-    assert result is False
+class TestAdd:
 
-def test_add_aircraft_invalid_serial_then_valid(menu, mock_prompt, mock_service):
-    mock_prompt([
-        "G-TEST",
-        "abc",     # invalid
-        "123",     # valid
-        "HEX",
-        "Boeing",
-        "737",
-        "B737",
-        "Active"
-    ])
+    @patch("flightmanagement.ui.aircraft_menu.UserPrompt")
+    def test_add_aircraft_cancelled(self, mock_prompt, menu):
+        mock_prompt.return_value = FakePrompt(cancelled=True)
 
-    result = menu._AircraftMenu__add_option()
+        result = menu._AircraftMenu__add_option()
 
-    assert result is True
-    mock_service.add_aircraft.assert_called_once()
+        assert result is False
 
-def test_update_cancelled_at_choice(menu, mock_choice):
-    mock_choice(["__CANCEL__"])
+    @patch("flightmanagement.ui.aircraft_menu.UserPrompt")
+    def test_add_aircraft_success(self, mock_prompt, menu, mock_aircraft_service):
+        mock_prompt.side_effect = [
+            FakePrompt("N123"),      # registration
+            FakePrompt(100),         # serial
+            FakePrompt("ABC123"),    # icao_hex
+            FakePrompt("Airbus"),    # manufacturer
+            FakePrompt("A320"),      # model
+            FakePrompt("A320"),      # icao_type
+            FakePrompt("Active"),    # status
+        ]
 
-    result = menu._AircraftMenu__update_option()
+        result = menu._AircraftMenu__add_option()
 
-    assert result is False
+        assert result is True
+        mock_aircraft_service.add_aircraft.assert_called_once()
 
-from flightmanagement.models.aircraft import Aircraft
 
-def test_update_aircraft_success(menu, mock_choice, mock_prompt, mock_service):
-    aircraft = Aircraft(
-        id=1,
-        registration="G-OLD",
-        manufacturer_serial_no=1,
-        icao_hex="HEX",
-        manufacturer="B",
-        model="M",
-        icao_type="T",
-        status="Active"
-    )
-    
-    mock_service.get_aircraft_by_id.return_value = aircraft
+class TestUpdate:
 
-    mock_choice([1, "Active"])
-    mock_prompt([
-        "G-NEW",
-        "123",
-        "HEX",
-        "Boeing",
-        "737",
-        "B737"
-    ])
+    @patch("flightmanagement.ui.aircraft_menu.UserPrompt")
+    def test_update_cancelled_on_selection(self, mock_prompt, menu):
+        mock_prompt.return_value = FakePrompt(cancelled=True)
 
-    result = menu._AircraftMenu__update_option()
+        result = menu._AircraftMenu__update_option()
 
-    mock_service.update_aircraft.assert_called_once()
-    assert result is True
+        assert result is False
 
-def test_delete_cancelled(menu, mock_choice, mock_service):
-    mock_choice(["__CANCEL__"])
 
-    result = menu._AircraftMenu__delete_option()
+    @patch("flightmanagement.ui.aircraft_menu.UserPrompt")
+    def test_update_aircraft_success(self, mock_prompt, menu, mock_aircraft_service):
+        # Existing aircraft returned from selection
+        existing_aircraft = Aircraft(
+            id=1,
+            registration="N123",
+            manufacturer_serial_no=100,
+            icao_hex="ABC123",
+            manufacturer="Airbus",
+            model="A320",
+            icao_type="A320",
+            status="Active",
+        )
+        mock_aircraft_service.get_aircraft_by_id.return_value = existing_aircraft
 
-    mock_service.delete_aircraft.assert_not_called()
-    assert result is False
+        # Prompt sequence:
+        # 1. Select aircraft ID
+        # 2–8. Update prompts
+        mock_prompt.side_effect = [
+            FakePrompt(value=1),            # aircraft selection
+            FakePrompt("N124"),              # registration
+            FakePrompt(101),                 # serial
+            FakePrompt("DEF456"),             # icao_hex
+            FakePrompt("Airbus"),             # manufacturer
+            FakePrompt("A321"),               # model
+            FakePrompt("A321"),               # icao_type
+            FakePrompt("Inactive"),           # status
+        ]
 
-def test_delete_confirmed(menu, mock_choice, mock_service):
-    mock_choice([1, 1])  # select aircraft, confirm yes
+        result = menu._AircraftMenu__update_option()
 
-    result = menu._AircraftMenu__delete_option()
+        assert result is True
+        mock_aircraft_service.update_aircraft.assert_called_once()
 
-    mock_service.delete_aircraft.assert_called_once()
-    assert result is True
+        updated_aircraft = mock_aircraft_service.update_aircraft.call_args[0][0]
+        assert updated_aircraft.id == 1
+        assert updated_aircraft.registration == "N124"
+        assert updated_aircraft.status == "Inactive"
 
-def test_load_back_exits(menu, mock_choice):
-    mock_choice(["back"])
+class TestDelete:
 
-    menu.load()  # should return cleanly
+    @patch("flightmanagement.ui.aircraft_menu.UserPrompt")
+    def test_delete_aircraft_success(self, mock_prompt, menu, mock_aircraft_service):
+        aircraft = Aircraft(id=1, registration="N123", manufacturer="Boeing", model="747")
+        mock_aircraft_service.get_aircraft_by_id.return_value = aircraft
+
+        mock_prompt.side_effect = [
+            FakePrompt(value=1),     # aircraft selection
+            FakePrompt(value=True),  # confirm delete
+        ]
+
+        result = menu._AircraftMenu__delete_option()
+
+        assert result is True
+        mock_aircraft_service.delete_aircraft.assert_called_once_with(aircraft)
+
+    @patch("flightmanagement.ui.aircraft_menu.UserPrompt")
+    def test_delete_not_confirmed(self, mock_prompt, menu):
+        mock_prompt.side_effect = [
+            FakePrompt(value=1),     # aircraft choice
+            FakePrompt(value=False) # confirmation
+        ]
+
+        result = menu._AircraftMenu__delete_option()
+
+        assert result is False
+
+    @patch("flightmanagement.ui.aircraft_menu.UserPrompt")
+    def test_delete_confirmed(self, mock_prompt, menu, mock_aircraft_service):
+        mock_prompt.side_effect = [
+            FakePrompt(value=1),     # aircraft choice
+            FakePrompt(value=True),  # confirmation
+        ]
+
+        result = menu._AircraftMenu__delete_option()
+
+        assert result is True
+        mock_aircraft_service.delete_aircraft.assert_called_once()
 

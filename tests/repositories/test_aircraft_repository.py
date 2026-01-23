@@ -29,7 +29,7 @@ def aircraft_repository(db_conn):
 @pytest.fixture
 def sample_aircraft():
     return Aircraft(
-        id=None,
+        id=1,
         registration="G-ABCD",
         manufacturer_serial_no=269785,
         icao_hex="406ABC",
@@ -39,160 +39,150 @@ def sample_aircraft():
         status="Active"
     )
 
-# READ methods
-def test_get_by_id_returns_aircraft(aircraft_repository, db_conn):
-    db_conn.execute("""
-        INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
-        VALUES ('G-TEST', 269785, 'ABC123', 'Airbus', 'A320', 'A320', 'Active')
-    """)
+class TestReadOperations:
 
-    aircraft = aircraft_repository.get_by_id(1)
+    # READ methods
+    def test_get_item_by_id_returns_aircraft(self, aircraft_repository, db_conn):
+        db_conn.execute("""
+            INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
+            VALUES ('G-TEST', 269785, 'ABC123', 'Airbus', 'A320', 'A320', 'Active')
+        """)
 
-    assert aircraft is not None
-    assert aircraft.id == 1
-    assert aircraft.registration == "G-TEST"
+        aircraft = aircraft_repository.get_item_by_id(1)
 
-def test_get_by_id_returns_none_when_missing(aircraft_repository):
-    assert aircraft_repository.get_by_id(999) is None
+        assert aircraft is not None
+        assert aircraft.id == 1
+        assert aircraft.registration == "G-TEST"
 
-def test_get_by_registration_returns_aircraft(aircraft_repository, db_conn):
-    db_conn.execute("""
-        INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
-        VALUES ('G-REG1', 56765, 'DEF456', 'Boeing', '747', 'B744', 'Active')
-    """)
+    def test_get_item_by_id_returns_none_when_missing(self, aircraft_repository):
+        assert aircraft_repository.get_item_by_id(999) is None
 
-    aircraft = aircraft_repository.get_by_registration("G-REG1")
+    def test_get_item_by_registration_returns_aircraft(self, aircraft_repository, db_conn):
+        db_conn.execute("""
+            INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
+            VALUES ('G-REG1', 56765, 'DEF456', 'Boeing', '747', 'B744', 'Active')
+        """)
 
-    assert aircraft is not None
-    assert aircraft.registration == "G-REG1"
+        aircraft = aircraft_repository.get_item_by_registration("G-REG1")
 
-def test_get_by_registration_returns_none_when_missing(aircraft_repository):
-    assert aircraft_repository.get_by_registration("UNKNOWN") is None
+        assert aircraft is not None
+        assert aircraft.registration == "G-REG1"
 
-# LIST methods
-def test_get_aircraft_list_returns_sorted_list(aircraft_repository, db_conn):
-    db_conn.execute("""
-        INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
-        VALUES 
-            ('G-REG1', 56765, 'DEF456', 'Boeing', '747', 'B744', 'Active'),
-            ('G-REG2', 56766, 'DEF457', 'Airbus', 'A320', 'A320', 'Active')
-    """)
+    def test_get_item_by_registration_returns_none_when_missing(self, aircraft_repository):
+        assert aircraft_repository.get_item_by_registration("UNKNOWN") is None
 
-    aircraft_list = aircraft_repository.get_aircraft_list()
+class TestListOperations:
 
-    assert len(aircraft_list) == 2
-    assert aircraft_list[0].registration == "G-REG1"
-    assert aircraft_list[1].registration == "G-REG2"
+    def test_get_aircraft_list_returns_sorted_list(self, aircraft_repository, db_conn):
+        db_conn.execute("""
+            INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
+            VALUES 
+                ('G-REG1', 56765, 'DEF456', 'Boeing', '747', 'B744', 'Active'),
+                ('G-REG2', 56766, 'DEF457', 'Airbus', 'A320', 'A320', 'Active')
+        """)
 
-def test_get_aircraft_list_returns_none_when_empty(aircraft_repository):
-    assert aircraft_repository.get_aircraft_list() == []
+        aircraft_list = aircraft_repository.get_aircraft_list()
 
-# SEARCH methods
-def test_search_on_field_returns_matches(aircraft_repository, db_conn):
-    db_conn.execute("""
-        INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
-        VALUES 
-            ('G-ONE', 1, '1', 'Boeing', '737', 'B737', 'Active'),
-            ('G-TWO', 2, '2', 'Boeing', '747', 'B744', 'Active')
-    """)
+        assert len(aircraft_list) == 2
+        assert aircraft_list[0].registration == "G-REG1"
+        assert aircraft_list[1].registration == "G-REG2"
 
-    results = aircraft_repository.search_on_field("manufacturer", "Boeing")
+    def test_get_aircraft_list_returns_none_when_empty(self, aircraft_repository):
+        assert aircraft_repository.get_aircraft_list() == []
 
-    assert len(results) == 2
-    assert all(a.manufacturer == "Boeing" for a in results)
+class TestSearchOperations:
 
-def test_search_on_field_returns_none_when_no_matches(aircraft_repository):
-    assert aircraft_repository.search_on_field("manufacturer", "Unknown") == []
+    def test_search_on_field_returns_matches(self, aircraft_repository, db_conn):
+        db_conn.execute("""
+            INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
+            VALUES 
+                ('G-ONE', 1, '1', 'Boeing', '737', 'B737', 'Active'),
+                ('G-TWO', 2, '2', 'Boeing', '747', 'B744', 'Active')
+        """)
 
-def test_search_on_field_invalid_column_raises_error(aircraft_repository):
-    with pytest.raises(Exception):
-        aircraft_repository.search_on_field("invalid_column", "value")
+        results = aircraft_repository.search_on_field("manufacturer", "Boeing")
 
-# WRITE methods
-def test_add_aircraft_persists_to_db(aircraft_repository, db_conn, sample_aircraft):
-    aircraft_repository.add_aircraft(sample_aircraft)
+        assert len(results) == 2
+        assert all(a.manufacturer == "Boeing" for a in results)
 
-    row = db_conn.execute(
-        "SELECT * FROM aircraft WHERE registration = 'G-ABCD'"
-    ).fetchone()
+    def test_search_on_field_returns_none_when_no_matches(self, aircraft_repository):
+        assert aircraft_repository.search_on_field("manufacturer", "Unknown") == []
 
-    assert row is not None
-    assert row["manufacturer"] == "Boeing"
+    def test_search_on_field_invalid_column_raises_error(self, aircraft_repository):
+        with pytest.raises(Exception):
+            aircraft_repository.search_on_field("invalid_column", "value")
 
-def test_add_aircraft_prevents_duplicates(aircraft_repository, db_conn, sample_aircraft): # TODO - add better exception handling for any uniqueness constraints
-    aircraft_repository.add_aircraft(sample_aircraft)
+class TestWriteOperations:
 
-    with pytest.raises(sqlite3.IntegrityError):
-        aircraft_repository.add_aircraft(sample_aircraft)
+    def test_insert_item_persists_to_db(self, aircraft_repository, db_conn, sample_aircraft):
+        aircraft_repository.insert_item(sample_aircraft)
 
-    row = db_conn.execute(
-        "SELECT COUNT(*) FROM aircraft WHERE registration = 'G-ABCD'"
-    ).fetchone()
+        row = db_conn.execute(
+            "SELECT * FROM aircraft WHERE registration = 'G-ABCD'"
+        ).fetchone()
 
-    assert row[0] == 1
+        assert row is not None
+        assert row["manufacturer"] == "Boeing"
 
-def test_update_aircraft_updates_fields(aircraft_repository, db_conn):
-    db_conn.execute("""
-        INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
-        VALUES ('G-UPD', 3456, 'HEX', 'Old', 'Old', 'OLD', 'Inactive')
-    """)
+    def test_insert_item_prevents_duplicates(self, aircraft_repository, db_conn, sample_aircraft): # TODO - add better exception handling for any uniqueness constraints
+        aircraft_repository.insert_item(sample_aircraft)
 
-    updated = Aircraft(
-        id=1,
-        registration="G-UPD",
-        manufacturer_serial_no=3456,
-        icao_hex="HEX",
-        manufacturer="New",
-        model="New",
-        icao_type="NEW",
-        status="Active"
-    )
+        with pytest.raises(sqlite3.IntegrityError):
+            aircraft_repository.insert_item(sample_aircraft)
 
-    aircraft_repository.update_aircraft(updated)
+    def test_update_item_updates_fields(self, aircraft_repository, db_conn):
+        db_conn.execute("""
+            INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
+            VALUES ('G-UPD', 3456, 'HEX', 'Old', 'Old', 'OLD', 'Inactive')
+        """)
 
-    row = db_conn.execute("SELECT * FROM aircraft WHERE id = 1").fetchone()
-    assert row["manufacturer"] == "New"
-    assert row["status"] == "Active"
-
-def test_update_aircraft_prevents_duplicates(aircraft_repository, db_conn): # TODO - add better exception handling for any uniqueness constraints
-    db_conn.execute("""
-        INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
-        VALUES ('G-TEST1', 3456, 'HEX', 'Airbus', 'A320', 'A320', 'Inactive')
-    """)
-
-    db_conn.execute("""
-        INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
-        VALUES ('G-TEST2', 3457, 'HEX2', 'Airbus', 'A320', 'A320', 'Inactive')
-    """)
-
-    updated = Aircraft(
+        updated = Aircraft(
             id=1,
-            registration="G-TEST2",
-            manufacturer_serial_no=3457,
-            icao_hex="HEX2",
-            manufacturer="Airbus",
-            model="A320",
-            icao_type="A320",
-            status="Inactive"
+            registration="G-UPD",
+            manufacturer_serial_no=3456,
+            icao_hex="HEX",
+            manufacturer="New",
+            model="New",
+            icao_type="NEW",
+            status="Active"
         )
 
-    with pytest.raises(sqlite3.IntegrityError):
-        aircraft_repository.update_aircraft(updated)
+        aircraft_repository.update_item(updated)
 
-    row = db_conn.execute(
-        "SELECT COUNT(*) FROM aircraft WHERE registration = 'G-TEST2'"
-    ).fetchone()
+        row = db_conn.execute("SELECT * FROM aircraft WHERE id = 1").fetchone()
+        assert row["manufacturer"] == "New"
+        assert row["status"] == "Active"
 
-    assert row[0] == 1
+    def test_update_item_prevents_duplicates(self, aircraft_repository, db_conn): # TODO - add better exception handling for any uniqueness constraints
+        db_conn.execute("""
+            INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
+            VALUES
+                ('G-TEST1', 3456, 'HEX', 'Airbus', 'A320', 'A320', 'Inactive'),
+                ('G-TEST2', 3457, 'HEX2', 'Airbus', 'A320', 'A320', 'Inactive')
+        """)
 
-def test_delete_aircraft_removes_row(aircraft_repository, db_conn):
-    db_conn.execute("""
-        INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
-        VALUES ('G-DEL', 1234, 'HEX', 'M', 'M', 'T', 'Active')
-    """)
+        updated = Aircraft(
+                id=1,
+                registration="G-TEST2",
+                manufacturer_serial_no=3457,
+                icao_hex="HEX2",
+                manufacturer="Airbus",
+                model="A320",
+                icao_type="A320",
+                status="Inactive"
+            )
 
-    aircraft_repository.delete_aircraft(1)
+        with pytest.raises(sqlite3.IntegrityError):
+            aircraft_repository.update_item(updated)
 
-    row = db_conn.execute("SELECT * FROM aircraft WHERE id = 1").fetchone()
-    assert row is None
+    def test_delete_item_removes_row(self, aircraft_repository, db_conn, sample_aircraft):
+        db_conn.execute("""
+            INSERT INTO aircraft (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
+            VALUES ('G-DEL', 1234, 'HEX', 'M', 'M', 'T', 'Active')
+        """)
+
+        aircraft_repository.delete_item(sample_aircraft)
+
+        row = db_conn.execute("SELECT * FROM aircraft WHERE id = 1").fetchone()
+        assert row is None
 

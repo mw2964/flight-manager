@@ -5,36 +5,25 @@ from flightmanagement.db.db import transaction
 
 class AirportService:
 
-    def __init__(self, conn):
+    def __init__(self, conn, airport_repository=None):
         self.conn = conn
-        self.__airport_repository = AirportRepository(self.conn)
+        self.__airport_repository = (
+            airport_repository or AirportRepository(self.conn)
+        )
 
-    def add_airport(self, code: str, name: str, city: str, country: str, region: str):
+    def add_airport(self, airport: Airport):
         with transaction(self.conn):
-            airport = Airport(
-                code=code,
-                name=name,
-                city=city,
-                country=country,
-                region=region
-            )
-            self.__airport_repository.add_airport(airport)        
+            self.__airport_repository.insert_item(airport)        
 
-    def update_airport(self, id: int, code: str, name: str, city: str, country: str, region: str):
+    def update_airport(self, airport: Airport):
         with transaction(self.conn):
-            airport = Airport(
-                id=id,
-                code=code,
-                name=name,
-                city=city,
-                country=country,
-                region=region
-            )
-            self.__airport_repository.update_airport(airport)
+            self.__airport_repository.update_item(airport)
 
-    def delete_airport(self, id: int):
+    def delete_airport(self, airport: Airport):
+        if airport.id is None:
+            raise ValueError("Airport to delete lacks an ID")
         with transaction(self.conn):
-            self.__airport_repository.delete_airport(id)
+            self.__airport_repository.delete_item(airport)
 
     def get_airport_table(self) -> str:
         airports = self.__airport_repository.get_airport_list()
@@ -44,7 +33,7 @@ class AirportService:
         
         return self.get_results_view(airports)
     
-    def search_airports(self, field_name: str, value) -> list[Airport] | None:
+    def search_airports(self, field_name: str, value) -> list[Airport]:
         return self.__airport_repository.search_on_field(field_name, value)
 
     def get_airport_choices(self) -> list:
@@ -59,10 +48,10 @@ class AirportService:
         return airport_choices
 
     def get_airport_by_id(self, id: int):
-        return self.__airport_repository.get_by_id(id)
+        return self.__airport_repository.get_item_by_id(id)
     
     def get_results_view(self, airports: list[Airport]) -> str:
-        if airports is None:
+        if airports is None or len(airports) == 0:
             return ""
         
         # Initialise the table

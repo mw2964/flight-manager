@@ -5,7 +5,7 @@ class PilotRepository:
     def __init__(self, conn):
         self.conn = conn
 
-    def get_by_id(self, pilot_id: int) -> Pilot | None:        
+    def get_item_by_id(self, pilot_id: int) -> Pilot | None:        
         cursor = self.conn.execute(
             """
             SELECT * FROM pilot WHERE id = ?
@@ -24,16 +24,13 @@ class PilotRepository:
         )
         return pilot
 
-    def get_pilot_list(self) -> list[Pilot] | None:
+    def get_pilot_list(self) -> list[Pilot]:
         cursor = self.conn.execute(
             """
             SELECT * FROM pilot ORDER BY first_name, family_name
             """
         )
         results = cursor.fetchall()
-        
-        if results is None or len(results) == 0:
-            return None
         
         result_list = []
         for row in results:
@@ -47,7 +44,7 @@ class PilotRepository:
 
         return result_list
 
-    def add_pilot(self, pilot: Pilot) -> None:        
+    def insert_item(self, pilot: Pilot) -> None:        
         data = {
             "first_name": pilot.first_name,
             "family_name": pilot.family_name
@@ -62,7 +59,7 @@ class PilotRepository:
             data
         )
 
-    def update_pilot(self, pilot: Pilot) -> None:
+    def update_item(self, pilot: Pilot) -> None:
         self.conn.execute(
             """
             UPDATE pilot
@@ -74,16 +71,16 @@ class PilotRepository:
             (pilot.first_name, pilot.family_name, pilot.id)
         )
     
-    def delete_pilot(self, pilot_id: int) -> None:
+    def delete_item(self, pilot: Pilot) -> None:
         self.conn.execute(
             """
             DELETE FROM pilot
             WHERE id = ?
             """,
-            (pilot_id, )
+            (pilot.id, )
         )
     
-    def search_on_field(self, field_name: str, value) -> list[Pilot] | None:
+    def search_on_field(self, field_name: str, value) -> list[Pilot]:
         sql = f"""
             SELECT *
             FROM pilot
@@ -93,9 +90,6 @@ class PilotRepository:
         cursor = self.conn.execute(sql, (value, ))
         results = cursor.fetchall()
         
-        if results is None or len(results) == 0:
-            return None
-
         result_list = []
         for row in results:
             result_list.append(

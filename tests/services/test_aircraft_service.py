@@ -1,169 +1,119 @@
 import pytest
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+
 from flightmanagement.services.aircraft_service import AircraftService
+from flightmanagement.models.aircraft import Aircraft
 
 @pytest.fixture
-def mock_repo(monkeypatch):
-    repo = MagicMock()
-
-    monkeypatch.setattr(
-        "flightmanagement.services.aircraft_service.AircraftRepository",
-        lambda conn: repo
-    )
-
-    return repo
+def mock_conn():
+    return MagicMock()
 
 @pytest.fixture
-def mock_transaction(monkeypatch):
-    mock_ctx = MagicMock()
-    mock_ctx.__enter__.return_value = None
-    mock_ctx.__exit__.return_value = None
-
-    monkeypatch.setattr(
-        "flightmanagement.services.aircraft_service.transaction",
-        lambda conn: mock_ctx
-    )
-
-    return mock_ctx
+def service(mock_conn):
+    mock_repo = MagicMock()
+    return AircraftService(mock_conn, aircraft_repository=mock_repo)
 
 @pytest.fixture
-def service(mock_repo, mock_transaction):
-    return AircraftService(conn=MagicMock())
-
-def test_add_aircraft_uses_transaction(service, mock_repo, mock_transaction):
-    service.add_aircraft(
-        registration="G-TEST",
-        manufacturer_serial_no=123,
-        icao_hex="ABC",
-        manufacturer="Boeing",
-        model="737",
-        icao_type="B737",
-        status="Active"
-    )
-
-    mock_transaction.__enter__.assert_called_once()
-    mock_transaction.__exit__.assert_called_once()
-
-def test_add_aircraft_creates_aircraft_and_calls_repo(service, mock_repo):
-    service.add_aircraft(
-        registration="G-TEST",
-        manufacturer_serial_no=123,
-        icao_hex="ABC",
-        manufacturer="Boeing",
-        model="737",
-        icao_type="B737",
-        status="Active"
-    )
-
-    mock_repo.add_aircraft.assert_called_once()
-    aircraft = mock_repo.add_aircraft.call_args[0][0]
-
-    assert aircraft.registration == "G-TEST"
-    assert aircraft.manufacturer == "Boeing"
-    assert aircraft.id is None
-
-def test_update_aircraft_passes_correct_aircraft(service, mock_repo):
-    service.update_aircraft(
+def sample_aircraft():
+    return Aircraft(
         id=1,
-        registration="G-UPD",
-        manufacturer_serial_no=999,
-        icao_hex="DEF",
+        registration="G-ABCD",
+        manufacturer_serial_no=12345,
+        icao_hex="406ABC",
         manufacturer="Airbus",
         model="A320",
         icao_type="A320",
         status="Active"
     )
 
-    mock_repo.update_aircraft.assert_called_once()
-    aircraft = mock_repo.update_aircraft.call_args[0][0]
+class TestAddData:
 
-    assert aircraft.id == 1
-    assert aircraft.model == "A320"
+    @patch("flightmanagement.services.aircraft_service.transaction")
+    def test_add_aircraft_inserts_aircraft(self, mock_transaction, service):        
+        aircraft = Aircraft(
+            registration="G-TEST",
+            manufacturer_serial_no=111,
+            icao_hex="406FFF",
+            manufacturer="Boeing",
+            model="737",
+            icao_type="B737",
+            status="Active"
+        )
+        service.add_aircraft(aircraft)
 
-def test_delete_aircraft_calls_repo(service, mock_repo):
-    service.delete_aircraft(42)
-    mock_repo.delete_aircraft.assert_called_once_with(42)
+        service._AircraftService__aircraft_repository.insert_item.assert_called_once()
 
-def test_get_aircraft_by_id_delegates(service, mock_repo):
-    mock_repo.get_by_id.return_value = "aircraft"
+class TestUpdateData:
 
-    result = service.get_aircraft_by_id(1)
+    @patch("flightmanagement.services.aircraft_service.transaction")
+    def test_update_aircraft_updates_item(self, mock_transaction, service, sample_aircraft):
+        service.update_aircraft(sample_aircraft)
 
-    mock_repo.get_by_id.assert_called_once_with(1)
-    assert result == "aircraft"
+        service._AircraftService__aircraft_repository.update_item.assert_called_once()
 
-def test_search_aircraft_delegates(service, mock_repo):
-    mock_repo.search_on_field.return_value = []
+class TestDeleteData:
 
-    result = service.search_aircraft("manufacturer", "Boeing")
+    @patch("flightmanagement.services.aircraft_service.transaction")
+    def test_delete_aircraft_deletes_item(self, mock_transaction, service, sample_aircraft):
+        service.delete_aircraft(sample_aircraft)
 
-    mock_repo.search_on_field.assert_called_once_with("manufacturer", "Boeing")
-    assert result == []
+        service._AircraftService__aircraft_repository.delete_item.assert_called_once_with(sample_aircraft)
 
-def test_get_aircraft_choices_empty(service, mock_repo):
-    mock_repo.get_aircraft_list.return_value = None
+class TestUseRepository:
 
-    result = service.get_aircraft_choices()
+    def test_search_aircraft_calls_repository(self, service):
+        service.search_aircraft("registration", "G-ABCD")
 
-    assert result == []
+        service._AircraftService__aircraft_repository.search_on_field.assert_called_once_with(
+            "registration", "G-ABCD"
+        )
 
-from flightmanagement.models.aircraft import Aircraft
+    def test_get_aircraft_table_uses_repository(self, service, sample_aircraft):
+        service._AircraftService__aircraft_repository.get_aircraft_list.return_value = [
+            sample_aircraft
+        ]
 
-def test_get_aircraft_choices_populated(service, mock_repo):
-    a1 = Aircraft(
-        id=1,
-        registration="G-ONE",
-        manufacturer_serial_no=1,
-        icao_hex="A",
-        manufacturer="B",
-        model="C",
-        icao_type="D",
-        status="Active"
-    )
-    a2 = Aircraft(
-        id=2,
-        registration="G-TWO",
-        manufacturer_serial_no=2,
-        icao_hex="B",
-        manufacturer="C",
-        model="D",
-        icao_type="E",
-        status="Inactive"
-    )
+        result = service.get_aircraft_table()
 
-    mock_repo.get_aircraft_list.return_value = [a1, a2]
+        assert "G-ABCD" in result
 
-    result = service.get_aircraft_choices()
+class TestReturnData:
 
-    assert result == [
-        (1, str(a1) + " - Active"),
-        (2, str(a2) + " - Inactive")
-    ]
+    def test_get_aircraft_by_id(self, service):
+        service.get_aircraft_by_id(10)
 
-def test_get_aircraft_table_none_returns_empty(service, mock_repo):
-    mock_repo.get_aircraft_list.return_value = None
+        service._AircraftService__aircraft_repository.get_item_by_id.assert_called_once_with(10)
 
-    assert service.get_aircraft_table() == ""
+    def test_get_aircraft_choices_returns_tuples(self, service, sample_aircraft):
+        service._AircraftService__aircraft_repository.get_aircraft_list.return_value = [
+            sample_aircraft
+        ]
 
-def test_get_aircraft_table_formats_output(service, mock_repo):
-    aircraft = Aircraft(
-        id=1,
-        registration="G-TBL",
-        manufacturer_serial_no=123,
-        icao_hex="HEX",
-        manufacturer="Boeing",
-        model="737",
-        icao_type="B737",
-        status="Active"
-    )
-    mock_repo.get_aircraft_list.return_value = [aircraft]
+        result = service.get_aircraft_choices()
 
-    table = service.get_aircraft_table()
+        assert result == [
+            (1, f"{str(sample_aircraft)} - {sample_aircraft.status}")
+        ]
 
-    assert "G-TBL" in table
-    assert "Boeing" in table
-    assert table.startswith("     ")
+    def test_get_aircraft_choices_empty_list(self, service):
+        service._AircraftService__aircraft_repository.get_aircraft_list.return_value = []
 
-def test_get_results_view_none_or_empty_list_returns_empty(service):
-    assert service.get_results_view(None) == ""
-    assert service.get_results_view([]) == ""
+        result = service.get_aircraft_choices()
+
+        assert result == []
+
+    def test_get_results_view_empty_list(self, service):
+        assert service.get_results_view([]) == ""
+
+    def test_get_results_view_none(self, service):
+        assert service.get_results_view(None) == ""
+
+    def test_get_results_view_contains_aircraft_data(self, service, sample_aircraft):
+        output = service.get_results_view([sample_aircraft])
+
+        assert "G-ABCD" in output
+        assert "Airbus" in output
+        assert "A320" in output
+        assert "Active" in output
+
+

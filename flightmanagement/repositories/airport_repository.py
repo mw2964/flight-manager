@@ -5,7 +5,7 @@ class AirportRepository:
     def __init__(self, conn):
         self.conn = conn
 
-    def get_by_id(self, airport_id: int) -> Airport | None:        
+    def get_item_by_id(self, airport_id: int) -> Airport | None:        
         cursor = self.conn.execute(
             """
             SELECT * FROM airport WHERE id = ?
@@ -27,7 +27,7 @@ class AirportRepository:
         )
         return airport
 
-    def get_by_code(self, code: str) -> Airport | None:
+    def get_item_by_code(self, code: str) -> Airport | None:
         cursor = self.conn.execute(
             """
             SELECT * FROM airport WHERE code = ?
@@ -49,7 +49,7 @@ class AirportRepository:
         )
         return airport
 
-    def get_airport_list(self) -> list[Airport] | None:
+    def get_airport_list(self) -> list[Airport]:
         cursor = self.conn.execute(
             """
             SELECT * FROM airport ORDER BY code
@@ -57,9 +57,6 @@ class AirportRepository:
         )
         results = cursor.fetchall()
 
-        if results is None or len(results) == 0:
-            return None
-        
         result_list = []
         for row in results:
             result_list.append(
@@ -75,7 +72,7 @@ class AirportRepository:
 
         return result_list
 
-    def add_airport(self, airport: Airport) -> None:        
+    def insert_item(self, airport: Airport) -> None:        
         data = {
             "code": airport.code, 
             "name": airport.name,
@@ -94,7 +91,7 @@ class AirportRepository:
             data
         )
 
-    def update_airport(self, airport: Airport):
+    def update_item(self, airport: Airport):
         self.conn.execute(
             """
             UPDATE airport
@@ -109,16 +106,16 @@ class AirportRepository:
             (airport.code, airport.name, airport.city, airport.country, airport.region, airport.id)
         )
     
-    def delete_airport(self, airport_id: int):
+    def delete_item(self, airport: Airport):
         self.conn.execute(
             """
             DELETE FROM airport
             WHERE id = ?
             """,
-            (airport_id, )
+            (airport.id, )
         )
     
-    def search_on_field(self, field_name: str, value) -> list[Airport] | None:
+    def search_on_field(self, field_name: str, value) -> list[Airport]:
         sql = f"""
             SELECT *
             FROM airport
@@ -128,9 +125,6 @@ class AirportRepository:
         cursor = self.conn.execute(sql, (value, ))
         results = cursor.fetchall()
         
-        if results is None or len(results) == 0:
-            return None
-
         result_list = []
         for row in results:
             result_list.append(

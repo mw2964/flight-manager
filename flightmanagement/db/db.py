@@ -83,7 +83,8 @@ def initialise_schema(conn):
             FOREIGN KEY(origin_id) REFERENCES airport(id),
             FOREIGN KEY(destination_id) REFERENCES airport(id),
             FOREIGN KEY(pilot_id) REFERENCES pilot(id),
-            FOREIGN KEY(copilot_id) REFERENCES pilot(id)
+            FOREIGN KEY(copilot_id) REFERENCES pilot(id),
+            UNIQUE(flight_number, departure_time_scheduled)
         )
     """)
 

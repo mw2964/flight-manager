@@ -5,47 +5,31 @@ from flightmanagement.db.db import transaction
 
 class AircraftService:
 
-    def __init__(self, conn):
+    def __init__(self, conn, aircraft_repository=None):
         self.conn = conn
-        self.__aircraft_repository = AircraftRepository(self.conn)
+        self.__aircraft_repository = (
+            aircraft_repository or AircraftRepository(self.conn)
+        )
 
-    def add_aircraft(self, registration: str, manufacturer_serial_no: int, icao_hex: str, manufacturer: str, model: str, icao_type: str, status: str):
+    def add_aircraft(self, aircraft: Aircraft):
         with transaction(self.conn):
-            aircraft = Aircraft(
-                id=None,
-                registration=registration,
-                manufacturer_serial_no=manufacturer_serial_no,
-                icao_hex=icao_hex,
-                manufacturer=manufacturer,
-                model=model,
-                icao_type=icao_type,
-                status=status
-            )
-            self.__aircraft_repository.add_aircraft(aircraft)
+            self.__aircraft_repository.insert_item(aircraft)
 
-    def update_aircraft(self, id: int, registration: str, manufacturer_serial_no: int, icao_hex: str, manufacturer: str, model: str, icao_type: str, status: str):
+    def update_aircraft(self, aircraft: Aircraft):
         with transaction(self.conn):
-            aircraft = Aircraft(
-                id=id,
-                registration=registration,
-                manufacturer_serial_no=manufacturer_serial_no,
-                icao_hex=icao_hex,
-                manufacturer=manufacturer,
-                model=model,
-                icao_type=icao_type,
-                status=status
-            )
-            self.__aircraft_repository.update_aircraft(aircraft)
+            self.__aircraft_repository.update_item(aircraft)
 
-    def delete_aircraft(self, id: int):
+    def delete_aircraft(self, aircraft: Aircraft):
+        if aircraft.id is None:
+            raise ValueError("Aircraft to delete lacks an ID")
         with transaction(self.conn):
-            self.__aircraft_repository.delete_aircraft(id)
+            self.__aircraft_repository.delete_item(aircraft)
 
     def get_aircraft_table(self) -> str:
         aircraft = self.__aircraft_repository.get_aircraft_list()
         return self.get_results_view(aircraft)
     
-    def search_aircraft(self, field_name, value) -> list[Aircraft]:
+    def search_aircraft(self, field_name: str, value) -> list[Aircraft]:
         return self.__aircraft_repository.search_on_field(field_name, value)
     
     def get_aircraft_choices(self) -> list:
@@ -60,7 +44,7 @@ class AircraftService:
         return aircraft_choices
 
     def get_aircraft_by_id(self, id: int):
-        return self.__aircraft_repository.get_by_id(id)
+        return self.__aircraft_repository.get_item_by_id(id)
     
     def get_results_view(self, aircraft: list[Aircraft]) -> str:
         if aircraft is None or len(aircraft) == 0:
