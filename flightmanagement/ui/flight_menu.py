@@ -9,6 +9,7 @@ from flightmanagement.services.aircraft_service import AircraftService
 from flightmanagement.services.airport_service import AirportService
 from flightmanagement.services.pilot_service import PilotService
 from flightmanagement.models.flight import Flight
+from flightmanagement.ui.flight_update_menu import FlightUpdateMenu
 
 class FlightMenu:
 
@@ -29,6 +30,7 @@ class FlightMenu:
         self.__pilot_service = pilot_service or PilotService(conn)
         self.__session = session
         self.__bindings = bindings
+        self.__conn = conn
 
     def load(self):
         while True:
@@ -45,9 +47,7 @@ class FlightMenu:
                     print("\nAction cancelled.\n")
                     continue
             elif __choose_menu == "update":
-                if not self.__update_option():
-                    print("\nUpdate cancelled.\n")
-                    continue
+                FlightUpdateMenu(self.__session, self.__bindings, self.__conn).load()
             elif __choose_menu == "delete":
                 if not self.__delete_option():
                     print("\nDelete cancelled.\n")
@@ -97,29 +97,6 @@ class FlightMenu:
         except:
             print("\nError adding flight.\n")
 
-        return True
-
-    def __update_option(self) -> bool:
-        print("\n>> Update a flight (or hit CTRL+C to cancel)\n")
-
-        # Prompt for the aircraft to edit
-        flight = self.__get_flight_from_selection()
-        if flight is None or flight.id is None:
-            return False
-
-        print(f"\nEditing information (flight ID {flight.id})\n")
-
-        # Prompt the user to edit fields
-        update = self.__prompt_update_flight(flight)
-        if update is None: # Process was cancelled by the user
-            return False
-
-        try:
-            self.__flight_service.update_flight(update)
-            print("\nFlight details successfully updated.\n")
-        except:
-            print("\nError updating flight.\n")
-        
         return True
 
     def __delete_option(self) -> bool:
@@ -257,201 +234,6 @@ class FlightMenu:
             copilot_id=int(copilot_id.value),
             departure_time_scheduled=self.combine_date(departure_date.value, departure_time.value),
             arrival_time_scheduled=self.combine_date(arrival_date.value, arrival_time.value)
-        )
-
-    def __prompt_update_flight(self, flight: Flight) -> Flight | None:
-
-        flight_number = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter a flight number: ",
-            allow_blank=False,
-            default_value=flight.flight_number
-        )        
-        if flight_number.is_cancelled:
-            return None
-        print()
-        
-        aircraft_id = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Select the aircraft:\n",
-            options=self.__aircraft_service.get_aircraft_choices(),
-            default_value=flight.aircraft_id,
-            key_bindings=self.__bindings
-        )
-        if aircraft_id.is_cancelled:
-            return None
-        print()
-
-        origin_id = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Select the origin airport:\n",
-            options=self.__airport_service.get_airport_choices(),
-            default_value=flight.origin_id,
-            key_bindings=self.__bindings
-        )
-        if origin_id.is_cancelled:
-            return None
-        print()
-
-        destination_id = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Select the destination airport:\n",
-            options=self.__airport_service.get_airport_choices(),
-            default_value=flight.destination_id,
-            key_bindings=self.__bindings
-        )
-        if destination_id.is_cancelled:
-            return None
-        print()
-
-        pilot_id = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Select the pilot:\n",
-            options=self.__pilot_service.get_pilot_choices(),
-            default_value=flight.pilot_id,
-            key_bindings=self.__bindings
-        )
-        if pilot_id.is_cancelled:
-            return None
-        print()
-
-        copilot_id = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Select the copilot:\n",
-            options=self.__pilot_service.get_pilot_choices(),
-            default_value=flight.copilot_id,
-            key_bindings=self.__bindings
-        )
-        if copilot_id.is_cancelled:
-            return None
-        print()
-
-        departure_date_scheduled = UserPrompt(
-            session=self.__session,
-            prompt_type="date",
-            prompt="Scheduled departure date (DD/MM/YYYY): ",
-            allow_blank=False,
-            default_value=self.date_string_from_datetime(flight.departure_time_scheduled)
-        )        
-        if departure_date_scheduled.is_cancelled:
-            return None
-
-        departure_time_scheduled = UserPrompt(
-            session=self.__session,
-            prompt_type="time",
-            prompt="Scheduled departure time (HH:MM): ",
-            allow_blank=False,
-            default_value=self.time_string_from_datetime(flight.departure_time_scheduled)
-        )        
-        if departure_time_scheduled.is_cancelled:
-            return None
-
-        arrival_date_scheduled = UserPrompt(
-            session=self.__session,
-            prompt_type="date",
-            prompt="Scheduled departure date (DD/MM/YYYY): ",
-            allow_blank=True,
-            default_value=self.date_string_from_datetime(flight.arrival_time_scheduled)
-        )      
-        if arrival_date_scheduled.is_cancelled:
-            return None
-
-        arrival_time_scheduled = UserPrompt(
-            session=self.__session,
-            prompt_type="time",
-            prompt="Scheduled departure time (HH:MM): ",
-            allow_blank=True,
-            default_value=self.time_string_from_datetime(flight.arrival_time_scheduled)
-        )        
-        if arrival_time_scheduled.is_cancelled:
-            return None
-
-        departure_date_actual = UserPrompt(
-            session=self.__session,
-            prompt_type="date",
-            prompt="Actual departure date (DD/MM/YYYY): ",
-            allow_blank=True,
-            default_value=self.date_string_from_datetime(flight.departure_time_actual)
-        )     
-        if departure_date_actual.is_cancelled:
-            return None
-
-        departure_time_actual = UserPrompt(
-            session=self.__session,
-            prompt_type="time",
-            prompt="Actual departure time (HH:MM): ",
-            allow_blank=True,
-            default_value=self.time_string_from_datetime(flight.departure_time_actual)
-        )        
-        if departure_time_actual.is_cancelled:
-            return None
-
-        arrival_date_actual = UserPrompt(
-            session=self.__session,
-            prompt_type="date",
-            prompt="Actual arrival date (DD/MM/YYYY): ",
-            allow_blank=True,
-            default_value=self.date_string_from_datetime(flight.arrival_time_actual)
-        )   
-        if arrival_date_actual.is_cancelled:
-            return None
-
-        arrival_time_actual = UserPrompt(
-            session=self.__session,
-            prompt_type="time",
-            prompt="Actual arrival time (HH:MM): ",
-            allow_blank=True,
-            default_value=self.time_string_from_datetime(flight.arrival_time_actual)
-        )        
-        if arrival_time_actual.is_cancelled:
-            return None
-        print()
-
-        status = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Select a flight status:\n",
-            options=[
-                ("Scheduled", ("Scheduled")),
-                ("Delayed", ("Delayed")),
-                ("On time", ("On time")),
-                ("Boarding", ("Boarding")),
-                ("Closed", ("Closed")),
-                ("Departed", ("Departed")),
-                ("Arrived", ("Arrived"))
-            ],
-            default_value=flight.status,
-            key_bindings=self.__bindings
-        )
-        if status.is_cancelled:
-            return None
-        print()
-
-        # Format datetimes, checking against partial values
-        departure_datetime_scheduled_formatted = self.combine_date(departure_date_scheduled.value, departure_time_scheduled.value)
-        arrival_datetime_scheduled_formatted = self.combine_date(arrival_date_scheduled.value, arrival_time_scheduled.value) if arrival_date_scheduled and arrival_time_scheduled else None
-        departure_datetime_actual_formatted = self.combine_date(departure_date_actual.value, departure_time_actual.value) if departure_date_actual and departure_time_actual else None
-        arrival_datetime_actual_formatted = self.combine_date(arrival_date_actual.value, arrival_time_actual.value) if arrival_date_actual and arrival_time_actual else None
-
-        return Flight(
-            id=flight.id,
-            flight_number=flight_number.value,
-            aircraft_id=int(aircraft_id.value),
-            origin_id=int(origin_id.value),
-            destination_id=int(destination_id.value),
-            pilot_id=int(pilot_id.value),
-            copilot_id=int(copilot_id.value),
-            departure_time_scheduled=departure_datetime_scheduled_formatted,
-            arrival_time_scheduled=arrival_datetime_scheduled_formatted,
-            departure_time_actual=departure_datetime_actual_formatted,
-            arrival_time_actual=arrival_datetime_actual_formatted,
-            status=status.value
         )
 
     def __prompt_delete_flight(self) -> Flight | None:

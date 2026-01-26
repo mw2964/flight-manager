@@ -134,3 +134,8 @@ class FlightService:
         spaces = 10 - len(flight.flight_number)
 
         return f"{flight.flight_number}{' ' * spaces}{origin_code} to {destination_code} | Departure: {departure} | Status: {flight.status}"
+
+    def assign_pilot_to_flight(self, flight: Flight):
+        with transaction(self.conn):
+            self.__flight_repository.update_item(flight)
+
