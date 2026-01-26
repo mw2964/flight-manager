@@ -19,7 +19,7 @@ class FlightMenu:
         ("search", "Search flights"),
         ("add", "Add a flight"),
         ("update", "Update a flight"),
-        ("delete", "Remove a flight"),
+        ("delete", "Delete a flight"),
         ("back", "Back to main menu")
     ]
 
@@ -47,7 +47,9 @@ class FlightMenu:
                     print("\nAction cancelled.\n")
                     continue
             elif __choose_menu == "update":
-                FlightUpdateMenu(self.__session, self.__bindings, self.__conn).load()
+                if not self.__update_option():
+                    print("\nAction cancelled.\n")
+                    continue
             elif __choose_menu == "delete":
                 if not self.__delete_option():
                     print("\nDelete cancelled.\n")
@@ -96,6 +98,18 @@ class FlightMenu:
             print("\nRecord successfully added.\n")
         except:
             print("\nError adding flight.\n")
+
+        return True
+
+    def __update_option(self) -> bool:
+        print("\n>> Select a flight to update (or hit CTRL+C to cancel)\n")
+
+        # Prompt for the flight to update
+        flight = self.__get_flight_from_selection()
+        if flight is None or flight.id is None:
+            return False
+
+        FlightUpdateMenu(self.__session, self.__bindings, flight.id, self.__conn).load()
 
         return True
 

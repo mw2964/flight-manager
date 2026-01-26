@@ -66,5 +66,8 @@ def prompt_time(session, prompt: str, allow_blank: bool, default=None):
 def indent_string(string: str, spaces: int) -> str:
     return " " * spaces + string
 
-def format_title(title: str) -> str:
-    return f"\n{title}\n{"*" * len(title)}\n"
+def format_title(title: str, asterisks: bool = True) -> str:
+    output = f"\n{title}\n"
+    if asterisks:
+        output += f"{"*" * len(title)}\n"
+    return output

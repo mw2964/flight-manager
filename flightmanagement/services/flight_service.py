@@ -40,7 +40,7 @@ class FlightService:
         
         return self.get_results_view(flights)
 
-    def get_flight_by_id(self, id: int):
+    def get_flight_by_id(self, id: int) -> Flight | None:
         return self.__flight_repository.get_item_by_id(id)
 
     def get_aircraft(self, aircraft_registration: str) -> int | None:
