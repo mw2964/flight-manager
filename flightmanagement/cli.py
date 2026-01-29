@@ -10,7 +10,7 @@ DB_PATH = PROJECT_ROOT / "data" / "FlightManagement.db"
 def main():
 
     try:
-        # Initialise UI prompt session
+        # Initialise the UI prompt session and key bindings to capture cancel actions
         bindings = KeyBindings()
 
         @bindings.add('c-c')
@@ -20,18 +20,30 @@ def main():
         session = PromptSession(key_bindings=bindings)
 
         # Print the welcome screen
-        print("""
-***********
-FLIGHT CLUB
-V0.1.0
-***********""")
+        print_welcome()
     
         # Initialise the database connection
         conn = get_connection(DB_PATH)
 
+        # Load the main menu
         MainMenu(session, bindings, conn).load()
+
     except RuntimeError as e:
         print(e)
+
+def print_welcome():
+    print(r"""
+    ______ _ _       _     _       ____  _       _     
+   |  ____| (_)     | |   | |     / ___|| |     | |    
+   | |__  | |_  __ _| |__ | |_   | |    | |_   _| |__  
+   |  __| | | |/ _` | '_ \| __|  | |    | | | | | '_ \ 
+   | |    | | | (_| | | | | |_   | |___ | | |_| | |_) |
+   |_|    |_|_|\__, |_| |_|\__|   \____||_|\__,_|_.__/ 
+                __/ |     ✈️                   v0.1.0
+               |___/                                          
+   
+   The first rule is...
+          """)
 
 if __name__ == "__main__":
     main()
