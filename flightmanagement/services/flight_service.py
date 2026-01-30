@@ -139,3 +139,14 @@ class FlightService:
         with transaction(self.conn):
             self.__flight_repository.update_item(flight)
 
+    def get_available_pilot_choices(self, departure_time: datetime, arrival_time: datetime, flight_id: int | None = None, pilot_id: int | None = None) -> list:
+        pilots = self.__flight_repository.get_available_pilots(departure_time, arrival_time, flight_id if flight_id else -1)
+        
+        pilot_choices = []
+
+        if pilots:
+            for pilot in pilots:
+                if pilot.id != pilot_id:
+                    pilot_choices.append((pilot.id, str(pilot)))
+
+        return pilot_choices

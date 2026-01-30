@@ -9,12 +9,12 @@ class Flight:
     origin_id: int
     destination_id: int
     departure_time_scheduled: datetime
+    arrival_time_scheduled: datetime
     status: str = "Scheduled"
 
     id: int | None = None
     pilot_id: int | None = None
-    copilot_id: int | None = None    
-    arrival_time_scheduled: datetime | None = None
+    copilot_id: int | None = None
     departure_time_actual: datetime | None = None
     arrival_time_actual: datetime | None = None
     
