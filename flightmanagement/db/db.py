@@ -167,6 +167,14 @@ def initialise_schema(conn):
     """)
 
     # Create views
+    conn.execute("""
+        CREATE VIEW IF NOT EXISTS vw_staff_pilots AS
+            SELECT *
+            FROM staff
+            NATURAL JOIN pilots;
+    """)
+
+
     '''
     conn.execute("""
         CREATE VIEW IF NOT EXISTS vw_denormalised_flights AS 
