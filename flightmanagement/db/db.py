@@ -174,6 +174,12 @@ def initialise_schema(conn):
             NATURAL JOIN pilots;
     """)
 
+    conn.execute("""
+        CREATE VIEW IF NOT EXISTS vw_aircraft AS
+            SELECT *
+            FROM aircraft
+            NATURAL JOIN aircraft_types;
+    """)
 
     '''
     conn.execute("""
@@ -223,11 +229,11 @@ def seed_database_data(conn):
     conn.execute("""
         INSERT INTO aircraft (aircraft_type_id, registration, manufacturer_serial_no, icao_hex, aircraft_status)
         VALUES
-            (1, 'G‑EUUH', 1561245, '406BCA', 'Active'),
-			(8, 'EI‑HAX', 62345, '4CA82F', 'Active'),
-			(6, 'G‑VDOT', 45312, '4078F2', 'Active'),
+            (1, 'G-EUUH', 1561245, '406BCA', 'Active'),
+			(8, 'EI-HAX', 62345, '4CA82F', 'Active'),
+			(6, 'G-VDOT', 45312, '4078F2', 'Active'),
 			(1, 'G-LKSD', 36478, 'A2B3C4', 'Active'),
-			(6, 'YL‑AAQ', 55089, '502D5F', 'Active'),
+			(6, 'YL-AAQ', 55089, '502D5F', 'Active'),
 			(7, 'G-PPWO', 126445, 'A1B2C3', 'Inactive'),
 			(7, 'G-YYAA', 1156592, '4CA123', 'Inactive'),
 			(7, 'L-LKED', 144554, '7809AB', 'Decommissioned'),

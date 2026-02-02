@@ -47,31 +47,24 @@ class AircraftRepository:
         
         return self.dict_to_aircraft(result)
 
-    def get_aircraft_list(self) -> list[Aircraft]:
+    def get_aircraft_list(self) -> list:
         cursor = self.conn.execute(
             """
             SELECT *
-            FROM aircraft
+            FROM vw_aircraft
             ORDER BY registration
             """
         )
         results = cursor.fetchall()
-        
-        result_list = []
-        for row in results:
-            result_list.append(
-                self.dict_to_aircraft(row)
-            )
-
-        return result_list
+        return results
 
     def insert_aircraft(self, aircraft: Aircraft) -> None:        
         self.conn.execute(
             """
             INSERT INTO aircraft
-                (registration, manufacturer_serial_no, icao_hex, manufacturer, model, icao_type, status)
+                (aircraft_type_id, registration, manufacturer_serial_no, icao_hex, aircraft_status)
             VALUES
-                (:registration, :manufacturer_serial_no, :icao_hex, :manufacturer, :model, :icao_type, :status)
+                (:aircraft_type_id, :registration, :manufacturer_serial_no, :icao_hex, :aircraft_status)
             """,
             aircraft.to_dict()
         )
@@ -107,25 +100,20 @@ class AircraftRepository:
             (aircraft.aircraft_id, )
         )
     
-    def search_aircraft_on_field(self, field_name: str, value) -> list[Aircraft]:
+    def search_aircraft_on_field(self, field_name: str, value) -> list:
         
         if field_name not in self.AIRCRAFT_SEARCH_FIELDS:
             raise ValueError(f"Invalid search field: {field_name}")
 
         sql = f"""
             SELECT *
-            FROM aircraft
+            FROM vw_aircraft
             WHERE {field_name} = ?
             ORDER BY registration
         """
         cursor = self.conn.execute(sql, (value, ))
         results = cursor.fetchall()
-        
-        result_list = []
-        for row in results:
-            result_list.append(self.dict_to_aircraft(row))
-
-        return result_list
+        return results
     
     def dict_to_aircraft(self, data: dict | None) -> Aircraft | None:
         if data is None or len(data) == 0:
@@ -147,7 +135,7 @@ class AircraftRepository:
         cursor = self.conn.execute(
             """
             SELECT *
-            FROM aircraft_type
+            FROM aircraft_types
             WHERE aircraft_type_id = ?
             """,
             (aircraft_type_id, )
@@ -159,7 +147,7 @@ class AircraftRepository:
         cursor = self.conn.execute(
             """
             SELECT *
-            FROM aircraft_type
+            FROM aircraft_types
             WHERE model = ?
             """,
             (model, )
@@ -168,28 +156,21 @@ class AircraftRepository:
         
         return self.dict_to_aircraft_type(result)
 
-    def get_aircraft_type_list(self) -> list[AircraftType]:
+    def get_aircraft_type_list(self) -> list:
         cursor = self.conn.execute(
             """
             SELECT *
-            FROM aircraft_type
+            FROM aircraft_types
             ORDER BY manufacturer, model
             """
         )
         results = cursor.fetchall()
-        
-        result_list = []
-        for row in results:
-            result_list.append(
-                self.dict_to_aircraft_type(row)
-            )
-
-        return result_list
+        return results
 
     def insert_aircraft_type(self, aircraft_type: AircraftType) -> None:        
         self.conn.execute(
             """
-            INSERT INTO aircraft_type
+            INSERT INTO aircraft_types
                 (manufacturer, model, icao_type)
             VALUES
                 (:manufacturer, :model, :icao_type)
@@ -200,7 +181,7 @@ class AircraftRepository:
     def update_aircraft_type(self, aircraft_type: AircraftType):
         self.conn.execute(
             """
-            UPDATE aircraft_type
+            UPDATE aircraft_types
             SET
                 manufacturer = ?,
                 model = ?,
@@ -218,7 +199,7 @@ class AircraftRepository:
     def delete_aircraft_type(self, aircraft_type: AircraftType):
         self.conn.execute(
             """
-            DELETE FROM aircraft_type
+            DELETE FROM aircraft_types
             WHERE aircraft_type_id = ?
             """,
             (aircraft_type.aircraft_type_id, )
@@ -231,7 +212,7 @@ class AircraftRepository:
 
         sql = f"""
             SELECT *
-            FROM aircraft_type
+            FROM aircraft_types
             WHERE {field_name} = ?
             ORDER BY manufacturer, model
         """

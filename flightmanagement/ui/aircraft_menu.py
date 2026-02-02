@@ -97,10 +97,10 @@ class AircraftMenu:
 
         # Prompt for the aircraft to edit
         aircraft = self.__get_aircraft_from_selection()
-        if aircraft is None or aircraft.id is None:
+        if aircraft is None or aircraft.aircraft_id is None:
             return False
 
-        print(f"\nEditing information (aircraft ID {aircraft.id})\n")
+        print(f"\nEditing information (aircraft ID {aircraft.aircraft_id})\n")
 
         # Prompt the user to edit fields
         update = self.__prompt_update_aircraft(aircraft)
@@ -135,6 +135,17 @@ class AircraftMenu:
 
     def __prompt_add_aircraft(self) -> Aircraft | None:
 
+        aircraft_type_id = UserPrompt(
+            session=self.__session,
+            prompt_type="choice",
+            prompt="Select an aircraft type:\n",
+            options=self.__aircraft_service.get_aircraft_type_choices(),
+            key_bindings=self.__bindings
+        )
+        if aircraft_type_id.is_cancelled:
+            return None
+        print()
+
         registration = UserPrompt(
             session=self.__session,
             prompt_type="text",
@@ -161,36 +172,9 @@ class AircraftMenu:
         )        
         if icao_hex.is_cancelled:
             return None
-
-        manufacturer = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the manufacturer: ",
-            allow_blank=False
-        )        
-        if manufacturer.is_cancelled:
-            return None
-
-        model = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the model: ",
-            allow_blank=False
-        )        
-        if model.is_cancelled:
-            return None
-
-        icao_type = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the ICAO type: ",
-            allow_blank=True
-        )        
-        if icao_type.is_cancelled:
-            return None
         print()
 
-        status = UserPrompt(
+        aircraft_status = UserPrompt(
             session=self.__session,
             prompt_type="choice",
             prompt="Select an aircraft status:\n",
@@ -201,23 +185,32 @@ class AircraftMenu:
             ],
             key_bindings=self.__bindings
         )
-        if status.is_cancelled:
+        if aircraft_status.is_cancelled:
             return None
         print()
 
         return Aircraft(
+            aircraft_type_id=int(aircraft_type_id.value),
             registration=registration.value,
-            manufacturer_serial_no=int(manufacturer_serial_no.value)
-            if manufacturer_serial_no.value is not None else None,
+            manufacturer_serial_no=int(manufacturer_serial_no.value) if manufacturer_serial_no.value is not None else None,
             icao_hex=icao_hex.value,
-            manufacturer=manufacturer.value,
-            model=model.value,
-            icao_type=icao_type.value,
-            status=status.value
+            aircraft_status=aircraft_status.value
         )
 
     def __prompt_update_aircraft(self, aircraft: Aircraft) -> Aircraft | None:
-        
+
+        aircraft_type_id = UserPrompt(
+            session=self.__session,
+            prompt_type="choice",
+            prompt="Select an aircraft type:\n",
+            options=self.__aircraft_service.get_aircraft_type_choices(),
+            key_bindings=self.__bindings,
+            default_value=aircraft.aircraft_type_id
+        )
+        if aircraft_type_id.is_cancelled:
+            return None
+        print()
+
         registration = UserPrompt(
             session=self.__session,
             prompt_type="text",
@@ -248,38 +241,7 @@ class AircraftMenu:
         if icao_hex.is_cancelled:
             return None
 
-        manufacturer = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the manufacturer: ",
-            allow_blank=False,
-            default_value=aircraft.manufacturer
-        )        
-        if manufacturer.is_cancelled:
-            return None
-
-        model = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the model: ",
-            allow_blank=False,
-            default_value=aircraft.model
-        )        
-        if model.is_cancelled:
-            return None
-
-        icao_type = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the ICAO type: ",
-            allow_blank=True,
-            default_value=aircraft.icao_type
-        )        
-        if icao_type.is_cancelled:
-            return None
-        print()
-
-        status = UserPrompt(
+        aircraft_status = UserPrompt(
             session=self.__session,
             prompt_type="choice",
             prompt="Select an aircraft status:\n",
@@ -288,32 +250,30 @@ class AircraftMenu:
                 ("Inactive", ("Inactive")),
                 ("Retired", ("Retired"))
             ],
-            default_value=aircraft.status,
+            default_value=aircraft.aircraft_status,
             key_bindings=self.__bindings
         )
-        if status.is_cancelled:
+        if aircraft_status.is_cancelled:
             return None
         print()
 
         return Aircraft(
-            id=aircraft.id,
+            aircraft_id=aircraft.aircraft_id,
+            aircraft_type_id=int(aircraft_type_id.value),
             registration=registration.value,
-            manufacturer_serial_no=int(manufacturer_serial_no.value)
-            if manufacturer_serial_no.value is not None else None,
+            manufacturer_serial_no=int(manufacturer_serial_no.value) if manufacturer_serial_no.value is not None else None,
             icao_hex=icao_hex.value,
-            manufacturer=manufacturer.value,
-            model=model.value,
-            icao_type=icao_type.value,
-            status=status.value
+            aircraft_status=aircraft_status.value
         )
     
     def __prompt_delete_aircraft(self) -> Aircraft | None:
 
         # Prompt for the aircraft to delete
         aircraft = self.__get_aircraft_from_selection()
-        if aircraft is None or aircraft.id is None:
+        if aircraft is None or aircraft.aircraft_id is None:
             return None
-        
+        print()
+
         # Prompt for confirmation and delete if confirmed
         confirm = UserPrompt(
             session=self.__session,
