@@ -139,7 +139,7 @@ class Location:
         if self.geographic_region is not None:
             object.__setattr__(self, "geographic_region", self.geographic_region.title())
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         data = {
             "location_type": self.location_type, 
             "icao_location_code": self.icao_location_code,
@@ -169,7 +169,7 @@ class Terminal:
     def __str__(self):
         return f"{self.terminal_name}"
 
-    def to_dict(self):
+    def to_dict(self) -> dict:
         data = {
             "location_id": self.location_id,
             "terminal_name": self.terminal_name
@@ -192,7 +192,7 @@ class Gate:
     def __str__(self):
         return f"{self.gate_number}"
     
-    def to_dict(self):
+    def to_dict(self) -> dict:
         data = {
             "terminal_id": self.terminal_id,
             "gate_number": self.gate_number

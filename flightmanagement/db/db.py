@@ -54,7 +54,7 @@ def initialise_schema(conn):
         CREATE TABLE IF NOT EXISTS aircraft (
             aircraft_id INTEGER PRIMARY KEY AUTOINCREMENT,
             aircraft_type_id INTEGER NOT NULL REFERENCES aircraft_types(aircraft_type_id) ON DELETE RESTRICT,
-            registration TEXT UNIQUE,
+            registration TEXT NOT NULL UNIQUE,
             manufacturer_serial_no INTEGER UNIQUE,
             icao_hex TEXT UNIQUE,
             aircraft_status TEXT CHECK(aircraft_status IN ('Active', 'Inactive', 'Decommissioned'))
