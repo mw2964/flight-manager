@@ -2,7 +2,7 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
 from flightmanagement.ui.pilot_menu import PilotMenu
-from flightmanagement.ui.airport_menu import AirportMenu
+from flightmanagement.ui.location_menu import LocationMenu
 from flightmanagement.ui.aircraft_menu import AircraftMenu
 from flightmanagement.ui.flight_menu import FlightMenu
 from flightmanagement.ui.report_menu import ReportMenu
@@ -15,7 +15,7 @@ class MainMenu:
     __MENU_OPTIONS = [
         ("flights", "Flights"),
         ("pilots", "Pilots"),
-        ("airports", "Airports"),
+        ("locations", "Locations"),
         ("aircraft", "Aircraft"),
         ("reports", "Reports"),
         ("admin", "Admin"),
@@ -40,8 +40,8 @@ class MainMenu:
                 FlightMenu(self.__session, self.__bindings, self.conn).load()
             elif __choose_menu == "pilots":
                 PilotMenu(self.__session, self.__bindings, self.conn).load()
-            elif __choose_menu == "airports":
-                AirportMenu(self.__session, self.__bindings, self.conn).load()
+            elif __choose_menu == "locations":
+                LocationMenu(self.__session, self.__bindings, self.conn).load()
             elif __choose_menu == "aircraft":
                 AircraftMenu(self.__session, self.__bindings, self.conn).load()
             elif __choose_menu == "reports":

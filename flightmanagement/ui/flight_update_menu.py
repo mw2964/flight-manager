@@ -6,7 +6,7 @@ from flightmanagement.ui.ui_utils import format_title
 from flightmanagement.ui.user_prompt import UserPrompt
 from flightmanagement.services.flight_service import FlightService
 from flightmanagement.services.aircraft_service import AircraftService
-from flightmanagement.services.airport_service import AirportService
+from flightmanagement.services.location_service import LocationService
 from flightmanagement.services.pilot_service import PilotService
 from flightmanagement.models.flight import Flight
 
@@ -24,10 +24,10 @@ class FlightUpdateMenu:
         ("back", "Back to flights menu")
     ]
 
-    def __init__(self, session: PromptSession, bindings: KeyBindings, flight_id: int, conn=None, flight_service=None, aircraft_service=None, airport_service=None, pilot_service=None):
+    def __init__(self, session: PromptSession, bindings: KeyBindings, flight_id: int, conn=None, flight_service=None, aircraft_service=None, location_service=None, pilot_service=None):
         self.__flight_service = flight_service or FlightService(conn)
         self.__aircraft_service = aircraft_service or AircraftService(conn)
-        self.__airport_service = airport_service or AirportService(conn)
+        self.__location_service = location_service or LocationService(conn)
         self.__pilot_service = pilot_service or PilotService(conn)
         self.__session = session
         self.__bindings = bindings
@@ -531,8 +531,8 @@ class FlightUpdateMenu:
         origin_id = UserPrompt(
             session=self.__session,
             prompt_type="choice",
-            prompt="Select the origin airport:\n",
-            options=self.__airport_service.get_airport_choices(),
+            prompt="Select the origin location:\n",
+            options=self.__location_service.get_location_choices(),
             default_value=flight.origin_id,
             key_bindings=self.__bindings
         )
@@ -543,8 +543,8 @@ class FlightUpdateMenu:
         destination_id = UserPrompt(
             session=self.__session,
             prompt_type="choice",
-            prompt="Select the destination airport:\n",
-            options=self.__airport_service.get_airport_choices(),
+            prompt="Select the destination location:\n",
+            options=self.__location_service.get_location_choices(),
             default_value=flight.destination_id,
             key_bindings=self.__bindings
         )

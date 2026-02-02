@@ -1,7 +1,7 @@
 from datetime import datetime
 from prettytable import PrettyTable, TableStyle, ALL, NONE
 from flightmanagement.repositories.aircraft_repository import AircraftRepository
-from flightmanagement.repositories.airport_repository import AirportRepository
+from flightmanagement.repositories.location_repository import LocationRepository
 from flightmanagement.repositories.flight_repository import FlightRepository
 from flightmanagement.repositories.pilot_repository import PilotRepository
 from flightmanagement.models.flight import Flight
@@ -15,7 +15,7 @@ class FlightService:
             flight_repository or FlightRepository(self.conn)
         )
         self.__aircraft_repository = AircraftRepository(self.conn)
-        self.__airport_repository = AirportRepository(self.conn)
+        self.__location_repository = LocationRepository(self.conn)
         self.__pilot_repository = PilotRepository(self.conn)
 
     def add_flight(self, flight: Flight):
@@ -48,10 +48,10 @@ class FlightService:
         if aircraft:
             return aircraft.id
         
-    def get_airport(self, airport_code: str) -> int | None:
-        airport = self.__airport_repository.get_item_by_code(airport_code)        
-        if airport:
-            return airport.id
+    def get_location(self, location_code: str) -> int | None:
+        location = self.__location_repository.get_item_by_code(location_code)        
+        if location:
+            return location.id
     
     def search_flights(self, field_name: str, value) -> list[Flight]:
         return self.__flight_repository.search_on_field(field_name, value)
@@ -95,8 +95,8 @@ class FlightService:
                 flight.id,
                 flight.flight_number,
                 str(self.__aircraft_repository.get_item_by_id(flight.aircraft_id)).replace(" (", "\n("),
-                str(self.__airport_repository.get_item_by_id(flight.origin_id)).replace(" (", "\n("),
-                str(self.__airport_repository.get_item_by_id(flight.destination_id)).replace(" (", "\n("),
+                str(self.__location_repository.get_item_by_id(flight.origin_id)).replace(" (", "\n("),
+                str(self.__location_repository.get_item_by_id(flight.destination_id)).replace(" (", "\n("),
                 self.__pilot_repository.get_item_by_id(flight.pilot_id) if flight.pilot_id else "",
                 self.__pilot_repository.get_item_by_id(flight.copilot_id) if flight.copilot_id else "",
                 datetime.strftime(flight.departure_time_scheduled, "%Y-%m-%d %H:%M") if flight.departure_time_scheduled else "",
@@ -120,11 +120,11 @@ class FlightService:
         return str(indented_table)
     
     def get_flight_summary(self, flight: Flight) -> str:
-        origin_airport = self.__airport_repository.get_item_by_id(flight.origin_id)        
-        destination_airport = self.__airport_repository.get_item_by_id(flight.destination_id)
+        origin_location = self.__location_repository.get_item_by_id(flight.origin_id)        
+        destination_location = self.__location_repository.get_item_by_id(flight.destination_id)
 
-        origin_code = origin_airport.code if origin_airport is not None else ""
-        destination_code = destination_airport.code if destination_airport is not None else ""
+        origin_code = origin_location.code if origin_location is not None else ""
+        destination_code = destination_location.code if destination_location is not None else ""
 
         if flight.departure_time_scheduled is None:
             departure = ""

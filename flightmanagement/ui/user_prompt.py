@@ -42,6 +42,11 @@ class UserPrompt:
                     self.prompt_integer()
                     if not self.is_valid and not self.is_cancelled:
                         print(indent_string(self.validation_error, self.__MESSAGE_INDENT))
+            case "float":
+                while not self.is_valid and not self.is_cancelled:
+                    self.prompt_float()
+                    if not self.is_valid and not self.is_cancelled:
+                        print(indent_string(self.validation_error, self.__MESSAGE_INDENT))
             case "choice":
                 if len(self.__options) == 0:
                     raise ValueError("Missing choice options")
@@ -146,6 +151,33 @@ class UserPrompt:
         
         try:
             int_value = int(return_value) # type: ignore
+        except ValueError:
+            self.is_valid = False
+            self.validation_error = "Invalid number - please try again."
+            return
+        
+        self.is_valid = True
+        if return_value is not None:
+            self.value = return_value
+
+    def prompt_float(self):
+
+        if self.__default_value:
+            self.__default_value = str(self.__default_value)
+
+        return_value = self.prompt_or_cancel()
+        if self.is_cancelled:            
+            return
+        elif self.is_valid == False:  
+            self.validation_error = "Value cannot be blank - please try again."
+            return
+
+        if return_value == "":
+            self.value = return_value
+            return
+        
+        try:
+            float_value = float(return_value) # type: ignore
         except ValueError:
             self.is_valid = False
             self.validation_error = "Invalid number - please try again."
