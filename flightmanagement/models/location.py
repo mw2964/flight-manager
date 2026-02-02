@@ -153,3 +153,48 @@ class Location:
             "decimal_longitude": self.decimal_longitude
         }
         return data
+
+@dataclass(frozen=True)
+class Terminal:
+    location_id: int
+    terminal_name: str
+        
+    terminal_id: int | None = None
+
+    def __post_init__(self):
+        pass
+        #self.__validate_attributes()
+        #self.__correct_case()
+        
+    def __str__(self):
+        return f"{self.terminal_name}"
+
+    def to_dict(self):
+        data = {
+            "location_id": self.location_id,
+            "terminal_name": self.terminal_name
+        }
+        return data
+
+
+@dataclass(frozen=True)
+class Gate:
+    terminal_id: int
+    gate_number: str
+        
+    gate_id: int | None = None
+
+    def __post_init__(self):
+        pass
+        #self.__validate_attributes()
+        #self.__correct_case()
+        
+    def __str__(self):
+        return f"{self.gate_number}"
+    
+    def to_dict(self):
+        data = {
+            "terminal_id": self.terminal_id,
+            "gate_number": self.gate_number
+        }
+        return data

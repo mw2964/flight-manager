@@ -14,17 +14,17 @@ class LocationService:
 
     def add_location(self, location: Location):
         with transaction(self.conn):
-            self.__location_repository.insert_item(location)        
+            self.__location_repository.insert_location(location)        
 
     def update_location(self, location: Location):
         with transaction(self.conn):
-            self.__location_repository.update_item(location)
+            self.__location_repository.update_location(location)
 
     def delete_location(self, location: Location):
         if location.location_id is None:
             raise ValueError("Location to delete lacks an ID")
         with transaction(self.conn):
-            self.__location_repository.delete_item(location)
+            self.__location_repository.delete_location(location)
 
     def get_location_table(self) -> str:
         locations = self.__location_repository.get_location_list()
@@ -49,7 +49,7 @@ class LocationService:
         return location_choices
 
     def get_location_by_id(self, id: int):
-        return self.__location_repository.get_item_by_id(id)
+        return self.__location_repository.get_location_by_id(id)
     
     def get_results_view(self, locations: list[Location]) -> str:
         if locations is None or len(locations) == 0:
