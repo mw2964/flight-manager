@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date, time
 from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
@@ -106,10 +106,10 @@ class FlightMenu:
 
         # Prompt for the flight to update
         flight = self.__get_flight_from_selection()
-        if flight is None or flight.id is None:
+        if flight is None or flight.flight_id is None:
             return False
 
-        FlightUpdateMenu(self.__session, self.__bindings, flight.id, self.__conn).load()
+        FlightUpdateMenu(self.__session, self.__bindings, flight.flight_id, self.__conn).load()
 
         return True
 
@@ -153,108 +153,113 @@ class FlightMenu:
             return None
         print()
 
-        origin_id = UserPrompt(
+        origin_location_id = UserPrompt(
             session=self.__session,
             prompt_type="choice",
             prompt="Select the origin location:\n",
             options=self.__location_service.get_location_choices(),
             key_bindings=self.__bindings
         )
-        if origin_id.is_cancelled:
+        if origin_location_id.is_cancelled:
             return None
         print()
 
-        destination_id = UserPrompt(
+        destination_location_id = UserPrompt(
             session=self.__session,
             prompt_type="choice",
             prompt="Select the destination location:\n",
             options=self.__location_service.get_location_choices(),
             key_bindings=self.__bindings
         )
-        if destination_id.is_cancelled:
+        if destination_location_id.is_cancelled:
             return None
         print()
 
-        pilot_id = UserPrompt(
+        captain_id = UserPrompt(
             session=self.__session,
             prompt_type="choice",
-            prompt="Select the pilot:\n",
+            prompt="Select the captain:\n",
             options=self.__pilot_service.get_pilot_choices(),
-            key_bindings=self.__bindings
+            key_bindings=self.__bindings,
+            allow_skip=True
         )
-        if pilot_id.is_cancelled:
+        if captain_id.is_cancelled:
             return None
         print()
 
-        copilot_id = UserPrompt(
+        first_officer_id = UserPrompt(
             session=self.__session,
             prompt_type="choice",
-            prompt="Select the copilot:\n",
+            prompt="Select the first officer:\n",
             options=self.__pilot_service.get_pilot_choices(),
-            key_bindings=self.__bindings
+            key_bindings=self.__bindings,
+            allow_skip=True
         )
-        if copilot_id.is_cancelled:
+        if first_officer_id.is_cancelled:
             return None
         print()
 
-        departure_date = UserPrompt(
+        scheduled_departure_date = UserPrompt(
             session=self.__session,
             prompt_type="date",
             prompt="Scheduled departure date (DD/MM/YYYY): ",
             allow_blank=False
         )        
-        if departure_date.is_cancelled:
+        if scheduled_departure_date.is_cancelled:
             return None
 
-        departure_time = UserPrompt(
+        scheduled_departure_time = UserPrompt(
             session=self.__session,
             prompt_type="time",
             prompt="Scheduled departure time (HH:MM): ",
             allow_blank=False
         )        
-        if departure_time.is_cancelled:
+        if scheduled_departure_time.is_cancelled:
             return None
 
-        if departure_date.value == "" or departure_date.value is None:
+        if scheduled_departure_date.value == "" or scheduled_departure_date.value is None:
             arrival_date_default = ""
         else:
-            arrival_date_default = datetime.strftime(datetime.strptime(departure_date.value, "%Y-%m-%d"), "%d/%m/%Y")
+            arrival_date_default = datetime.strptime(scheduled_departure_date.value, "%Y-%m-%d").strftime("%d/%m/%Y")
 
-        arrival_date = UserPrompt(
+        scheduled_arrival_date = UserPrompt(
             session=self.__session,
             prompt_type="date",
             prompt="Scheduled arrival date (DD/MM/YYYY): ",
             allow_blank=False,
             default_value=arrival_date_default
         )        
-        if arrival_date.is_cancelled:
+        if scheduled_arrival_date.is_cancelled:
             return None
 
-        arrival_time = UserPrompt(
+        scheduled_arrival_time = UserPrompt(
             session=self.__session,
             prompt_type="time",
             prompt="Scheduled arrival time (HH:MM): ",
             allow_blank=False
         )        
-        if arrival_time.is_cancelled:
+        if scheduled_arrival_time.is_cancelled:
             return None
         
         return Flight(
             flight_number=flight_number.value,
             aircraft_id=int(aircraft_id.value),
-            origin_id=int(origin_id.value),
-            destination_id=int(destination_id.value),
-            pilot_id=int(pilot_id.value),
-            copilot_id=int(copilot_id.value),
-            departure_time_scheduled=self.combine_date(departure_date.value, departure_time.value),
-            arrival_time_scheduled=self.combine_date(arrival_date.value, arrival_time.value)
+            origin_location_id=int(origin_location_id.value),
+            destination_location_id=int(destination_location_id.value),
+            captain_id=int(captain_id.value),
+            first_officer_id=int(first_officer_id.value),
+            scheduled_departure_date=date.fromisoformat(scheduled_departure_date.value),
+            scheduled_departure_time=time.fromisoformat(scheduled_departure_time.value),
+            scheduled_arrival_date=date.fromisoformat(scheduled_arrival_date.value),
+            scheduled_arrival_time=time.fromisoformat(scheduled_arrival_time.value),
+            flight_status="Scheduled"
         )
 
     def __prompt_delete_flight(self) -> Flight | None:
 
         # Prompt for the flight to delete
         flight = self.__get_flight_from_selection()
-        if flight is None or flight.id is None:
+        if flight is None or flight.flight_id is None:
             return None
         
         # Prompt for confirmation and delete if confirmed
@@ -275,7 +280,7 @@ class FlightMenu:
         flight_id = UserPrompt(
             session=self.__session,
             prompt_type="choice",
-            prompt="Choose a flight to update:\n",
+            prompt="Choose a flight:\n",
             options=self.__flight_service.get_flight_choices(),
             key_bindings=self.__bindings
         )

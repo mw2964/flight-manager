@@ -1,5 +1,5 @@
 from flightmanagement.models.pilot import Pilot
-from datetime import date
+from datetime import date, datetime
 
 class PilotRepository:
 
@@ -20,21 +20,16 @@ class PilotRepository:
         result = cursor.fetchone()        
         return self.dict_to_pilot(result)
 
-    def get_pilot_list(self) -> list[Pilot]:
+    def get_pilot_list(self) -> list:
         cursor = self.conn.execute(
             """
             SELECT *
             FROM vw_staff_pilots
-            ORDER BY first_name, family_name
+            ORDER BY family_name, first_name
             """
         )
         results = cursor.fetchall()
-        
-        result_list = []
-        for row in results:
-            result_list.append(self.dict_to_pilot(row))
-
-        return result_list
+        return results
 
     def insert_pilot(self, pilot: Pilot) -> None:
         cur = self.conn.cursor()
@@ -45,9 +40,10 @@ class PilotRepository:
             VALUES
                 (:employee_number, :first_name, :family_name, :employment_status, :employment_start_date, :employment_end_date)
             """,
-            pilot.to_dict_staff
-        )        
-        new_id = cur.lastrowid()
+            pilot.to_dict_staff()
+        )
+
+        new_staff_id = cur.lastrowid
 
         self.conn.execute(
             """
@@ -56,7 +52,7 @@ class PilotRepository:
             VALUES
                 (:staff_id, :license_number, :license_type, :license_expiration_date)
             """,
-            pilot.to_dict_pilot(new_id)
+            pilot.to_dict_pilot(new_staff_id)
         )
 
     def update_pilot(self, pilot: Pilot) -> None:
@@ -77,15 +73,15 @@ class PilotRepository:
                 pilot.first_name,
                 pilot.family_name,
                 pilot.employment_status,
-                pilot.employment_start_date,
-                pilot.employment_end_date,
+                pilot.employment_start_date.strftime("%Y-%m-%d"),
+                pilot.employment_end_date.strftime("%Y-%m-%d") if pilot.employment_end_date else None,
                 pilot.staff_id
             )
         )
-
+        
         self.conn.execute(
             """
-            UPDATE pilot
+            UPDATE pilots
             SET
                 license_number = ?,
                 license_type = ?,
@@ -95,12 +91,20 @@ class PilotRepository:
             (
                 pilot.license_number,
                 pilot.license_type,
-                pilot.license_expiration_date,
+                pilot.license_expiration_date.strftime("%Y-%m-%d") if pilot.license_expiration_date else None,
                 pilot.staff_id
             )
         )
-    
-    def delete_staff(self, pilot: Pilot) -> None:
+
+    def delete_pilot(self, pilot: Pilot) -> None:
+        self.conn.execute(
+            """
+            DELETE FROM pilots, staff
+            WHERE staff_id = ?
+            """,
+            (pilot.staff_id, )
+        )
+
         self.conn.execute(
             """
             DELETE FROM staff
@@ -108,46 +112,33 @@ class PilotRepository:
             """,
             (pilot.staff_id, )
         )
-
-    def delete_pilot(self, pilot: Pilot) -> None:
-        self.conn.execute(
-            """
-            DELETE FROM pilot
-            WHERE staff_id = ?
-            """,
-            (pilot.staff_id, )
-        )
     
-    def search_on_field(self, field_name: str, value) -> list[Pilot]:
+    def search_on_field(self, field_name: str, value) -> list:
         sql = f"""
             SELECT *
             FROM vw_staff_pilots
             WHERE {field_name} = ?
-            ORDER BY first_name, family_name
+            ORDER BY family_name, first_name
         """
         cursor = self.conn.execute(sql, (value, ))
         results = cursor.fetchall()
-        
-        result_list = []
-        for row in results:
-            result_list.append(self.dict_to_pilot(row))
-
-        return result_list
+        return results
     
     def dict_to_pilot(self, data: dict | None) -> Pilot | None:
         if data is None or len(data) == 0:
             return None
 
         return Pilot(
+            staff_id = data["staff_id"],
             employee_number = data["employee_number"],
             first_name = data["first_name"],
             family_name = data["family_name"],
-            employment_start_date = data["employment_start_date"],
+            employment_start_date = date.fromisoformat(data["employment_start_date"]),
             employment_status = data["employment_status"],
-            employment_end_date = data["employment_end_date"],
+            employment_end_date = date.fromisoformat(data["employment_end_date"]) if data["employment_end_date"] is not None else None,
             license_number = data["license_number"],
             license_type = data["license_type"],
-            license_expiration_date = data["license_expiration_date"]
+            license_expiration_date = date.fromisoformat(data["license_expiration_date"]) if data["license_expiration_date"] is not None else None
         )
     
     # Leave booking functionality

@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from datetime import date
+from datetime import datetime, date
 import re
 
 @dataclass(frozen=True)
@@ -37,8 +37,8 @@ class Pilot:
             "first_name": self.first_name, 
             "family_name": self.family_name,
             "employment_status": self.employment_status,
-            "employment_start_date": self.employment_start_date,
-            "employment_end_date": self.employment_end_date
+            "employment_start_date": self.employment_start_date.strftime("%Y-%m-%d"),
+            "employment_end_date": self.employment_end_date.strftime("%Y-%m-%d") if self.employment_end_date else None
         }
         return data
 
@@ -47,6 +47,6 @@ class Pilot:
             "staff_id": staff_id,
             "license_number": self.license_number,
             "license_type": self.license_type,
-            "license_expiration_date": self.license_expiration_date
+            "license_expiration_date": self.license_expiration_date.strftime("%Y-%m-%d") if self.license_expiration_date else None
         }
         return data

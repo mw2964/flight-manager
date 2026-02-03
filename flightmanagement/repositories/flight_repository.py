@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date, time
 from flightmanagement.models.flight import Flight
 from flightmanagement.models.pilot import Pilot
 
@@ -118,7 +118,7 @@ class FlightRepository:
                 confirmed_departure_time = ?,
                 confirmed_arrival_date = ?,
                 confirmed_arrival_time = ?,
-                flight_status
+                flight_status = ?
             WHERE flight_id = ?
             """,
             (                
@@ -135,9 +135,9 @@ class FlightRepository:
                 flight.scheduled_arrival_date.strftime("%Y-%m-%d") if flight.scheduled_arrival_date else None,
                 flight.scheduled_arrival_time.strftime("%H:%M") if flight.scheduled_arrival_time else None,
                 flight.confirmed_departure_date.strftime("%Y-%m-%d") if flight.confirmed_departure_date else None,
-                flight.confirmed_departure_date.strftime("%H:%M") if flight.confirmed_departure_date else None,
+                flight.confirmed_departure_time.strftime("%H:%M") if flight.confirmed_departure_time else None,
                 flight.confirmed_arrival_date.strftime("%Y-%m-%d") if flight.confirmed_arrival_date else None,
-                flight.confirmed_arrival_date.strftime("%H:%M") if flight.confirmed_arrival_date else None,
+                flight.confirmed_arrival_time.strftime("%H:%M") if flight.confirmed_arrival_time else None,
                 flight.flight_status,
                 flight.flight_id
             )
@@ -147,7 +147,7 @@ class FlightRepository:
         self.conn.execute(
             """
             DELETE FROM flights
-            WHERE id = ?
+            WHERE flight_id = ?
             """,
             (flight.flight_id, )
         )
@@ -156,21 +156,21 @@ class FlightRepository:
         cursor = self.conn.execute(
             """
             WITH flight_pilot AS (
-                SELECT id AS flight_id,
-                    pilot_id AS pilot_id,
-                    departure_time_scheduled,
-                    arrival_time_scheduled,
-                    departure_time_actual,
-                    arrival_time_actual
-                FROM flight
+                SELECT flight_id,
+                    captain_id AS pilot_id,
+                    datetime(scheduled_departure_date || ' ' || scheduled_departure_time) AS departure_time_scheduled,
+                    datetime(scheduled_arrival_date || ' ' || scheduled_arrival_time) AS arrival_time_scheduled,
+                    datetime(confirmed_departure_date || ' ' || confirmed_departure_time) AS departure_time_actual,
+                    datetime(confirmed_arrival_date || ' ' || confirmed_arrival_time) AS arrival_time_actual
+                FROM flights
                 UNION ALL
-                SELECT  id AS flight_id,
-                    copilot_id,
-                    departure_time_scheduled,
-                    arrival_time_scheduled,
-                    departure_time_actual,
-                    arrival_time_actual
-                FROM flight
+                SELECT flight_id,
+                    first_officer_id as pilot_id,
+                    datetime(scheduled_departure_date || ' ' || scheduled_departure_time) AS departure_time_scheduled,
+                    datetime(scheduled_arrival_date || ' ' || scheduled_arrival_time) AS arrival_time_scheduled,
+                    datetime(confirmed_departure_date || ' ' || confirmed_departure_time) AS departure_time_actual,
+                    datetime(confirmed_arrival_date || ' ' || confirmed_arrival_time) AS arrival_time_actual
+                FROM flights
             ),
             conflicting_flights AS (
                 SELECT DISTINCT pilot_id
@@ -195,9 +195,9 @@ class FlightRepository:
                 GROUP BY pilot_id
             )
             SELECT p.*
-            FROM pilot p
-            LEFT JOIN conflicting_flights c ON c.pilot_id = p.id
-            LEFT JOIN flight_hours h ON h.pilot_id = p.id
+            FROM vw_staff_pilots p
+            LEFT JOIN conflicting_flights c ON c.pilot_id = p.staff_id
+            LEFT JOIN flight_hours h ON h.pilot_id = p.staff_id
             WHERE c.pilot_id IS NULL
             AND IFNULL(h.hours, 0.0)
                 < (100 - ((unixepoch(?)
@@ -236,14 +236,14 @@ class FlightRepository:
             captain_id=data["captain_id"],
             first_officer_id=data["first_officer_id"],
             flight_number=data["flight_number"],
-            scheduled_departure_date=data["scheduled_departure_date"],
-            scheduled_departure_time=data["scheduled_departure_time"],
-            scheduled_arrival_date=data["scheduled_arrival_date"],
-            scheduled_arrival_time=data["scheduled_arrival_time"],
-            confirmed_departure_date=data["confirmed_departure_date"],
-            confirmed_departure_time=data["confirmed_departure_time"],
-            confirmed_arrival_date=data["confirmed_arrival_date"],
-            confirmed_arrival_time=data["confirmed_arrival_time"],
+            scheduled_departure_date=date.fromisoformat(data["scheduled_departure_date"]),
+            scheduled_departure_time=time.fromisoformat(data["scheduled_departure_time"]),
+            scheduled_arrival_date=date.fromisoformat(data["scheduled_arrival_date"]),
+            scheduled_arrival_time=time.fromisoformat(data["scheduled_arrival_time"]),
+            confirmed_departure_date=date.fromisoformat(data["confirmed_departure_date"]) if data["confirmed_departure_date"] else None,
+            confirmed_departure_time=time.fromisoformat(data["confirmed_departure_time"]) if data["confirmed_departure_time"] else None,
+            confirmed_arrival_date=date.fromisoformat(data["confirmed_arrival_date"]) if data["confirmed_arrival_date"] else None,
+            confirmed_arrival_time=time.fromisoformat(data["confirmed_arrival_time"]) if data["confirmed_arrival_time"] else None,
             flight_status=data["flight_status"]
         )
     
@@ -252,6 +252,7 @@ class FlightRepository:
             return None
 
         return Pilot(
+            staff_id = data["staff_id"],
             employee_number = data["employee_number"],
             first_name = data["first_name"],
             family_name = data["family_name"],

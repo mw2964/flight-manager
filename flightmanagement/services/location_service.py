@@ -41,16 +41,35 @@ class LocationService:
         locations = self.__location_repository.get_location_list()
         
         location_choices = []
-
         if locations:
             for location in locations:
                 location_choices.append((location.location_id, str(location)))
 
         return location_choices
 
+    def get_airport_terminal_choices(self, location_id: int) -> list:
+        terminals = self.__location_repository.get_location_terminals(location_id)
+
+        terminal_choices = []
+        if terminals:
+            for terminal in terminals:
+                terminal_choices.append((terminal.terminal_id, terminal.terminal_name))
+        
+        return terminal_choices
+    
+    def get_terminal_gate_choices(self, terminal_id: int) -> list:
+        gates = self.__location_repository.get_terminal_gates(terminal_id)
+
+        gate_choices = []
+        if gates:
+            for gate in gates:
+                gate_choices.append((gate.gate_id, gate.gate_number))
+        
+        return gate_choices
+
     def get_location_by_id(self, id: int):
         return self.__location_repository.get_location_by_id(id)
-    
+
     def get_results_view(self, locations: list[Location]) -> str:
         if locations is None or len(locations) == 0:
             return ""

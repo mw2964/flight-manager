@@ -1,6 +1,7 @@
 from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
+from datetime import datetime
 from flightmanagement.ui.ui_utils import format_title
 from flightmanagement.ui.user_prompt import UserPrompt
 from flightmanagement.services.pilot_service import PilotService
@@ -97,10 +98,10 @@ class PilotMenu:
 
         # Prompt for the pilot to edit
         pilot = self.__get_pilot_from_selection()
-        if pilot is None or pilot.id is None:
+        if pilot is None or pilot.staff_id is None:
             return False
 
-        print(f"\nEditing information (pilot ID {pilot.id})\n")
+        print(f"\nEditing information (pilot ID {pilot.staff_id})\n")
 
         # Prompt the user to edit fields
         update = self.__prompt_update_pilot(pilot)
@@ -151,11 +152,61 @@ class PilotMenu:
         )        
         if family_name.is_cancelled:
             return None
-        print()
+        
+        employee_number = UserPrompt(
+            session=self.__session,
+            prompt_type="text",
+            prompt="Enter the employee number: ",
+            allow_blank=False
+        )        
+        if employee_number.is_cancelled:
+            return None
+        
+        employment_start_date = UserPrompt(
+            session=self.__session,
+            prompt_type="date",
+            prompt="Enter the employment start date (DD/MM/YYYY): ",
+            allow_blank=False
+        )        
+        if employment_start_date.is_cancelled:
+            return None
+
+        license_number = UserPrompt(
+            session=self.__session,
+            prompt_type="text",
+            prompt="Enter the pilot license number: ",
+            allow_blank=True
+        )        
+        if license_number.is_cancelled:
+            return None
+
+        license_type = UserPrompt(
+            session=self.__session,
+            prompt_type="text",
+            prompt="Enter the pilot license type: ",
+            allow_blank=True
+        )        
+        if license_type.is_cancelled:
+            return None
+
+        license_expiration_date = UserPrompt(
+            session=self.__session,
+            prompt_type="date",
+            prompt="Enter the license expiry date (DD/MM/YYYY): ",
+            allow_blank=True
+        )        
+        if license_expiration_date.is_cancelled:
+            return None
 
         return Pilot(
             first_name=first_name.value,
-            family_name=family_name.value
+            family_name=family_name.value,
+            employee_number=employee_number.value,
+            employment_status="Current",
+            employment_start_date=datetime.strptime(employment_start_date.value, "%Y-%m-%d"),
+            license_number=license_number.value,
+            license_type=license_type.value,
+            license_expiration_date=datetime.strptime(license_expiration_date.value, "%Y-%m-%d") if len(license_expiration_date.value) > 0 else None
         )
 
     def __prompt_update_pilot(self, pilot: Pilot) -> Pilot | None:
@@ -181,17 +232,99 @@ class PilotMenu:
             return None
         print()
 
+        employment_status = UserPrompt(
+            session=self.__session,
+            prompt_type="choice",
+            prompt="Select an employment status:\n",
+            options=[
+                ("Current", ("Current")),
+                ("Left", ("Left"))
+            ],
+            key_bindings=self.__bindings,
+            default_value=pilot.employment_status
+        )
+        if employment_status.is_cancelled:
+            return None
+        print()
+
+        employee_number = UserPrompt(
+            session=self.__session,
+            prompt_type="text",
+            prompt="Enter the employee number: ",
+            allow_blank=False,
+            default_value=pilot.employee_number
+        )        
+        if employee_number.is_cancelled:
+            return None
+
+        employment_start_date = UserPrompt(
+            session=self.__session,
+            prompt_type="date",
+            prompt="Enter the employment start date (DD/MM/YYYY): ",
+            allow_blank=False,
+            default_value=pilot.employment_start_date.strftime("%d/%m/%Y")
+        )        
+        if employment_start_date.is_cancelled:
+            return None
+        
+        employment_end_date = UserPrompt(
+            session=self.__session,
+            prompt_type="date",
+            prompt="Enter the employment end date (DD/MM/YYYY): ",
+            allow_blank=True,
+            default_value=pilot.employment_end_date.strftime("%d/%m/%Y") if pilot.employment_end_date else None
+        )        
+        if employment_end_date.is_cancelled:
+            return None
+
+        license_number = UserPrompt(
+            session=self.__session,
+            prompt_type="text",
+            prompt="Enter the pilot license number: ",
+            allow_blank=True,
+            default_value=pilot.license_number
+        )        
+        if license_number.is_cancelled:
+            return None
+
+        license_type = UserPrompt(
+            session=self.__session,
+            prompt_type="text",
+            prompt="Enter the pilot license type: ",
+            allow_blank=True,
+            default_value=pilot.license_type
+        )        
+        if license_type.is_cancelled:
+            return None
+
+        license_expiration_date = UserPrompt(
+            session=self.__session,
+            prompt_type="date",
+            prompt="Enter the license expiry date (DD/MM/YYYY): ",
+            allow_blank=True,
+            default_value=pilot.license_expiration_date.strftime("%d/%m/%Y") if pilot.license_expiration_date else None
+        )        
+        if license_expiration_date.is_cancelled:
+            return None
+
         return Pilot(
-            id=pilot.id,
+            staff_id=pilot.staff_id,
             first_name=first_name.value,
-            family_name=family_name.value
+            family_name=family_name.value,
+            employee_number=employee_number.value,
+            employment_status=employment_status.value,
+            employment_start_date=datetime.strptime(employment_start_date.value, "%Y-%m-%d"),
+            employment_end_date=datetime.strptime(employment_end_date.value, "%Y-%m-%d") if len(employment_end_date.value) > 0 else None,
+            license_number=license_number.value,
+            license_type=license_type.value,
+            license_expiration_date=datetime.strptime(license_expiration_date.value, "%Y-%m-%d") if len(license_expiration_date.value) > 0 else None
         )
 
     def __prompt_delete_pilot(self) -> Pilot | None:
 
         # Prompt for the pilot to delete
         pilot = self.__get_pilot_from_selection()
-        if pilot is None or pilot.id is None:
+        if pilot is None or pilot.staff_id is None:
             return None
         
         # Prompt for confirmation and delete if confirmed

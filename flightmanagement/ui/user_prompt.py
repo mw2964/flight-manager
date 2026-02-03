@@ -1,5 +1,6 @@
 from datetime import datetime
 from prompt_toolkit.shortcuts import choice
+from typing import Sequence
 from flightmanagement.ui.ui_utils import indent_string
 
 class UserPrompt:
@@ -12,7 +13,7 @@ class UserPrompt:
     is_cancelled: bool = False
     validation_error: str = ""
 
-    def __init__(self, session, prompt_type: str, prompt: str, allow_blank: bool = True, options: list[tuple] = [], default_value = None, key_bindings = None):
+    def __init__(self, session, prompt_type: str, prompt: str, allow_blank: bool = True, options: list[tuple] = [], default_value = None, key_bindings = None, allow_skip: bool = False):
         self.__session = session
         self.__prompt_type = prompt_type
         self.__prompt = prompt
@@ -20,6 +21,7 @@ class UserPrompt:
         self.__options = options
         self.__default_value = default_value
         self.__key_bindings = key_bindings
+        self.__allow_skip = allow_skip
 
         match self.__prompt_type:
             case "text":
@@ -57,6 +59,10 @@ class UserPrompt:
                 raise ValueError("Unknown data type")
 
     def prompt_choice(self):
+
+        if self.__allow_skip and self.__options is not None:
+            self.__options.insert(0, (-1, "Skip"))
+            
         selection = choice(
             message=self.__prompt,
             options=self.__options,
@@ -67,7 +73,8 @@ class UserPrompt:
             self.is_cancelled = True
             return
         
-        self.value = selection
+        if selection != -1:
+            self.value = selection
 
     def prompt_string(self):
         

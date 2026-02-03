@@ -11,7 +11,7 @@ class Flight:
     scheduled_departure_time: time
     scheduled_arrival_date: date
     scheduled_arrival_time: time
-    flight_status: str = "Scheduled"
+    flight_status: str
 
     flight_id: int | None = None
     aircraft_id: int | None = None
@@ -85,14 +85,14 @@ class Flight:
             "captain_id": self.captain_id,
             "first_officer_id": self.first_officer_id,
             "flight_number": self.flight_number,
-            "scheduled_departure_date": self.scheduled_departure_date,
-            "scheduled_departure_time": self.scheduled_departure_time,
-            "scheduled_arrival_date": self.scheduled_arrival_date,
-            "scheduled_arrival_time": self.scheduled_arrival_time,
-            "confirmed_departure_date": self.confirmed_departure_date,
-            "confirmed_departure_time": self.confirmed_departure_time,
-            "confirmed_arrival_date": self.confirmed_arrival_date,
-            "confirmed_arrival_time": self.confirmed_arrival_time,
+            "scheduled_departure_date": self.scheduled_departure_date.strftime("%Y-%m-%d"),
+            "scheduled_departure_time": self.scheduled_departure_time.strftime("%H:%M"),
+            "scheduled_arrival_date": self.scheduled_arrival_date.strftime("%Y-%m-%d"),
+            "scheduled_arrival_time": self.scheduled_arrival_time.strftime("%H:%M"),
+            "confirmed_departure_date": self.confirmed_departure_date.strftime("%Y-%m-%d") if self.confirmed_departure_date else None,
+            "confirmed_departure_time": self.confirmed_departure_time.strftime("%H:%M") if self.confirmed_departure_time else None,
+            "confirmed_arrival_date": self.confirmed_arrival_date.strftime("%Y-%m-%d") if self.confirmed_arrival_date else None,
+            "confirmed_arrival_time": self.confirmed_arrival_time.strftime("%H:%M") if self.confirmed_arrival_time else None,
             "flight_status": self.flight_status
         }
         return data
