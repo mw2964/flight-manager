@@ -1,4 +1,4 @@
-from flightmanagement.db.db import get_connection, initialise_schema, seed_database_data
+from flightmanagement.db.db import initialise_schema, seed_database_data
 from flightmanagement.db.db import transaction
 
 class AdminService:

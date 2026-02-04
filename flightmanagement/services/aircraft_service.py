@@ -5,7 +5,7 @@ from flightmanagement.db.db import transaction
 
 class AircraftService:
 
-    def __init__(self, conn, aircraft_repository=None):
+    def __init__(self, conn, aircraft_repository = None):
         self.conn = conn
         self.__aircraft_repository = (
             aircraft_repository or AircraftRepository(self.conn)
@@ -13,24 +13,24 @@ class AircraftService:
 
     def add_aircraft(self, aircraft: Aircraft):
         with transaction(self.conn):
-            self.__aircraft_repository.insert_item(aircraft)
+            self.__aircraft_repository.insert_aircraft(aircraft)
 
     def update_aircraft(self, aircraft: Aircraft):
         with transaction(self.conn):
-            self.__aircraft_repository.update_item(aircraft)
+            self.__aircraft_repository.update_aircraft(aircraft)
 
     def delete_aircraft(self, aircraft: Aircraft):
-        if aircraft.id is None:
+        if aircraft.aircraft_id is None:
             raise ValueError("Aircraft to delete lacks an ID")
         with transaction(self.conn):
-            self.__aircraft_repository.delete_item(aircraft)
+            self.__aircraft_repository.delete_aircraft(aircraft)
 
     def get_aircraft_table(self) -> str:
         aircraft = self.__aircraft_repository.get_aircraft_list()
         return self.get_results_view(aircraft)
     
-    def search_aircraft(self, field_name: str, value) -> list[Aircraft]:
-        return self.__aircraft_repository.search_on_field(field_name, value)
+    def search_aircraft(self, field_name: str, value) -> list:
+        return self.__aircraft_repository.search_aircraft_on_field(field_name, value)
     
     def get_aircraft_choices(self) -> list:
         aircraft_list = self.__aircraft_repository.get_aircraft_list()
@@ -39,14 +39,25 @@ class AircraftService:
 
         if aircraft_list:
             for aircraft in aircraft_list:
-                aircraft_choices.append((aircraft.id, str(aircraft) + " - " + aircraft.status))
+                aircraft_choices.append((aircraft["aircraft_id"], f"{aircraft['registration']} ({aircraft["manufacturer"]} {aircraft["model"]}) - {aircraft['aircraft_status']}"))
 
         return aircraft_choices
 
+    def get_aircraft_type_choices(self) -> list:
+        aircraft_type_list = self.__aircraft_repository.get_aircraft_type_list()
+        
+        aircraft_type_choices = []
+
+        if aircraft_type_list:
+            for aircraft_type in aircraft_type_list:
+                aircraft_type_choices.append((aircraft_type["aircraft_type_id"], f"{aircraft_type['manufacturer']} {aircraft_type["model"]}"))
+
+        return aircraft_type_choices
+
     def get_aircraft_by_id(self, id: int):
-        return self.__aircraft_repository.get_item_by_id(id)
+        return self.__aircraft_repository.get_aircraft_by_id(id)
     
-    def get_results_view(self, aircraft: list[Aircraft]) -> str:
+    def get_results_view(self, aircraft: list) -> str:
         if aircraft is None or len(aircraft) == 0:
             return ""
         
@@ -65,14 +76,14 @@ class AircraftService:
         # Populate table rows
         for item in aircraft:
             table.add_row([
-                item.id,
-                item.registration,
-                item.manufacturer_serial_no,
-                item.icao_hex,
-                item.manufacturer,
-                item.model,
-                item.icao_type,
-                item.status
+                item["aircraft_id"],
+                item["registration"],
+                item["manufacturer_serial_no"],
+                item["icao_hex"],
+                item["manufacturer"],
+                item["model"],
+                item["icao_type"],
+                item["aircraft_status"]
             ])
               
         # Set table formatting

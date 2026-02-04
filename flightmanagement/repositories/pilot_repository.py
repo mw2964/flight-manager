@@ -1,106 +1,268 @@
 from flightmanagement.models.pilot import Pilot
+from datetime import date, datetime
 
 class PilotRepository:
 
     def __init__(self, conn):
         self.conn = conn
 
-    def get_item_by_id(self, pilot_id: int) -> Pilot | None:        
+    # Core pilot functionality
+
+    def get_pilot_by_id(self, staff_id: int) -> Pilot | None:        
         cursor = self.conn.execute(
             """
-            SELECT * FROM pilot WHERE id = ?
+            SELECT *
+            FROM vw_staff_pilots
+            WHERE staff_id = ?
             """,
-            (pilot_id, )
+            (staff_id, )
         )
-        result = cursor.fetchone()
-        
-        if result is None or len(result) == 0:
-            return None
+        result = cursor.fetchone()        
+        return self.dict_to_pilot(result)
 
-        pilot = Pilot(
-            id=result["id"],
-            first_name=result["first_name"],
-            family_name=result["family_name"]
-        )
-        return pilot
-
-    def get_pilot_list(self) -> list[Pilot]:
+    def get_pilot_list(self) -> list:
         cursor = self.conn.execute(
             """
-            SELECT * FROM pilot ORDER BY first_name, family_name
+            SELECT *
+            FROM vw_staff_pilots
+            ORDER BY family_name, first_name
             """
         )
         results = cursor.fetchall()
-        
-        result_list = []
-        for row in results:
-            result_list.append(
-                Pilot(
-                    id=row["id"],
-                    first_name=row["first_name"],
-                    family_name=row["family_name"]
-                )
-            )
+        return results
 
-        return result_list
-
-    def insert_item(self, pilot: Pilot) -> None:        
-        data = {
-            "first_name": pilot.first_name,
-            "family_name": pilot.family_name
-        }
-        self.conn.execute(
+    def insert_pilot(self, pilot: Pilot) -> None:
+        cur = self.conn.cursor()
+        cur.execute(
             """
-            INSERT INTO pilot
-                (first_name, family_name)
+            INSERT INTO staff
+                (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
             VALUES
-                (:first_name, :family_name)
+                (:employee_number, :first_name, :family_name, :employment_status, :employment_start_date, :employment_end_date)
             """,
-            data
+            pilot.to_dict_staff()
         )
 
-    def update_item(self, pilot: Pilot) -> None:
+        new_staff_id = cur.lastrowid
+
         self.conn.execute(
             """
-            UPDATE pilot
+            INSERT INTO pilots
+                (staff_id, license_number, license_type, license_expiration_date)
+            VALUES
+                (:staff_id, :license_number, :license_type, :license_expiration_date)
+            """,
+            pilot.to_dict_pilot(new_staff_id)
+        )
+
+    def update_pilot(self, pilot: Pilot) -> None:
+        self.conn.execute(
+            """
+            UPDATE staff
             SET
+                employee_number = ?,
                 first_name = ?,
-                family_name = ?
-            WHERE id = ?
+                family_name = ?,
+                employment_status = ?,
+                employment_start_date = ?,
+                employment_end_date = ?
+            WHERE staff_id = ?
             """,
-            (pilot.first_name, pilot.family_name, pilot.id)
+            (
+                pilot.employee_number,
+                pilot.first_name,
+                pilot.family_name,
+                pilot.employment_status,
+                pilot.employment_start_date.strftime("%Y-%m-%d"),
+                pilot.employment_end_date.strftime("%Y-%m-%d") if pilot.employment_end_date else None,
+                pilot.staff_id
+            )
         )
-    
-    def delete_item(self, pilot: Pilot) -> None:
+        
         self.conn.execute(
             """
-            DELETE FROM pilot
-            WHERE id = ?
+            UPDATE pilots
+            SET
+                license_number = ?,
+                license_type = ?,
+                license_expiration_date = ?
+            WHERE staff_id = ?
             """,
-            (pilot.id, )
+            (
+                pilot.license_number,
+                pilot.license_type,
+                pilot.license_expiration_date.strftime("%Y-%m-%d") if pilot.license_expiration_date else None,
+                pilot.staff_id
+            )
+        )
+
+    def delete_pilot(self, pilot: Pilot) -> None:
+        self.conn.execute(
+            """
+            DELETE FROM pilots, staff
+            WHERE staff_id = ?
+            """,
+            (pilot.staff_id, )
+        )
+
+        self.conn.execute(
+            """
+            DELETE FROM staff
+            WHERE staff_id = ?
+            """,
+            (pilot.staff_id, )
         )
     
-    def search_on_field(self, field_name: str, value) -> list[Pilot]:
+    def search_on_field(self, field_name: str, value) -> list:
         sql = f"""
             SELECT *
-            FROM pilot
+            FROM vw_staff_pilots
             WHERE {field_name} = ?
-            ORDER BY first_name, family_name
+            ORDER BY family_name, first_name
         """
         cursor = self.conn.execute(sql, (value, ))
         results = cursor.fetchall()
-        
-        result_list = []
-        for row in results:
-            result_list.append(
-                Pilot(
-                    id=row["id"],
-                    first_name=row["first_name"],
-                    family_name=row["family_name"]
-                )
-            )
+        return results
+    
+    def dict_to_pilot(self, data: dict | None) -> Pilot | None:
+        if data is None or len(data) == 0:
+            return None
 
+        return Pilot(
+            staff_id = data["staff_id"],
+            employee_number = data["employee_number"],
+            first_name = data["first_name"],
+            family_name = data["family_name"],
+            employment_start_date = date.fromisoformat(data["employment_start_date"]),
+            employment_status = data["employment_status"],
+            employment_end_date = date.fromisoformat(data["employment_end_date"]) if data["employment_end_date"] is not None else None,
+            license_number = data["license_number"],
+            license_type = data["license_type"],
+            license_expiration_date = date.fromisoformat(data["license_expiration_date"]) if data["license_expiration_date"] is not None else None
+        )
+    
+    # Leave booking functionality
+
+    def get_leave_bookings_by_staff_id(self, staff_id: int) -> list:
+        cursor = self.conn.execute(
+            """
+            SELECT *
+            FROM leave_bookings
+            WHERE staff_id = ?
+            """,
+            (staff_id, )
+        )
+        result_list = cursor.fetchall()
         return result_list
     
+    def insert_leave_booking(self, staff_id: int, leave_date: date, leave_type: str | None = None):
+        self.conn.execute(
+            """
+            INSERT INTO leave_bookings
+                (staff_id, leave_date, leave_type)
+            VALUES
+                (:staff_id, :leave_date, :leave_type) 
+            """,
+            {
+                "staff_id": staff_id,
+                "leave_date": leave_date,
+                "leave_type": leave_type
+            }
+        )
+
+    def delete_leave_booking(self, staff_id: int, leave_date: date):
+        self.conn.execute(
+            """
+            DELETE FROM leave_bookings
+            WHERE staff_id = ?
+            AND leave_date = ?
+            """,
+            (staff_id, leave_date)
+        )
+
+    def update_leave_booking(self, staff_id: int, leave_date: date, leave_type: str):
+        self.conn.execute(
+            """
+            UPDATE leave_bookings
+            SET leave_type = ?
+            WHERE staff_id = ?
+            AND leave_date = ?
+            """,
+            (leave_type, staff_id, leave_date.strftime("%Y-%m-%d"))
+        )
     
+    # Flight hours logging functionality
+
+    def get_flight_logs_by_staff_id(self, staff_id: int) -> list:
+        cursor = self.conn.execute(
+            """
+            SELECT *
+            FROM flight_time_logs
+            WHERE staff_id = ?
+            """,
+            (staff_id, )
+        )
+        result_list = cursor.fetchall()
+        return result_list
     
+    def get_flight_log_record_by_staff_id_and_date(self, staff_id: int, effective_date: date) -> list:
+        cursor = self.conn.execute(
+            """
+            SELECT *
+            FROM flight_time_logs
+            WHERE staff_id = ?
+            AND effective_date = ?
+            """,
+            (staff_id, effective_date.strftime("%Y-%m-%d"))
+        )
+        result = cursor.fetchone()
+        return result
+
+    def get_leave_record_by_staff_id_and_date(self, staff_id: int, leave_date: date) -> list:
+        cursor = self.conn.execute(
+            """
+            SELECT *
+            FROM leave_bookings
+            WHERE staff_id = ?
+            AND leave_date = ?
+            """,
+            (staff_id, leave_date.strftime("%Y-%m-%d"))
+        )
+        result = cursor.fetchone()
+        return result
+
+    def insert_flight_log_record(self, staff_id: int, effective_date: date, flight_hours: float):
+        self.conn.execute(
+            """
+            INSERT INTO flight_time_logs
+                (staff_id, effective_date, flight_hours)
+            VALUES
+                (:staff_id, :effective_date, :flight_hours) 
+            """,
+            {
+                "staff_id": staff_id,
+                "effective_date": effective_date.strftime("%Y-%m-%d"),
+                "flight_hours": flight_hours
+            }
+        )
+
+    def delete_flight_log_record(self, staff_id: int, effective_date: date):
+        self.conn.execute(
+            """
+            DELETE FROM flight_time_logs
+            WHERE staff_id = ?
+            AND effective_date = ?
+            """,
+            (staff_id, effective_date.strftime("%Y-%m-%d"))
+        )
+
+    def update_flight_log_record(self, staff_id: int, effective_date: date, flight_hours: float):
+        self.conn.execute(
+            """
+            UPDATE flight_time_logs
+            SET flight_hours = ?
+            WHERE staff_id = ?
+            AND effective_date = ?
+            """,
+            (flight_hours, staff_id, effective_date.strftime("%Y-%m-%d"))
+        )

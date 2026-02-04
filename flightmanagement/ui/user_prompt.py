@@ -1,5 +1,6 @@
 from datetime import datetime
 from prompt_toolkit.shortcuts import choice
+from typing import Sequence
 from flightmanagement.ui.ui_utils import indent_string
 
 class UserPrompt:
@@ -12,7 +13,7 @@ class UserPrompt:
     is_cancelled: bool = False
     validation_error: str = ""
 
-    def __init__(self, session, prompt_type: str, prompt: str, allow_blank: bool = True, options: list[tuple] = [], default_value = None, key_bindings = None):
+    def __init__(self, session, prompt_type: str, prompt: str, allow_blank: bool = True, options: list[tuple] = [], default_value = None, key_bindings = None, include_none: bool = False):
         self.__session = session
         self.__prompt_type = prompt_type
         self.__prompt = prompt
@@ -20,6 +21,7 @@ class UserPrompt:
         self.__options = options
         self.__default_value = default_value
         self.__key_bindings = key_bindings
+        self.__include_none = include_none
 
         match self.__prompt_type:
             case "text":
@@ -42,6 +44,11 @@ class UserPrompt:
                     self.prompt_integer()
                     if not self.is_valid and not self.is_cancelled:
                         print(indent_string(self.validation_error, self.__MESSAGE_INDENT))
+            case "float":
+                while not self.is_valid and not self.is_cancelled:
+                    self.prompt_float()
+                    if not self.is_valid and not self.is_cancelled:
+                        print(indent_string(self.validation_error, self.__MESSAGE_INDENT))
             case "choice":
                 if len(self.__options) == 0:
                     raise ValueError("Missing choice options")
@@ -52,17 +59,22 @@ class UserPrompt:
                 raise ValueError("Unknown data type")
 
     def prompt_choice(self):
+
+        if self.__include_none and self.__options is not None:
+            self.__options.insert(0, (-1, "None"))
+            
         selection = choice(
-            message=self.__prompt,
-            options=self.__options,
-            key_bindings=self.__key_bindings,
-            default=self.__default_value
+            message = self.__prompt,
+            options = self.__options,
+            key_bindings = self.__key_bindings,
+            default = self.__default_value
         )
         if selection == "__CANCEL__":
             self.is_cancelled = True
             return
         
-        self.value = selection
+        if selection != -1:
+            self.value = selection
 
     def prompt_string(self):
         
@@ -155,18 +167,45 @@ class UserPrompt:
         if return_value is not None:
             self.value = return_value
 
+    def prompt_float(self):
+
+        if self.__default_value:
+            self.__default_value = str(self.__default_value)
+
+        return_value = self.prompt_or_cancel()
+        if self.is_cancelled:            
+            return
+        elif self.is_valid == False:  
+            self.validation_error = "Value cannot be blank - please try again."
+            return
+
+        if return_value == "":
+            self.value = return_value
+            return
+        
+        try:
+            float_value = float(return_value) # type: ignore
+        except ValueError:
+            self.is_valid = False
+            self.validation_error = "Invalid number - please try again."
+            return
+        
+        self.is_valid = True
+        if return_value is not None:
+            self.value = return_value
+
     def prompt_or_cancel(self):
     
         indented_message = indent_string(self.__prompt, self.__PROMPT_INDENT)
 
         if self.__default_value:
             result = self.__session.prompt(
-                message=indented_message,
-                default=self.__default_value
+                message = indented_message,
+                default = self.__default_value
             )
         else:
             result = self.__session.prompt(
-                message=indented_message
+                message = indented_message
             )
 
         if result == "__CANCEL__":

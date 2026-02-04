@@ -6,12 +6,12 @@ def prompt_or_cancel(session, message: str, cancel_message: str, default_value =
 
     if default_value:
         result = session.prompt(
-            message=indented_message,
-            default=default_value
+            message = indented_message,
+            default = default_value
         )
     else:
         result = session.prompt(
-            message=indented_message
+            message = indented_message
         )
 
     if result == "__CANCEL__":
@@ -19,7 +19,7 @@ def prompt_or_cancel(session, message: str, cancel_message: str, default_value =
 
     return result
 
-def prompt_date(session, prompt: str, allow_blank: bool, default=None):
+def prompt_date(session, prompt: str, allow_blank: bool, default = None):
 
     if default:
         value = prompt_or_cancel(session, prompt, "Update cancelled", default)
@@ -41,7 +41,7 @@ def prompt_date(session, prompt: str, allow_blank: bool, default=None):
     
     return datetime.strftime(date, "%Y-%m-%d")
 
-def prompt_time(session, prompt: str, allow_blank: bool, default=None):
+def prompt_time(session, prompt: str, allow_blank: bool, default = None):
 
     if default:
         value = prompt_or_cancel(session, prompt, "Update cancelled", default)
