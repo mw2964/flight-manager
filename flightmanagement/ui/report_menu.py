@@ -6,7 +6,7 @@ from flightmanagement.ui.ui_utils import format_title
 
 class ReportMenu:
 
-    __MENU_NAME = "Reports menu"
+    __MENU_NAME = "Main -> Reports"
     __MENU_OPTIONS = [
         ("pilot_stats", "Pilot statistics"),
         ("back", "Back to main menu")

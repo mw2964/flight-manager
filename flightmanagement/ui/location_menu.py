@@ -8,13 +8,13 @@ from flightmanagement.models.location import Location
 
 class LocationMenu:
 
-    __MENU_NAME = "Locations menu"
+    __MENU_NAME = "Main -> Manage Destinations"
     __MENU_OPTIONS = [
-        ("show", "Show all locations"),
-        ("search", "Search locations"),
-        ("add", "Add a location"),
-        ("update", "Update a location"),
-        ("delete", "Remove a location"),
+        ("show", "Show all destinations"),
+        ("search", "Search destinations"),
+        ("add", "Add a destination"),
+        ("update", "Update a destination"),
+        ("delete", "Remove a destination"),
         ("back", "Back to main menu")
     ]
 

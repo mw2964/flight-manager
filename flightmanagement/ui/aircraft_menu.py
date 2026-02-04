@@ -8,7 +8,7 @@ from flightmanagement.models.aircraft import Aircraft
 
 class AircraftMenu:
 
-    __MENU_NAME = "Aircraft menu"
+    __MENU_NAME = "Main -> Manage Aircraft"
     __MENU_OPTIONS = [
         ("show", "Show all aircraft"),
         ("search", "Search aircraft"),

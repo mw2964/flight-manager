@@ -13,7 +13,7 @@ from flightmanagement.ui.flight_update_menu import FlightUpdateMenu
 
 class FlightMenu:
 
-    __MENU_NAME = "Flights menu"
+    __MENU_NAME = "Main -> Manage Flights"
     __MENU_OPTIONS = [
         ("show", "Show all flights"),
         ("search", "Search flights"),

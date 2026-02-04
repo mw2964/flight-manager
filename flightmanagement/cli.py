@@ -1,8 +1,9 @@
 from pathlib import Path
+import os
 from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from flightmanagement.ui.main_menu import MainMenu
-from flightmanagement.db.db import get_connection
+from flightmanagement.db.db import get_connection, initialise_schema, seed_database_data
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DB_PATH = PROJECT_ROOT / "data" / "FlightManagement.db"
@@ -21,9 +22,19 @@ def main():
 
         # Print the welcome screen
         print_welcome()
-    
-        # Initialise the database connection
+
+        # Check if the database file already exists in the relevant location
+        db_exists = os.path.exists(DB_PATH)
+
+        # Initialise the database connection (and create the database file if it doesn't exist)
         conn = get_connection(DB_PATH)
+
+        # If the database has just been created, initialise and populate the schema
+        if not db_exists:
+            print("Initialising database for first use.....")
+            initialise_schema(conn)
+            seed_database_data(conn)
+            print("Done!")
 
         # Load the main menu
         MainMenu(session, bindings, conn).load()
@@ -33,16 +44,21 @@ def main():
 
 def print_welcome():
     print(r"""
-    ______ _ _       _     _       ____  _       _     
-   |  ____| (_)     | |   | |     / ___|| |     | |    
-   | |__  | |_  __ _| |__ | |_   | |    | |_   _| |__  
-   |  __| | | |/ _` | '_ \| __|  | |    | | | | | '_ \ 
-   | |    | | | (_| | | | | |_   | |___ | | |_| | |_) |
-   |_|    |_|_|\__, |_| |_|\__|   \____||_|\__,_|_.__/ 
-                __/ |     ✈️                   v0.1.0
-               |___/                                          
-   
-   The first rule is...
+    Welcome... to
+    _____  _  _         _      _  
+   |  ___|| ||_|       | |    | |    
+   | |__  | | _  _____ | |___ | |_ 
+   |  __| | || ||  _  ||  _  ||  _| 
+   | |    | || || |_| || | | || |_ 
+   |_|    |_||_||___  ||_| |_||___|
+        ____  _   __| |  _          
+       |  __|| | |____| | |  v0.1.0
+       | |   | | _    _ | |___ 
+       | |   | || |  | ||  _  |
+       | |__ | || |__| || |_| |
+       |____||_||______||_____|
+
+   The first rule is...    (sssshhhhhh)
           """)
 
 if __name__ == "__main__":

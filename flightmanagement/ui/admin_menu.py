@@ -3,12 +3,13 @@ from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
 from flightmanagement.services.admin_service import AdminService
 from flightmanagement.ui.ui_utils import format_title
+from flightmanagement.ui.user_prompt import UserPrompt
 
 class AdminMenu:
 
-    __MENU_NAME = "Admin menu"
+    __MENU_NAME = "Main -> Admin"
     __MENU_OPTIONS = [
-        ("init_db", "Initialise database"),
+        ("init_db", "Reinitialise database"),
         ("back", "Back to main menu")
     ]
 
@@ -26,8 +27,23 @@ class AdminMenu:
             )
 
             if __choose_menu == "init_db":
-
-                self.__admin_service.initialise_database()
+                confirm = UserPrompt(
+                    session = self.__session,
+                    prompt_type = "choice",
+                    prompt = "\nWARNING - This will reset all data to the example data. Do you wish to continue? \n",
+                    options = [
+                        ("no", "No"),
+                        ("yes", "Yes")
+                    ],
+                    key_bindings = self.__bindings
+                )
+                if confirm.is_cancelled:
+                    continue
+                if confirm.value == "yes":
+                    self.__admin_service.initialise_database()
+                    print("\nDatabase reinitialised successfully.")
+                else:
+                    print("\nAction cancelled.")
                 
             elif __choose_menu == "back":
                 break

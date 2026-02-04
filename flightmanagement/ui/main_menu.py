@@ -11,12 +11,12 @@ from flightmanagement.ui.ui_utils import format_title
 
 class MainMenu:
 
-    __MENU_NAME = "Main menu"
+    __MENU_NAME = "Main Menu"
     __MENU_OPTIONS = [
-        ("flights", "Flights"),
-        ("pilots", "Pilots"),
-        ("locations", "Locations"),
-        ("aircraft", "Aircraft"),
+        ("flights", "Manage flights"),
+        ("pilots", "Manage pilots"),
+        ("locations", "Manage destinations"),
+        ("aircraft", "Manage aircraft"),
         ("reports", "Reports"),
         ("admin", "Admin"),
         ("exit", "Exit")

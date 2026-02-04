@@ -12,11 +12,11 @@ from flightmanagement.models.flight import Flight
 
 class FlightUpdateMenu:
 
-    __MENU_NAME = "What would you like to do?"
+    __MENU_NAME = "Main -> Manage Flights -> Update flight"
     __MENU_OPTIONS = [
-        ("assign_pilot", "Assign pilot and/or copilot"),
+        ("assign_pilot", "Assign captain and/or first officer"),
         ("manage_relief_pilots", "Manage relief pilots"),
-        ("update_aircraft", "Change aircraft"),
+        ("update_aircraft", "Assign or change aircraft"),
         ("update_status", "Update flight status"),
         ("update_scheduled_times", "Update scheduled times"),
         ("log_departure", "Log departure"),
@@ -36,13 +36,16 @@ class FlightUpdateMenu:
 
     def load(self):
         
-        print(f"\nUpdating flight ID {self.__flight_id}:\n")
+        print(f"\nSelected flight:\n")
         self.__show_flight_summary()
         
         while True:            
 
-            __choose_menu = choice(message = format_title(self.__MENU_NAME, False), options = self.__MENU_OPTIONS)
+            flight = self.__flight_service.get_flight_by_id(self.__flight_id)            
+            flight_number = flight.flight_number if flight else ""
 
+            __choose_menu = choice(message = format_title(self.__MENU_NAME + f" {flight_number} (ID: {self.__flight_id})"), options = self.__MENU_OPTIONS)
+            
             if __choose_menu == "assign_pilot":
                 if not self.__assign_pilot_option():
                     print("\nUpdate cancelled.\n")

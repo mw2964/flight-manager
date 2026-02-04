@@ -9,7 +9,7 @@ from flightmanagement.models.pilot import Pilot
 
 class PilotMenu:
 
-    __MENU_NAME = "Pilot menu"
+    __MENU_NAME = "Main -> Manage Pilots"
     __MENU_OPTIONS = [
         ("show", "Show all pilots"),
         ("search", "Search pilots"),
