@@ -175,30 +175,6 @@ class FlightMenu:
             return None
         print()
 
-        captain_id = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Select the captain:\n",
-            options=self.__pilot_service.get_pilot_choices(),
-            key_bindings=self.__bindings,
-            allow_skip=True
-        )
-        if captain_id.is_cancelled:
-            return None
-        print()
-
-        first_officer_id = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Select the first officer:\n",
-            options=self.__pilot_service.get_pilot_choices(),
-            key_bindings=self.__bindings,
-            allow_skip=True
-        )
-        if first_officer_id.is_cancelled:
-            return None
-        print()
-
         scheduled_departure_date = UserPrompt(
             session=self.__session,
             prompt_type="date",
@@ -240,7 +216,38 @@ class FlightMenu:
         )        
         if scheduled_arrival_time.is_cancelled:
             return None
-        
+
+        captain_id = UserPrompt(
+            session=self.__session,
+            prompt_type="choice",
+            prompt="Select the captain:\n",
+            options=self.__flight_service.get_available_pilot_choices(
+                departure_time = datetime.combine(date.fromisoformat(scheduled_departure_date.value), time.fromisoformat(scheduled_departure_time.value)),
+                arrival_time = datetime.combine(date.fromisoformat(scheduled_arrival_date.value), time.fromisoformat(scheduled_arrival_time.value))
+            ),
+            key_bindings=self.__bindings,
+            include_none=True
+        )
+        if captain_id.is_cancelled:
+            return None
+        print()
+
+        first_officer_id = UserPrompt(
+            session=self.__session,
+            prompt_type="choice",
+            prompt="Select the first officer:\n",
+            options=self.__flight_service.get_available_pilot_choices(
+                departure_time = datetime.combine(date.fromisoformat(scheduled_departure_date.value), time.fromisoformat(scheduled_departure_time.value)),
+                arrival_time = datetime.combine(date.fromisoformat(scheduled_arrival_date.value), time.fromisoformat(scheduled_arrival_time.value)),
+                unavailable_pilots = [captain_id.value] if captain_id.value != "" else []
+            ),
+            key_bindings=self.__bindings,
+            include_none=True
+        )
+        if first_officer_id.is_cancelled:
+            return None
+        print()
+
         return Flight(
             flight_number=flight_number.value,
             aircraft_id=int(aircraft_id.value),

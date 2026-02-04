@@ -96,7 +96,7 @@ class FlightRepository:
             """,
             flight.to_dict()
         )
-    
+
     def update_flight(self, flight: Flight):
         self.conn.execute(
             """
@@ -143,7 +143,24 @@ class FlightRepository:
             )
         )
 
-    def delete_item(self, flight: Flight):
+    def get_relief_pilots_by_flight_id(self, flight_id: int) -> list[int]:
+        cursor = self.conn.execute(
+            """
+            SELECT staff_id
+            FROM flight_relief_pilots
+            WHERE flight_id = ?
+            """,
+            (flight_id, )
+        )
+        results = cursor.fetchall()
+
+        result_list = []
+        for row in results:
+            result_list.append(row["staff_id"])
+
+        return result_list
+
+    def delete_flight(self, flight: Flight):
         self.conn.execute(
             """
             DELETE FROM flights
@@ -152,6 +169,34 @@ class FlightRepository:
             (flight.flight_id, )
         )
     
+    def insert_relief_pilot(self, flight: Flight, staff_id: int):
+        self.conn.execute(
+            """
+            INSERT INTO flight_relief_pilots (
+                flight_id,
+                staff_id
+            )
+            VALUES (
+                :flight_id,
+                :staff_id
+            )
+            """,
+            {
+                "flight_id": flight.flight_id,
+                "staff_id": staff_id
+            }
+        )
+
+    def delete_relief_pilot(self, flight: Flight, staff_id: int):
+        self.conn.execute(
+            """
+            DELETE FROM flight_relief_pilots
+            WHERE flight_id = ?
+            AND staff_id = ?
+            """,
+            (flight.flight_id, staff_id)
+        )
+
     def get_available_pilots(self, departure_time: datetime, arrival_time: datetime, flight_id: int) -> list[Pilot] | None:
         cursor = self.conn.execute(
             """
@@ -199,9 +244,7 @@ class FlightRepository:
             LEFT JOIN conflicting_flights c ON c.pilot_id = p.staff_id
             LEFT JOIN flight_hours h ON h.pilot_id = p.staff_id
             WHERE c.pilot_id IS NULL
-            AND IFNULL(h.hours, 0.0)
-                < (100 - ((unixepoch(?)
-                        - unixepoch(?)) / 3600.0))
+            AND IFNULL(h.hours, 0.0) < (100 - ((unixepoch(?) - unixepoch(?)) / 3600.0))
             """,
             (
                 departure_time,

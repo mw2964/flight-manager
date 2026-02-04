@@ -30,7 +30,7 @@ class FlightService:
         if flight.flight_id is None:
             raise ValueError("Flight to delete lacks an ID")
         with transaction(self.conn):
-            self.__flight_repository.delete_item(flight)
+            self.__flight_repository.delete_flight(flight)
 
     def get_flight_table(self) -> str:
         flights = self.__flight_repository.get_flight_list()
@@ -136,14 +136,41 @@ class FlightService:
         with transaction(self.conn):
             self.__flight_repository.update_flight(flight)
 
-    def get_available_pilot_choices(self, departure_time: datetime, arrival_time: datetime, flight_id: int | None = None, pilot_id: int | None = None) -> list:
+    def add_relief_pilot(self, flight: Flight, staff_id: int):
+        with transaction(self.conn):
+            self.__flight_repository.insert_relief_pilot(flight, staff_id)
+
+    def remove_relief_pilot(self, flight: Flight, staff_id: int):
+        with transaction(self.conn):
+            self.__flight_repository.delete_relief_pilot(flight, staff_id)
+
+    def get_flight_relief_pilots(self, flight: Flight) -> list:
+        if flight.flight_id is None:
+            raise ValueError("Missing flight ID")
+        return self.__flight_repository.get_relief_pilots_by_flight_id(flight.flight_id)
+
+    def get_flight_relief_pilot_choices(self, flight: Flight) -> list:
+        id_list = self.get_flight_relief_pilots(flight)
+
+        relief_pilots = []
+        if id_list:
+            for id in id_list:
+                pilot = self.__pilot_repository.get_pilot_by_id(id)
+                relief_pilots.append((id, str(pilot)))
+
+        return relief_pilots
+
+    def get_available_pilot_choices(self, departure_time: datetime, arrival_time: datetime, unavailable_pilots: list = [], flight_id: int | None = None) -> list:
+        
+        # Get list of pilots that are available for the scheduled flight
         pilots = self.__flight_repository.get_available_pilots(departure_time, arrival_time, flight_id if flight_id else -1)
         
         pilot_choices = []
-
         if pilots:
             for pilot in pilots:
-                if pilot.staff_id != pilot_id:
-                    pilot_choices.append((pilot.staff_id, str(pilot)))
+                # Skip pilots already assigned to the flight
+                if pilot.staff_id in unavailable_pilots:
+                    continue
+                pilot_choices.append((pilot.staff_id, str(pilot)))
 
         return pilot_choices
