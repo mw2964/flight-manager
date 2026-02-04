@@ -180,9 +180,16 @@ class PilotRepository:
             (staff_id, leave_date)
         )
 
-    def update_leave_booking(self, staff_id: int, old_leave_date: date, new_leave_date: date, leave_type: str | None = None):
-        self.delete_leave_booking(staff_id, old_leave_date)
-        self.insert_leave_booking(staff_id, new_leave_date, leave_type)
+    def update_leave_booking(self, staff_id: int, leave_date: date, leave_type: str):
+        self.conn.execute(
+            """
+            UPDATE leave_bookings
+            SET leave_type = ?
+            WHERE staff_id = ?
+            AND leave_date = ?
+            """,
+            (leave_type, staff_id, leave_date.strftime("%Y-%m-%d"))
+        )
     
     # Flight hours logging functionality
 
@@ -198,17 +205,43 @@ class PilotRepository:
         result_list = cursor.fetchall()
         return result_list
     
+    def get_flight_log_record_by_staff_id_and_date(self, staff_id: int, effective_date: date) -> list:
+        cursor = self.conn.execute(
+            """
+            SELECT *
+            FROM flight_time_logs
+            WHERE staff_id = ?
+            AND effective_date = ?
+            """,
+            (staff_id, effective_date.strftime("%Y-%m-%d"))
+        )
+        result = cursor.fetchone()
+        return result
+
+    def get_leave_record_by_staff_id_and_date(self, staff_id: int, leave_date: date) -> list:
+        cursor = self.conn.execute(
+            """
+            SELECT *
+            FROM leave_bookings
+            WHERE staff_id = ?
+            AND leave_date = ?
+            """,
+            (staff_id, leave_date.strftime("%Y-%m-%d"))
+        )
+        result = cursor.fetchone()
+        return result
+
     def insert_flight_log_record(self, staff_id: int, effective_date: date, flight_hours: float):
         self.conn.execute(
             """
-            INSERT INTO flight_time_hours
+            INSERT INTO flight_time_logs
                 (staff_id, effective_date, flight_hours)
             VALUES
                 (:staff_id, :effective_date, :flight_hours) 
             """,
             {
                 "staff_id": staff_id,
-                "effective_date": effective_date,
+                "effective_date": effective_date.strftime("%Y-%m-%d"),
                 "flight_hours": flight_hours
             }
         )
@@ -216,20 +249,20 @@ class PilotRepository:
     def delete_flight_log_record(self, staff_id: int, effective_date: date):
         self.conn.execute(
             """
-            DELETE FROM flight_time_hours
+            DELETE FROM flight_time_logs
             WHERE staff_id = ?
             AND effective_date = ?
             """,
-            (staff_id, effective_date)
+            (staff_id, effective_date.strftime("%Y-%m-%d"))
         )
 
     def update_flight_log_record(self, staff_id: int, effective_date: date, flight_hours: float):
         self.conn.execute(
             """
-            UPDATE flight_time_hours
+            UPDATE flight_time_logs
             SET flight_hours = ?
             WHERE staff_id = ?
             AND effective_date = ?
             """,
-            (flight_hours, staff_id, effective_date)
+            (flight_hours, staff_id, effective_date.strftime("%Y-%m-%d"))
         )
