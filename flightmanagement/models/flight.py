@@ -2,7 +2,7 @@ from datetime import datetime, date, time
 from dataclasses import dataclass
 import re
 
-@dataclass(frozen=True)
+@dataclass(frozen = True)
 class Flight:    
     flight_number: str    
     origin_location_id: int

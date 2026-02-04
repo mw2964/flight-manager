@@ -73,7 +73,7 @@ class UserPrompt:
             self.is_cancelled = True
             return
         
-        if selection !=  -1:
+        if selection != -1:
             self.value = selection
 
     def prompt_string(self):

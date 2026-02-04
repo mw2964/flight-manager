@@ -9,7 +9,7 @@ from flightmanagement.db.db import transaction
 
 class FlightService:
 
-    def __init__(self, conn, flight_repository=None):
+    def __init__(self, conn, flight_repository = None):
         self.conn = conn
         self.__flight_repository = (
             flight_repository or FlightRepository(self.conn)

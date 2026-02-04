@@ -6,7 +6,7 @@ from flightmanagement.db.db import transaction
 
 class LocationService:
 
-    def __init__(self, conn, location_repository=None):
+    def __init__(self, conn, location_repository = None):
         self.conn = conn
         self.__location_repository = (
             location_repository or LocationRepository(self.conn)

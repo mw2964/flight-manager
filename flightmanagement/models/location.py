@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import re
 
-@dataclass(frozen=True)
+@dataclass(frozen = True)
 class Location:
     location_type: str
     location_name: str
@@ -154,7 +154,7 @@ class Location:
         }
         return data
 
-@dataclass(frozen=True)
+@dataclass(frozen = True)
 class Terminal:
     location_id: int
     terminal_name: str
@@ -177,7 +177,7 @@ class Terminal:
         return data
 
 
-@dataclass(frozen=True)
+@dataclass(frozen = True)
 class Gate:
     terminal_id: int
     gate_number: str

@@ -138,17 +138,17 @@ class LocationRepository:
             return None
 
         return Location(
-            location_id=data["location_id"],
-            location_type=data["location_type"],
-            icao_location_code=data["icao_location_code"],
-            iata_airport_code=data["iata_airport_code"],
-            location_name=data["location_name"],
-            town_or_city=data["town_or_city"],
-            state_or_county=data["state_or_county"],
-            country=data["country"],
-            geographic_region=data["geographic_region"],
-            decimal_latitude=data["decimal_latitude"],
-            decimal_longitude=data["decimal_longitude"]
+            location_id = data["location_id"],
+            location_type = data["location_type"],
+            icao_location_code = data["icao_location_code"],
+            iata_airport_code = data["iata_airport_code"],
+            location_name = data["location_name"],
+            town_or_city = data["town_or_city"],
+            state_or_county = data["state_or_county"],
+            country = data["country"],
+            geographic_region = data["geographic_region"],
+            decimal_latitude = data["decimal_latitude"],
+            decimal_longitude = data["decimal_longitude"]
         )
     
     # Terminal functionality
@@ -234,9 +234,9 @@ class LocationRepository:
             return None
 
         return Terminal(
-            terminal_id=data["terminal_id"],
-            location_id=data["location_id"],
-            terminal_name=data["terminal_name"]
+            terminal_id = data["terminal_id"],
+            location_id = data["location_id"],
+            terminal_name = data["terminal_name"]
         )
     
 
@@ -305,7 +305,7 @@ class LocationRepository:
             return None
 
         return Gate(
-            gate_id=data["gate_id"],
-            terminal_id=data["terminal_id"],
-            gate_number=data["gate_number"]
+            gate_id = data["gate_id"],
+            terminal_id = data["terminal_id"],
+            gate_number = data["gate_number"]
         )

@@ -18,14 +18,14 @@ class LocationMenu:
         ("back", "Back to main menu")
     ]
 
-    def __init__(self, session: PromptSession, bindings: KeyBindings, conn=None, location_service=None):
+    def __init__(self, session: PromptSession, bindings: KeyBindings, conn = None, location_service = None):
         self.__location_service = location_service or LocationService(conn)
         self.__session = session
         self.__bindings = bindings
 
     def load(self):
         while True:
-            __choose_menu = choice(message=format_title(self.__MENU_NAME), options=self.__MENU_OPTIONS)
+            __choose_menu = choice(message = format_title(self.__MENU_NAME), options = self.__MENU_OPTIONS)
 
             if __choose_menu == "show":
                 self.__show_option()
@@ -58,10 +58,10 @@ class LocationMenu:
         print("\n>> Search for a location (or hit CTRL+C to cancel)\n")
 
         code = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter an airport code: ",
-            allow_blank=True
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter an airport code: ",
+            allow_blank = True
         )        
         if code.is_cancelled:
             return False
@@ -136,15 +136,15 @@ class LocationMenu:
     def __prompt_add_location(self) -> Location | None:
 
         location_type = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Select a location type:\n",
-            options=[
+            session = self.__session,
+            prompt_type = "choice",
+            prompt = "Select a location type:\n",
+            options = [
                 ("Airport", ("Airport")),
                 ("Airfield", ("Airfield"))
             ],
-            default_value="Airport",
-            key_bindings=self.__bindings
+            default_value = "Airport",
+            key_bindings = self.__bindings
         )
         if location_type.is_cancelled:
             return None
@@ -155,10 +155,10 @@ class LocationMenu:
         if location_type.value == "Airport":
             while True:
                 iata_airport_code = UserPrompt(
-                    session=self.__session,
-                    prompt_type="text",
-                    prompt="Enter the 3-character IATA airport code: ",
-                    allow_blank=False
+                    session = self.__session,
+                    prompt_type = "text",
+                    prompt = "Enter the 3-character IATA airport code: ",
+                    allow_blank = False
                 )
                 if iata_airport_code is None or Location.is_valid_iata_airport_code(iata_airport_code.value, location_type.value):
                     break
@@ -169,102 +169,102 @@ class LocationMenu:
         
 
         icao_location_code = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the 4-character ICAO location code: ",
-            allow_blank=location_type.value != "Airfield"
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the 4-character ICAO location code: ",
+            allow_blank = location_type.value != "Airfield"
         )        
         if icao_location_code.is_cancelled:
             return None
 
         location_name = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the airport or airfield name: ",
-            allow_blank=False
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the airport or airfield name: ",
+            allow_blank = False
         )        
         if location_name.is_cancelled:
             return None
 
         town_or_city = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the city: ",            
-            allow_blank=True
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the city: ",            
+            allow_blank = True
         )        
         if town_or_city.is_cancelled:
             return None
 
         state_or_county = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the state, county or province: ",            
-            allow_blank=True
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the state, county or province: ",            
+            allow_blank = True
         )        
         if state_or_county.is_cancelled:
             return None
 
         country = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the country: ",
-            allow_blank=True
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the country: ",
+            allow_blank = True
         )        
         if country.is_cancelled:
             return None
         
         geographic_region = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the geographic region: ",
-            allow_blank=True
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the geographic region: ",
+            allow_blank = True
         )        
         if geographic_region.is_cancelled:
             return None
 
         decimal_latitude = UserPrompt(
-            session=self.__session,
-            prompt_type="float",
-            prompt="Enter the decimal latitude (between -90 and 90): ",
-            allow_blank=True
+            session = self.__session,
+            prompt_type = "float",
+            prompt = "Enter the decimal latitude (between -90 and 90): ",
+            allow_blank = True
         )        
         if decimal_latitude.is_cancelled:
             return None
 
         decimal_longitude = UserPrompt(
-            session=self.__session,
-            prompt_type="float",
-            prompt="Enter the decimal longitude (between -180 and 180): ",
-            allow_blank=True
+            session = self.__session,
+            prompt_type = "float",
+            prompt = "Enter the decimal longitude (between -180 and 180): ",
+            allow_blank = True
         )        
         if decimal_longitude.is_cancelled:
             return None
 
         return Location(
-            location_type=location_type.value,
-            iata_airport_code=iata_airport_code.value if iata_airport_code else None,
-            icao_location_code=icao_location_code.value,
-            location_name=location_name.value,
-            town_or_city=town_or_city.value,
-            state_or_county=state_or_county.value,
-            country=country.value,
-            geographic_region=geographic_region.value,
-            decimal_latitude=float(decimal_latitude.value) if decimal_latitude.value != '' else None,
-            decimal_longitude=float(decimal_longitude.value) if decimal_latitude.value != '' else None
+            location_type = location_type.value,
+            iata_airport_code = iata_airport_code.value if iata_airport_code else None,
+            icao_location_code = icao_location_code.value,
+            location_name = location_name.value,
+            town_or_city = town_or_city.value,
+            state_or_county = state_or_county.value,
+            country = country.value,
+            geographic_region = geographic_region.value,
+            decimal_latitude = float(decimal_latitude.value) if decimal_latitude.value != '' else None,
+            decimal_longitude = float(decimal_longitude.value) if decimal_latitude.value != '' else None
         )
 
     def __prompt_update_location(self, location: Location) -> Location | None:
         
         location_type = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Select a location type:\n",
-            options=[
+            session = self.__session,
+            prompt_type = "choice",
+            prompt = "Select a location type:\n",
+            options = [
                 ("Airport", ("Airport")),
                 ("Airfield", ("Airfield"))
             ],
-            default_value=location.location_type,
-            key_bindings=self.__bindings
+            default_value = location.location_type,
+            key_bindings = self.__bindings
         )
         if location_type.is_cancelled:
             return None
@@ -272,11 +272,11 @@ class LocationMenu:
 
         if location_type == "Airport":
             iata_airport_code = UserPrompt(
-                session=self.__session,
-                prompt_type="text",
-                prompt="Enter the location code: ",
-                allow_blank=False,
-                default_value=location.iata_airport_code
+                session = self.__session,
+                prompt_type = "text",
+                prompt = "Enter the location code: ",
+                allow_blank = False,
+                default_value = location.iata_airport_code
             )        
             if iata_airport_code.is_cancelled:
                 return None
@@ -284,100 +284,100 @@ class LocationMenu:
             iata_airport_code = None
         
         icao_location_code = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the 4-character ICAO location code: ",
-            allow_blank=location_type.value != "Airfield",
-            default_value=location.icao_location_code
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the 4-character ICAO location code: ",
+            allow_blank = location_type.value != "Airfield",
+            default_value = location.icao_location_code
         )        
         if icao_location_code.is_cancelled:
             return None
 
         location_name = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the airport or airfield name: ",
-            allow_blank=False,
-            default_value=location.location_name
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the airport or airfield name: ",
+            allow_blank = False,
+            default_value = location.location_name
         )        
         if location_name.is_cancelled:
             return None
 
         town_or_city = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the city: ",            
-            allow_blank=True,
-            default_value=location.town_or_city
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the city: ",            
+            allow_blank = True,
+            default_value = location.town_or_city
         )        
         if town_or_city.is_cancelled:
             return None
 
         state_or_county = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the state, county or province: ",            
-            allow_blank=True,
-            default_value=location.state_or_county
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the state, county or province: ",            
+            allow_blank = True,
+            default_value = location.state_or_county
         )        
         if state_or_county.is_cancelled:
             return None
 
         country = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the country: ",
-            allow_blank=True,
-            default_value=location.country
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the country: ",
+            allow_blank = True,
+            default_value = location.country
         )        
         if country.is_cancelled:
             return None
         
         geographic_region = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the geographic region: ",
-            allow_blank=True,
-            default_value=location.geographic_region
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the geographic region: ",
+            allow_blank = True,
+            default_value = location.geographic_region
         )        
         if geographic_region.is_cancelled:
             return None
         print()
 
         decimal_latitude = UserPrompt(
-            session=self.__session,
-            prompt_type="float",
-            prompt="Enter the decimal latitude (between -90 and 90 degrees): ",
-            allow_blank=True,
-            default_value=location.decimal_latitude
+            session = self.__session,
+            prompt_type = "float",
+            prompt = "Enter the decimal latitude (between -90 and 90 degrees): ",
+            allow_blank = True,
+            default_value = location.decimal_latitude
         )        
         if decimal_latitude.is_cancelled:
             return None
         print()
 
         decimal_longitude = UserPrompt(
-            session=self.__session,
-            prompt_type="float",
-            prompt="Enter the decimal longitude (between -180 and 180 degrees): ",
-            allow_blank=True,
-            default_value=location.decimal_longitude
+            session = self.__session,
+            prompt_type = "float",
+            prompt = "Enter the decimal longitude (between -180 and 180 degrees): ",
+            allow_blank = True,
+            default_value = location.decimal_longitude
         )        
         if decimal_longitude.is_cancelled:
             return None
         print()
 
         return Location(
-            location_id=location.location_id,
-            location_type=location_type.value,
-            iata_airport_code=iata_airport_code.value if iata_airport_code else None,
-            icao_location_code=icao_location_code.value,
-            location_name=location_name.value,
-            town_or_city=town_or_city.value,
-            state_or_county=state_or_county.value,
-            country=country.value,
-            geographic_region=geographic_region.value,
-            decimal_latitude=float(decimal_latitude.value),
-            decimal_longitude=float(decimal_longitude.value)
+            location_id = location.location_id,
+            location_type = location_type.value,
+            iata_airport_code = iata_airport_code.value if iata_airport_code else None,
+            icao_location_code = icao_location_code.value,
+            location_name = location_name.value,
+            town_or_city = town_or_city.value,
+            state_or_county = state_or_county.value,
+            country = country.value,
+            geographic_region = geographic_region.value,
+            decimal_latitude = float(decimal_latitude.value),
+            decimal_longitude = float(decimal_longitude.value)
         )
 
     def __prompt_delete_location(self) -> Location | None:
@@ -389,11 +389,11 @@ class LocationMenu:
 
         # Prompt for confirmation and delete if confirmed
         confirm = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Are you sure you want to delete this record?\n",
-            options=[(1, "yes"),(0, "no")],
-            key_bindings=self.__bindings
+            session = self.__session,
+            prompt_type = "choice",
+            prompt = "Are you sure you want to delete this record?\n",
+            options = [(1, "yes"),(0, "no")],
+            key_bindings = self.__bindings
         )
 
         if confirm.is_cancelled or confirm.value == False:
@@ -403,11 +403,11 @@ class LocationMenu:
 
     def __get_location_from_selection(self) -> Location | None:
         location_id = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Choose a location to update:\n",
-            options=self.__location_service.get_location_choices(),
-            key_bindings=self.__bindings
+            session = self.__session,
+            prompt_type = "choice",
+            prompt = "Choose a location to update:\n",
+            options = self.__location_service.get_location_choices(),
+            key_bindings = self.__bindings
         )
         if location_id.is_cancelled:
             return None

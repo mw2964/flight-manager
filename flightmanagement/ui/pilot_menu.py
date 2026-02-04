@@ -21,14 +21,14 @@ class PilotMenu:
         ("back", "Back to main menu")
     ]
 
-    def __init__(self, session: PromptSession, bindings: KeyBindings, conn=None, pilot_service=None):
+    def __init__(self, session: PromptSession, bindings: KeyBindings, conn = None, pilot_service = None):
         self.__pilot_service = pilot_service or PilotService(conn)
         self.__session = session
         self.__bindings = bindings
 
     def load(self):
         while True:
-            __choose_menu = choice(message=format_title(self.__MENU_NAME), options=self.__MENU_OPTIONS)
+            __choose_menu = choice(message = format_title(self.__MENU_NAME), options = self.__MENU_OPTIONS)
 
             if __choose_menu == "show":
                 self.__show_option()
@@ -69,10 +69,10 @@ class PilotMenu:
         print("\n>> Search for a pilot (or hit CTRL+C to cancel)\n")
 
         family_name = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter a family name: ",
-            allow_blank=True
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter a family name: ",
+            allow_blank = True
         )        
         if family_name.is_cancelled:
             return False
@@ -292,188 +292,188 @@ class PilotMenu:
     def __prompt_add_pilot(self) -> Pilot | None:
 
         first_name = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter a first name: ",
-            allow_blank=False
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter a first name: ",
+            allow_blank = False
         )        
         if first_name.is_cancelled:
             return None
         
         family_name = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter a family name: ",
-            allow_blank=False
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter a family name: ",
+            allow_blank = False
         )        
         if family_name.is_cancelled:
             return None
         
         employee_number = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the employee number: ",
-            allow_blank=False
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the employee number: ",
+            allow_blank = False
         )        
         if employee_number.is_cancelled:
             return None
         
         employment_start_date = UserPrompt(
-            session=self.__session,
-            prompt_type="date",
-            prompt="Enter the employment start date (DD/MM/YYYY): ",
-            allow_blank=False
+            session = self.__session,
+            prompt_type = "date",
+            prompt = "Enter the employment start date (DD/MM/YYYY): ",
+            allow_blank = False
         )        
         if employment_start_date.is_cancelled:
             return None
 
         license_number = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the pilot license number: ",
-            allow_blank=True
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the pilot license number: ",
+            allow_blank = True
         )        
         if license_number.is_cancelled:
             return None
 
         license_type = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the pilot license type: ",
-            allow_blank=True
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the pilot license type: ",
+            allow_blank = True
         )        
         if license_type.is_cancelled:
             return None
 
         license_expiration_date = UserPrompt(
-            session=self.__session,
-            prompt_type="date",
-            prompt="Enter the license expiry date (DD/MM/YYYY): ",
-            allow_blank=True
+            session = self.__session,
+            prompt_type = "date",
+            prompt = "Enter the license expiry date (DD/MM/YYYY): ",
+            allow_blank = True
         )        
         if license_expiration_date.is_cancelled:
             return None
 
         return Pilot(
-            first_name=first_name.value,
-            family_name=family_name.value,
-            employee_number=employee_number.value,
-            employment_status="Current",
-            employment_start_date=datetime.strptime(employment_start_date.value, "%Y-%m-%d"),
-            license_number=license_number.value,
-            license_type=license_type.value,
-            license_expiration_date=datetime.strptime(license_expiration_date.value, "%Y-%m-%d") if len(license_expiration_date.value) > 0 else None
+            first_name = first_name.value,
+            family_name = family_name.value,
+            employee_number = employee_number.value,
+            employment_status = "Current",
+            employment_start_date = datetime.strptime(employment_start_date.value, "%Y-%m-%d"),
+            license_number = license_number.value,
+            license_type = license_type.value,
+            license_expiration_date = datetime.strptime(license_expiration_date.value, "%Y-%m-%d") if len(license_expiration_date.value) > 0 else None
         )
 
     def __prompt_update_pilot(self, pilot: Pilot) -> Pilot | None:
 
         first_name = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter a first name: ",
-            allow_blank=False,
-            default_value=pilot.first_name
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter a first name: ",
+            allow_blank = False,
+            default_value = pilot.first_name
         )        
         if first_name.is_cancelled:
             return None
         
         family_name = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter a family name: ",
-            allow_blank=False,
-            default_value=pilot.family_name
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter a family name: ",
+            allow_blank = False,
+            default_value = pilot.family_name
         )        
         if family_name.is_cancelled:
             return None
         print()
 
         employment_status = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Select an employment status:\n",
-            options=[
+            session = self.__session,
+            prompt_type = "choice",
+            prompt = "Select an employment status:\n",
+            options = [
                 ("Current", ("Current")),
                 ("Left", ("Left"))
             ],
-            key_bindings=self.__bindings,
-            default_value=pilot.employment_status
+            key_bindings = self.__bindings,
+            default_value = pilot.employment_status
         )
         if employment_status.is_cancelled:
             return None
         print()
 
         employee_number = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the employee number: ",
-            allow_blank=False,
-            default_value=pilot.employee_number
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the employee number: ",
+            allow_blank = False,
+            default_value = pilot.employee_number
         )        
         if employee_number.is_cancelled:
             return None
 
         employment_start_date = UserPrompt(
-            session=self.__session,
-            prompt_type="date",
-            prompt="Enter the employment start date (DD/MM/YYYY): ",
-            allow_blank=False,
-            default_value=pilot.employment_start_date.strftime("%d/%m/%Y")
+            session = self.__session,
+            prompt_type = "date",
+            prompt = "Enter the employment start date (DD/MM/YYYY): ",
+            allow_blank = False,
+            default_value = pilot.employment_start_date.strftime("%d/%m/%Y")
         )        
         if employment_start_date.is_cancelled:
             return None
         
         employment_end_date = UserPrompt(
-            session=self.__session,
-            prompt_type="date",
-            prompt="Enter the employment end date (DD/MM/YYYY): ",
-            allow_blank=True,
-            default_value=pilot.employment_end_date.strftime("%d/%m/%Y") if pilot.employment_end_date else None
+            session = self.__session,
+            prompt_type = "date",
+            prompt = "Enter the employment end date (DD/MM/YYYY): ",
+            allow_blank = True,
+            default_value = pilot.employment_end_date.strftime("%d/%m/%Y") if pilot.employment_end_date else None
         )        
         if employment_end_date.is_cancelled:
             return None
 
         license_number = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the pilot license number: ",
-            allow_blank=True,
-            default_value=pilot.license_number
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the pilot license number: ",
+            allow_blank = True,
+            default_value = pilot.license_number
         )        
         if license_number.is_cancelled:
             return None
 
         license_type = UserPrompt(
-            session=self.__session,
-            prompt_type="text",
-            prompt="Enter the pilot license type: ",
-            allow_blank=True,
-            default_value=pilot.license_type
+            session = self.__session,
+            prompt_type = "text",
+            prompt = "Enter the pilot license type: ",
+            allow_blank = True,
+            default_value = pilot.license_type
         )        
         if license_type.is_cancelled:
             return None
 
         license_expiration_date = UserPrompt(
-            session=self.__session,
-            prompt_type="date",
-            prompt="Enter the license expiry date (DD/MM/YYYY): ",
-            allow_blank=True,
-            default_value=pilot.license_expiration_date.strftime("%d/%m/%Y") if pilot.license_expiration_date else None
+            session = self.__session,
+            prompt_type = "date",
+            prompt = "Enter the license expiry date (DD/MM/YYYY): ",
+            allow_blank = True,
+            default_value = pilot.license_expiration_date.strftime("%d/%m/%Y") if pilot.license_expiration_date else None
         )        
         if license_expiration_date.is_cancelled:
             return None
 
         return Pilot(
-            staff_id=pilot.staff_id,
-            first_name=first_name.value,
-            family_name=family_name.value,
-            employee_number=employee_number.value,
-            employment_status=employment_status.value,
-            employment_start_date=datetime.strptime(employment_start_date.value, "%Y-%m-%d"),
-            employment_end_date=datetime.strptime(employment_end_date.value, "%Y-%m-%d") if len(employment_end_date.value) > 0 else None,
-            license_number=license_number.value,
-            license_type=license_type.value,
-            license_expiration_date=datetime.strptime(license_expiration_date.value, "%Y-%m-%d") if len(license_expiration_date.value) > 0 else None
+            staff_id = pilot.staff_id,
+            first_name = first_name.value,
+            family_name = family_name.value,
+            employee_number = employee_number.value,
+            employment_status = employment_status.value,
+            employment_start_date = datetime.strptime(employment_start_date.value, "%Y-%m-%d"),
+            employment_end_date = datetime.strptime(employment_end_date.value, "%Y-%m-%d") if len(employment_end_date.value) > 0 else None,
+            license_number = license_number.value,
+            license_type = license_type.value,
+            license_expiration_date = datetime.strptime(license_expiration_date.value, "%Y-%m-%d") if len(license_expiration_date.value) > 0 else None
         )
 
     def __prompt_delete_pilot(self) -> Pilot | None:
@@ -485,11 +485,11 @@ class PilotMenu:
         
         # Prompt for confirmation and delete if confirmed
         confirm = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Are you sure you want to delete this record?\n",
-            options=[(1, "yes"),(0, "no")],
-            key_bindings=self.__bindings
+            session = self.__session,
+            prompt_type = "choice",
+            prompt = "Are you sure you want to delete this record?\n",
+            options = [(1, "yes"),(0, "no")],
+            key_bindings = self.__bindings
         )
 
         if confirm.is_cancelled or confirm.value == False:
@@ -528,11 +528,11 @@ class PilotMenu:
     def __prompt_update_time_log_record(self, staff_id: int) -> tuple | None:
         
         effective_date = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Choose a record to update:\n",
-            options=self.__pilot_service.get_log_record_choices(staff_id),
-            key_bindings=self.__bindings
+            session = self.__session,
+            prompt_type = "choice",
+            prompt = "Choose a record to update:\n",
+            options = self.__pilot_service.get_log_record_choices(staff_id),
+            key_bindings = self.__bindings
         )
         if effective_date.is_cancelled:
             return None
@@ -556,22 +556,22 @@ class PilotMenu:
     def __prompt_delete_time_log_record(self, staff_id: int) -> date | None:
 
         effective_date = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Choose a record to delete:\n",
-            options=self.__pilot_service.get_log_record_choices(staff_id),
-            key_bindings=self.__bindings
+            session = self.__session,
+            prompt_type = "choice",
+            prompt = "Choose a record to delete:\n",
+            options = self.__pilot_service.get_log_record_choices(staff_id),
+            key_bindings = self.__bindings
         )
         if effective_date.is_cancelled:
             return None
 
         # Prompt for confirmation and delete if confirmed
         confirm = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Are you sure you want to delete this record?\n",
-            options=[(1, "yes"),(0, "no")],
-            key_bindings=self.__bindings
+            session = self.__session,
+            prompt_type = "choice",
+            prompt = "Are you sure you want to delete this record?\n",
+            options = [(1, "yes"),(0, "no")],
+            key_bindings = self.__bindings
         )
 
         if confirm.is_cancelled or confirm.value == False:
@@ -617,11 +617,11 @@ class PilotMenu:
     def __prompt_update_leave_booking_record(self, staff_id: int) -> tuple | None:
         
         leave_date = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Choose a record to update:\n",
-            options=self.__pilot_service.get_leave_record_choices(staff_id),
-            key_bindings=self.__bindings
+            session = self.__session,
+            prompt_type = "choice",
+            prompt = "Choose a record to update:\n",
+            options = self.__pilot_service.get_leave_record_choices(staff_id),
+            key_bindings = self.__bindings
         )
         if leave_date.is_cancelled:
             return None
@@ -652,11 +652,11 @@ class PilotMenu:
     def __prompt_delete_leave_booking_record(self, staff_id: int) -> date | None:
 
         leave_date = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Choose a record to update:\n",
-            options=self.__pilot_service.get_leave_record_choices(staff_id),
-            key_bindings=self.__bindings
+            session = self.__session,
+            prompt_type = "choice",
+            prompt = "Choose a record to update:\n",
+            options = self.__pilot_service.get_leave_record_choices(staff_id),
+            key_bindings = self.__bindings
         )
         if leave_date.is_cancelled:
             return None
@@ -664,11 +664,11 @@ class PilotMenu:
 
         # Prompt for confirmation and delete if confirmed
         confirm = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Are you sure you want to delete this record?\n",
-            options=[(1, "yes"),(0, "no")],
-            key_bindings=self.__bindings
+            session = self.__session,
+            prompt_type = "choice",
+            prompt = "Are you sure you want to delete this record?\n",
+            options = [(1, "yes"),(0, "no")],
+            key_bindings = self.__bindings
         )
 
         if confirm.is_cancelled or confirm.value == False:
@@ -678,11 +678,11 @@ class PilotMenu:
 
     def __get_pilot_from_selection(self) -> Pilot | None:
         pilot_id = UserPrompt(
-            session=self.__session,
-            prompt_type="choice",
-            prompt="Choose a pilot:\n",
-            options=self.__pilot_service.get_pilot_choices(),
-            key_bindings=self.__bindings
+            session = self.__session,
+            prompt_type = "choice",
+            prompt = "Choose a pilot:\n",
+            options = self.__pilot_service.get_pilot_choices(),
+            key_bindings = self.__bindings
         )
         if pilot_id.is_cancelled:
             return None

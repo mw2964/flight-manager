@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from datetime import datetime, date
 import re
 
-@dataclass(frozen=True)
+@dataclass(frozen = True)
 class Pilot:
     employee_number: str
     first_name: str

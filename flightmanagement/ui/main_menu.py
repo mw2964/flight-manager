@@ -32,8 +32,8 @@ class MainMenu:
         while True:
 
             __choose_menu = choice(
-                message=format_title(self.__MENU_NAME),
-                options=self.__MENU_OPTIONS
+                message = format_title(self.__MENU_NAME),
+                options = self.__MENU_OPTIONS
             )
 
             if __choose_menu == "flights":

@@ -6,7 +6,7 @@ from flightmanagement.db.db import transaction
 
 class PilotService:
 
-    def __init__(self, conn, pilot_repository=None):
+    def __init__(self, conn, pilot_repository = None):
         self.conn = conn
         self.__pilot_repository = (
             pilot_repository or PilotRepository(self.conn)

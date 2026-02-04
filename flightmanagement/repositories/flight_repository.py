@@ -270,24 +270,24 @@ class FlightRepository:
             return None
 
         return Flight(
-            flight_id=data["flight_id"],
-            aircraft_id=data["aircraft_id"],
-            origin_location_id=data["origin_location_id"], 
-            destination_location_id=data["destination_location_id"],
-            departure_gate_id=data["departure_gate_id"],
-            arrival_gate_id=data["arrival_gate_id"],
-            captain_id=data["captain_id"],
-            first_officer_id=data["first_officer_id"],
-            flight_number=data["flight_number"],
-            scheduled_departure_date=date.fromisoformat(data["scheduled_departure_date"]),
-            scheduled_departure_time=time.fromisoformat(data["scheduled_departure_time"]),
-            scheduled_arrival_date=date.fromisoformat(data["scheduled_arrival_date"]),
-            scheduled_arrival_time=time.fromisoformat(data["scheduled_arrival_time"]),
-            confirmed_departure_date=date.fromisoformat(data["confirmed_departure_date"]) if data["confirmed_departure_date"] else None,
-            confirmed_departure_time=time.fromisoformat(data["confirmed_departure_time"]) if data["confirmed_departure_time"] else None,
-            confirmed_arrival_date=date.fromisoformat(data["confirmed_arrival_date"]) if data["confirmed_arrival_date"] else None,
-            confirmed_arrival_time=time.fromisoformat(data["confirmed_arrival_time"]) if data["confirmed_arrival_time"] else None,
-            flight_status=data["flight_status"]
+            flight_id = data["flight_id"],
+            aircraft_id = data["aircraft_id"],
+            origin_location_id = data["origin_location_id"], 
+            destination_location_id = data["destination_location_id"],
+            departure_gate_id = data["departure_gate_id"],
+            arrival_gate_id = data["arrival_gate_id"],
+            captain_id = data["captain_id"],
+            first_officer_id = data["first_officer_id"],
+            flight_number = data["flight_number"],
+            scheduled_departure_date = date.fromisoformat(data["scheduled_departure_date"]),
+            scheduled_departure_time = time.fromisoformat(data["scheduled_departure_time"]),
+            scheduled_arrival_date = date.fromisoformat(data["scheduled_arrival_date"]),
+            scheduled_arrival_time = time.fromisoformat(data["scheduled_arrival_time"]),
+            confirmed_departure_date = date.fromisoformat(data["confirmed_departure_date"]) if data["confirmed_departure_date"] else None,
+            confirmed_departure_time = time.fromisoformat(data["confirmed_departure_time"]) if data["confirmed_departure_time"] else None,
+            confirmed_arrival_date = date.fromisoformat(data["confirmed_arrival_date"]) if data["confirmed_arrival_date"] else None,
+            confirmed_arrival_time = time.fromisoformat(data["confirmed_arrival_time"]) if data["confirmed_arrival_time"] else None,
+            flight_status = data["flight_status"]
         )
     
     def dict_to_pilot(self, data: dict | None) -> Pilot | None:

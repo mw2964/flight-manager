@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-@dataclass(frozen=True)
+@dataclass(frozen = True)
 class Aircraft:
     aircraft_type_id: int
     registration: str
@@ -30,7 +30,7 @@ class Aircraft:
         }
         return data
 
-@dataclass(frozen=True)
+@dataclass(frozen = True)
 class AircraftType:
     manufacturer: str
     model: str

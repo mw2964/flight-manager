@@ -120,12 +120,12 @@ class AircraftRepository:
             return None
 
         return Aircraft(
-            aircraft_id=data["aircraft_id"],
-            aircraft_type_id=data["aircraft_type_id"],
-            registration=data["registration"],
-            manufacturer_serial_no=data["manufacturer_serial_no"],
-            icao_hex=data["icao_hex"],
-            aircraft_status=data["aircraft_status"]
+            aircraft_id = data["aircraft_id"],
+            aircraft_type_id = data["aircraft_type_id"],
+            registration = data["registration"],
+            manufacturer_serial_no = data["manufacturer_serial_no"],
+            icao_hex = data["icao_hex"],
+            aircraft_status = data["aircraft_status"]
         )
 
     # Aircraft type functionality
@@ -230,8 +230,8 @@ class AircraftRepository:
             return None
 
         return AircraftType(
-            aircraft_type_id=data["aircraft_type_id"],
-            manufacturer=data["manufacturer"],
-            model=data["model"],
-            icao_type=data["icao_type"]
+            aircraft_type_id = data["aircraft_type_id"],
+            manufacturer = data["manufacturer"],
+            model = data["model"],
+            icao_type = data["icao_type"]
         )

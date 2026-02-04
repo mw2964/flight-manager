@@ -5,7 +5,7 @@ from flightmanagement.db.db import transaction
 
 class AircraftService:
 
-    def __init__(self, conn, aircraft_repository=None):
+    def __init__(self, conn, aircraft_repository = None):
         self.conn = conn
         self.__aircraft_repository = (
             aircraft_repository or AircraftRepository(self.conn)
