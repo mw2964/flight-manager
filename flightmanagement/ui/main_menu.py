@@ -1,53 +1,49 @@
-from prompt_toolkit import PromptSession
-from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
+from flightmanagement.ui.base_menu import BaseMenu
 from flightmanagement.ui.pilot_menu import PilotMenu
 from flightmanagement.ui.location_menu import LocationMenu
 from flightmanagement.ui.aircraft_menu import AircraftMenu
 from flightmanagement.ui.flight_menu import FlightMenu
 from flightmanagement.ui.report_menu import ReportMenu
 from flightmanagement.ui.admin_menu import AdminMenu
-from flightmanagement.ui.ui_utils import format_title
 
-class MainMenu:
-
-    __MENU_NAME = "Main Menu"
-    __MENU_OPTIONS = [
-        ("flights", "Manage flights"),
-        ("pilots", "Manage pilots"),
-        ("locations", "Manage destinations"),
-        ("aircraft", "Manage aircraft"),
-        ("reports", "Reports"),
-        ("admin", "Admin"),
-        ("exit", "Exit")
-    ]
-
-    def __init__(self, session: PromptSession, bindings: KeyBindings, conn):
-        self.__session = session
-        self.__bindings = bindings
-        self.conn = conn
+class MainMenu(BaseMenu):
+    
+    def __init__(self, session, bindings, conn):
+        super().__init__(session, bindings, conn)
+        
+        self._menu_name = "Main Menu"
+        self._menu_options = [
+            ("flights", "Manage flights"),
+            ("pilots", "Manage pilots"),
+            ("locations", "Manage destinations"),
+            ("aircraft", "Manage aircraft"),
+            ("reports", "Reports"),
+            ("admin", "Admin"),
+            ("exit", "Exit")
+        ]
 
     def load(self):
 
         while True:
 
             __choose_menu = choice(
-                message = format_title(self.__MENU_NAME),
-                options = self.__MENU_OPTIONS
+                message = self._format_title(self._menu_name),
+                options = self._menu_options
             )
 
             if __choose_menu == "flights":
-                FlightMenu(self.__session, self.__bindings, self.conn).load()
+                FlightMenu(self._session, self._key_bindings, self._conn).load()
             elif __choose_menu == "pilots":
-                PilotMenu(self.__session, self.__bindings, self.conn).load()
+                PilotMenu(self._session, self._key_bindings, self._conn).load()
             elif __choose_menu == "locations":
-                LocationMenu(self.__session, self.__bindings, self.conn).load()
+                LocationMenu(self._session, self._key_bindings, self._conn).load()
             elif __choose_menu == "aircraft":
-                AircraftMenu(self.__session, self.__bindings, self.conn).load()
+                AircraftMenu(self._session, self._key_bindings, self._conn).load()
             elif __choose_menu == "reports":
-                ReportMenu(self.__session, self.__bindings, self.conn).load()
+                ReportMenu(self._session, self._key_bindings, self._conn).load()
             elif __choose_menu == "admin":
-                AdminMenu(self.__session, self.__bindings, self.conn).load()
+                AdminMenu(self._session, self._key_bindings, self._conn).load()
             elif __choose_menu == "exit":
                 exit(0)
             else:

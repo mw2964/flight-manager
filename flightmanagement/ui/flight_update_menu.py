@@ -1,911 +1,980 @@
 from datetime import datetime, date, time
-from prompt_toolkit import PromptSession
-from prompt_toolkit.key_binding import KeyBindings
+from typing import Union, cast
 from prompt_toolkit.shortcuts import choice
-from flightmanagement.ui.ui_utils import format_title
-from flightmanagement.ui.user_prompt import UserPrompt
+from flightmanagement.error import FieldValidationError, DomainValidationError, UserCancelled, ConstraintViolation, FlightNotFound
+from flightmanagement.ui.base_menu import BaseMenu, Unset
 from flightmanagement.services.flight_service import FlightService
 from flightmanagement.services.aircraft_service import AircraftService
 from flightmanagement.services.location_service import LocationService
 from flightmanagement.services.pilot_service import PilotService
 from flightmanagement.models.flight import Flight
 
-class FlightUpdateMenu:
+class FlightUpdateMenu(BaseMenu):
 
-    __MENU_NAME = "Main -> Manage Flights -> Update flight"
-    __MENU_OPTIONS = [
-        ("assign_pilot", "Assign captain and/or first officer"),
-        ("manage_relief_pilots", "Manage relief pilots"),
-        ("update_aircraft", "Assign or change aircraft"),
-        ("update_status", "Update flight status"),
-        ("update_scheduled_times", "Update scheduled times"),
-        ("log_departure", "Log departure"),
-        ("log_arrival", "Log arrival"),
-        ("update_all", "Update all flight details"),
-        ("back", "Back to flights menu")
-    ]
-
-    def __init__(self, session: PromptSession, bindings: KeyBindings, flight_id: int, conn = None, flight_service = None, aircraft_service = None, location_service = None, pilot_service = None):
-        self.__flight_service = flight_service or FlightService(conn)
-        self.__aircraft_service = aircraft_service or AircraftService(conn)
-        self.__location_service = location_service or LocationService(conn)
-        self.__pilot_service = pilot_service or PilotService(conn)
-        self.__session = session
-        self.__bindings = bindings
-        self.__flight_id = flight_id
+    def __init__(self, session, bindings, flight_id: int, conn = None, flight_service = None, aircraft_service = None, location_service = None, pilot_service = None):
+        super().__init__(session, bindings, conn)
+        
+        self._flight_service = flight_service or FlightService(conn)
+        self._aircraft_service = aircraft_service or AircraftService(conn)
+        self._location_service = location_service or LocationService(conn)
+        self._flight_id = flight_id
+        self._menu_name = "Main -> Manage Flights -> Update flight"
+        self._menu_options = [
+            ("assign_pilot", "Assign captain and/or first officer"),
+            ("manage_relief_pilots", "Manage relief pilots"),
+            ("update_aircraft", "Assign or change aircraft"),
+            ("update_status", "Update flight status"),
+            ("update_scheduled_times", "Update scheduled times"),
+            ("log_departure", "Log departure"),
+            ("log_arrival", "Log arrival"),
+            ("update_all", "Update all flight details"),
+            ("back", "Back to flights menu")
+        ]
 
     def load(self):
         
         print(f"\nSelected flight:\n")
-        self.__show_flight_summary()
+        self._show_flight_summary()
         
         while True:            
 
-            flight = self.__flight_service.get_flight_by_id(self.__flight_id)            
-            flight_number = flight.flight_number if flight else ""
+            flight = self._flight_service.get_flight_by_id(self._flight_id)
+            if not flight:
+                raise FlightNotFound
 
-            __choose_menu = choice(message = format_title(self.__MENU_NAME + f" {flight_number} (ID: {self.__flight_id})"), options = self.__MENU_OPTIONS)
+            _selected_option = choice(message = self._format_title(self._menu_name + f" {flight.flight_number} (ID: {self._flight_id})"), options = self._menu_options)
             
-            if __choose_menu == "assign_pilot":
-                if not self.__assign_pilot_option():
-                    print("\nUpdate cancelled.\n")
-                    continue
-            if __choose_menu == "manage_relief_pilots":
-                if not self.__manage_relief_pilots_option():
-                    print("\nUpdate cancelled.\n")
-                    continue
-            elif __choose_menu == "update_aircraft":                
-                if not self.__update_aircraft_option():
-                    print("\nUpdate cancelled.\n")
-                    continue            
-            elif __choose_menu == "update_status":                
-                if not self.__update_status_option():
-                    print("\nUpdate cancelled.\n")
-                    continue
-            elif __choose_menu == "update_scheduled_times":
-                if not self.__update_scheduled_times_option():
-                    print("\nUpdate cancelled.\n")
-                    continue
-            elif __choose_menu == "log_departure":
-                if not self.__log_departure_option():
-                    print("\nUpdate cancelled.\n")
-                    continue
-            elif __choose_menu == "log_arrival":
-                if not self.__log_arrival_option():
-                    print("\nUpdate cancelled.\n")
-                    continue
-            elif __choose_menu == "update_all":
-                if not self.__update_all_option():
-                    print("\nUpdate cancelled.\n")
-                    continue
-            elif __choose_menu == "back":
-                return
-            else:
-                print("Invalid choice.")
+            try:
+                if _selected_option == "assign_pilot":
+                    self._assign_pilot_option()
+                if _selected_option == "manage_relief_pilots":
+                    self._manage_relief_pilots_option()
+                elif _selected_option == "update_aircraft":                
+                    self._update_aircraft_option()
+                elif _selected_option == "update_status":                
+                    self._update_status_option()
+                elif _selected_option == "update_scheduled_times":
+                    self._update_scheduled_times_option()
+                elif _selected_option == "log_departure":
+                    self._log_departure_option()
+                elif _selected_option == "log_arrival":
+                    self._log_arrival_option()
+                elif _selected_option == "update_all":
+                    self._update_all_option()
+                elif _selected_option == "back":
+                    return
+            except UserCancelled as e:
+                print(e)
+                continue
     
-    def __show_flight_summary(self):        
-        flight = self.__flight_service.get_flight_by_id(self.__flight_id)
+    def _show_flight_summary(self) -> None:        
+        flight = self._flight_service.get_flight_by_id(self._flight_id)
         if flight is None:
-            return 
-        print(self.__flight_service.get_results_view([flight]))
+            raise FlightNotFound 
+        print(self._flight_service.get_results_view([flight]))
 
-    def __assign_pilot_option(self) -> bool:
+    def _assign_pilot_option(self) -> None:
         print("\n>> Assign a pilot (or hit CTRL+C to cancel)\n")
 
-        flight = self.__flight_service.get_flight_by_id(self.__flight_id)
+        flight = self._flight_service.get_flight_by_id(self._flight_id)
         if flight is None:
-            return False
+            raise FlightNotFound
 
         # Prompt the user to edit fields
-        update = self.__prompt_assign_pilot(flight)
-        if update is None: # Process was cancelled by the user
-            return False
+        update = self._prompt_assign_pilot(flight)
 
-        try:
-            self.__flight_service.update_flight(update)
-            print("\nFlight details successfully updated:\n")
-            self.__show_flight_summary()
-        except:
-            print("\nError updating flight.\n")
-        
-        return True
+        # Update the flight record
+        self._flight_service.update_flight(update)
+        print("\nFlight details successfully updated:\n")
+        self._show_flight_summary()
 
-    def __manage_relief_pilots_option(self) -> bool:
+    def _manage_relief_pilots_option(self) -> None:
         print("\n>> Update relief pilots (or hit CTRL+C to cancel)\n")
 
-        flight = self.__flight_service.get_flight_by_id(self.__flight_id)
+        flight = self._flight_service.get_flight_by_id(self._flight_id)
         if flight is None:
-            return False
+            raise FlightNotFound
 
-        option = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "What would you like to do?\n",
+        option = self._prompt_until_valid(
+            prompt_text = "What would you like to do?",
+            getter = lambda p: p.get_int(),
+            field = "option",
             options = [
                 (1, ("Add a relief pilot")),
                 (2, ("Remove a relief pilot"))
-            ],
-            key_bindings = self.__bindings
+            ]
         )
-        if option.is_cancelled:
-            return False
         print()
 
-        if option.value == 1:            
-            staff_id = self.__prompt_add_relief_pilot(flight)
-            if staff_id is None: # Process was cancelled by the user
-                return False
-
-            try:
-                self.__flight_service.add_relief_pilot(flight, staff_id)
-                print("\nRelief pilot successfully added:\n")
-                self.__show_flight_summary()
-            except:
-                print("\nError adding relief pilot.\n")
+        if option == 1:            
+            staff_id = self._prompt_add_relief_pilot(flight)
+            self._flight_service.add_relief_pilot(flight, staff_id)
+            print("\nRelief pilot successfully added:\n")
+            self._show_flight_summary()
         
-        elif option.value == 2:
-            staff_id = self.__prompt_remove_relief_pilot(flight)
-            if staff_id is None: # Process was cancelled by the user
-                return False
-
-            try:
-                self.__flight_service.remove_relief_pilot(flight, staff_id)
+        elif option == 2:
+            staff_id = self._prompt_remove_relief_pilot(flight)
+            if staff_id:
+                self._flight_service.remove_relief_pilot(flight, staff_id)
                 print("\nRelief pilot successfully removed:\n")
-                self.__show_flight_summary()
-            except:
-                print("\nError removing relief pilot.\n")
+                self._show_flight_summary()
 
-        return True
-
-    def __update_aircraft_option(self) -> bool:
+    def _update_aircraft_option(self) -> None:
         print("\n>> Update the aircraft (or hit CTRL+C to cancel)\n")
 
-        flight = self.__flight_service.get_flight_by_id(self.__flight_id)
+        flight = self._flight_service.get_flight_by_id(self._flight_id)
         if flight is None:
-            return False
+            raise FlightNotFound
 
         # Prompt the user to edit fields
-        update = self.__prompt_update_aircraft(flight)
-        if update is None: # Process was cancelled by the user
-            return False
+        update = self._prompt_update_aircraft(flight)
 
-        try:
-            self.__flight_service.update_flight(update)
-            print("\nAircraft successfully updated:\n")
-            self.__show_flight_summary()
-        except:
-            print("\nError updating flight.\n")
-        
-        return True
+        self._flight_service.update_flight(update)
+        print("\nAircraft successfully updated:\n")
+        self._show_flight_summary()
     
-    def __update_status_option(self) -> bool:
+    def _update_status_option(self) -> None:
         print("\n>> Update the flight status (or hit CTRL+C to cancel)\n")
 
-        flight = self.__flight_service.get_flight_by_id(self.__flight_id)
+        flight = self._flight_service.get_flight_by_id(self._flight_id)
         if flight is None:
-            return False
+            raise FlightNotFound
 
         # Prompt the user to edit fields
-        update = self.__prompt_update_status(flight)
-        if update is None: # Process was cancelled by the user
-            return False
+        update = self._prompt_update_status(flight)
 
-        try:
-            self.__flight_service.update_flight(update)
-            print("\nStatus successfully updated:\n")
-            self.__show_flight_summary()
-        except:
-            print("\nError updating flight.\n")
-        
-        return True
+        self._flight_service.update_flight(update)
+        print("\nStatus successfully updated:\n")
+        self._show_flight_summary()
 
-    def __update_scheduled_times_option(self) -> bool:
+    def _update_scheduled_times_option(self) -> None:
         print("\n>> Update the scheduled departure and arrival times (or hit CTRL+C to cancel)\n")
 
-        flight = self.__flight_service.get_flight_by_id(self.__flight_id)
+        flight = self._flight_service.get_flight_by_id(self._flight_id)
         if flight is None:
-            return False
+            raise FlightNotFound
 
         # Prompt the user to edit fields
-        update = self.__prompt_update_scheduled_times(flight)
-        if update is None: # Process was cancelled by the user
-            return False
+        update = self._prompt_update_scheduled_times(flight)
 
-        try:
-            self.__flight_service.update_flight(update)
-            print("\nFlight details successfully updated:\n")
-            self.__show_flight_summary()
-        except:
-            print("\nError updating flight.\n")
-        
-        return True
+        self._flight_service.update_flight(update)
+        print("\nFlight details successfully updated:\n")
+        self._show_flight_summary()
 
-    def __log_departure_option(self) -> bool:
+    def _log_departure_option(self) -> None:
         print("\n>> Log the actual departure time and set status to 'departed' (or hit CTRL+C to cancel)\n")
 
-        flight = self.__flight_service.get_flight_by_id(self.__flight_id)
+        flight = self._flight_service.get_flight_by_id(self._flight_id)
         if flight is None:
-            return False
+            raise FlightNotFound
 
         # Prompt the user to edit fields
-        update = self.__prompt_log_departure(flight)
-        if update is None: # Process was cancelled by the user
-            return False
+        update = self._prompt_log_departure(flight)
 
-        try:
-            self.__flight_service.update_flight(update)
-            print("\nFlight details successfully updated:\n")
-            self.__show_flight_summary()
-        except:
-            print("\nError updating flight.\n")
-        
-        return True
+        self._flight_service.update_flight(update)
+        print("\nFlight details successfully updated:\n")
+        self._show_flight_summary()
     
-    def __log_arrival_option(self) -> bool:
+    def _log_arrival_option(self) -> None:
         print("\n>> Log the actual arrival time and set status to 'arrived' (or hit CTRL+C to cancel)\n")
 
-        flight = self.__flight_service.get_flight_by_id(self.__flight_id)
+        flight = self._flight_service.get_flight_by_id(self._flight_id)
         if flight is None:
-            return False
+            raise FlightNotFound
 
         # Prompt the user to edit fields
-        update = self.__prompt_log_arrival(flight)
-        if update is None: # Process was cancelled by the user
-            return False
+        update = self._prompt_log_arrival(flight)
 
-        try:
-            self.__flight_service.update_flight(update)
-            print("\nFlight details successfully updated:\n")
-            self.__show_flight_summary()
-        except:
-            print("\nError updating flight.\n")
-        
-        return True
+        self._flight_service.update_flight(update)
+        print("\nFlight details successfully updated:\n")
+        self._show_flight_summary()
 
-    def __update_all_option(self) -> bool:
+    def _update_all_option(self) -> None:
         print("\n>> Update a flight (or hit CTRL+C to cancel)\n")
 
-        flight = self.__flight_service.get_flight_by_id(self.__flight_id)
+        flight = self._flight_service.get_flight_by_id(self._flight_id)
         if flight is None:
-            return False
+            raise FlightNotFound
 
         # Prompt the user to edit fields
-        update = self.__prompt_update_flight(flight)
-        if update is None: # Process was cancelled by the user
-            return False
+        update = self._prompt_update_flight(flight)
 
-        try:
-            self.__flight_service.update_flight(update)
-            print("\nFlight details successfully updated.\n")
-            self.__show_flight_summary()
-        except:
-            print("\nError updating flight.\n")
+        self._flight_service.update_flight(update)
+        print("\nFlight details successfully updated.\n")
+        self._show_flight_summary()
         
-        return True
+    def _prompt_log_departure(self, flight: Flight) -> Flight:
 
-    def __prompt_log_departure(self, flight: Flight) -> Flight | None:
+        unset = Unset()
 
-        confirmed_departure_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "date",
-            prompt = "Confirmed departure date (DD/MM/YYYY): ",
-            allow_blank = True,
-            default_value = flight.scheduled_departure_date.strftime("%d/%m/%Y")
-        )     
-        if confirmed_departure_date.is_cancelled:
-            return None
+        confirmed_departure_date: Union[date, None, Unset] = unset
+        confirmed_departure_time: Union[time, None, Unset] = unset
 
-        confirmed_departure_time = UserPrompt(
-            session = self.__session,
-            prompt_type = "time",
-            prompt = "Confirmed departure time (HH:MM): ",
-            allow_blank = True,
-            default_value = flight.scheduled_departure_time.strftime("%H:%M")
-        )        
-        if confirmed_departure_time.is_cancelled:
-            return None
+        while True:
+            try:            
+                if confirmed_departure_date is unset:
+                    confirmed_departure_date = self._prompt_until_valid(
+                        prompt_text = "Confirmed departure date (DD/MM/YYYY):",
+                        getter = lambda p: p.get_date(),
+                        field = "confirmed_departure_date",
+                        required = True,
+                        default_value = flight.scheduled_departure_date.strftime("%d/%m/%Y")
+                    )     
 
-        return Flight(
-            flight_id = flight.flight_id,
-            flight_number = flight.flight_number,
-            aircraft_id = flight.aircraft_id,
-            origin_location_id = flight.origin_location_id,
-            destination_location_id = flight.destination_location_id,
-            departure_gate_id = flight.departure_gate_id,
-            arrival_gate_id = flight.arrival_gate_id,
-            captain_id = flight.captain_id,
-            first_officer_id = flight.first_officer_id,
-            scheduled_departure_date = flight.scheduled_departure_date,
-            scheduled_departure_time = flight.scheduled_departure_time,
-            scheduled_arrival_date = flight.scheduled_arrival_date,
-            scheduled_arrival_time = flight.scheduled_arrival_time,
-            confirmed_departure_date = date.fromisoformat(confirmed_departure_date.value) if confirmed_departure_date.value else None,
-            confirmed_departure_time = time.fromisoformat(confirmed_departure_time.value) if confirmed_departure_time.value else None,
-            confirmed_arrival_date = flight.confirmed_arrival_date,
-            confirmed_arrival_time = flight.confirmed_arrival_time,
-            flight_status = "Departed"
-        )
+                if confirmed_departure_time is unset:
+                    confirmed_departure_time = self._prompt_until_valid(
+                        prompt_text = "Confirmed departure time (HH:MM):",
+                        getter = lambda p: p.get_time(),
+                        field = "confirmed_departure_time",
+                        required = True,
+                        default_value = flight.scheduled_departure_time.strftime("%H:%M")
+                    )        
 
-    def __prompt_update_scheduled_times(self, flight: Flight) -> Flight | None:
-
-        scheduled_departure_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "date",
-            prompt = "Scheduled departure date (DD/MM/YYYY): ",
-            allow_blank = False,
-            default_value = flight.scheduled_departure_date.strftime("%d/%m/%Y")
-        )        
-        if scheduled_departure_date.is_cancelled:
-            return None
-
-        scheduled_departure_time = UserPrompt(
-            session = self.__session,
-            prompt_type = "time",
-            prompt = "Scheduled departure time (HH:MM): ",
-            allow_blank = False,
-            default_value = flight.scheduled_departure_time.strftime("%H:%M")
-        )        
-        if scheduled_departure_time.is_cancelled:
-            return None
-
-        scheduled_arrival_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "date",
-            prompt = "Scheduled departure date (DD/MM/YYYY): ",
-            allow_blank = False,
-            default_value = flight.scheduled_arrival_date.strftime("%d/%m/%Y")
-        )      
-        if scheduled_arrival_date.is_cancelled:
-            return None
-
-        scheduled_arrival_time = UserPrompt(
-            session = self.__session,
-            prompt_type = "time",
-            prompt = "Scheduled departure time (HH:MM): ",
-            allow_blank = False,
-            default_value = flight.scheduled_arrival_time.strftime("%H:%M")
-        )        
-        if scheduled_arrival_time.is_cancelled:
-            return None
-
-        return Flight(
-            flight_id = flight.flight_id,
-            flight_number = flight.flight_number,
-            aircraft_id = flight.aircraft_id,
-            origin_location_id = flight.origin_location_id,
-            destination_location_id = flight.destination_location_id,
-            departure_gate_id = flight.departure_gate_id,
-            arrival_gate_id = flight.arrival_gate_id,
-            captain_id = flight.captain_id,
-            first_officer_id = flight.first_officer_id,
-            scheduled_departure_date = date.fromisoformat(scheduled_departure_date.value),
-            scheduled_departure_time = time.fromisoformat(scheduled_departure_time.value),
-            scheduled_arrival_date = date.fromisoformat(scheduled_arrival_date.value),
-            scheduled_arrival_time = time.fromisoformat(scheduled_arrival_time.value),
-            confirmed_departure_date = flight.confirmed_departure_date,
-            confirmed_departure_time = flight.confirmed_departure_time,
-            confirmed_arrival_date = flight.confirmed_arrival_date,
-            confirmed_arrival_time = flight.confirmed_arrival_time,
-            flight_status = "Departed"
-        )
-
-    def __prompt_log_arrival(self, flight: Flight) -> Flight | None:
-
-        confirmed_arrival_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "date",
-            prompt = "Actual arrival date (DD/MM/YYYY): ",
-            allow_blank = False,
-            default_value = flight.scheduled_arrival_date.strftime("%d/%m/%Y")
-        )     
-        if confirmed_arrival_date.is_cancelled:
-            return None
-
-        confirmed_arrival_time = UserPrompt(
-            session = self.__session,
-            prompt_type = "time",
-            prompt = "Actual arrival time (HH:MM): ",
-            allow_blank = False,
-            default_value = flight.scheduled_arrival_time.strftime("%H:%M")
-        )        
-        if confirmed_arrival_time.is_cancelled:
-            return None
-
-        return Flight(
-            flight_id = flight.flight_id,
-            flight_number = flight.flight_number,
-            aircraft_id = flight.aircraft_id,
-            origin_location_id = flight.origin_location_id,
-            destination_location_id = flight.destination_location_id,
-            departure_gate_id = flight.departure_gate_id,
-            arrival_gate_id = flight.arrival_gate_id,
-            captain_id = flight.captain_id,
-            first_officer_id = flight.first_officer_id,
-            scheduled_departure_date = flight.scheduled_departure_date,
-            scheduled_departure_time = flight.scheduled_departure_time,
-            scheduled_arrival_date = flight.scheduled_arrival_date,
-            scheduled_arrival_time = flight.scheduled_arrival_time,
-            confirmed_departure_date = flight.confirmed_departure_date,
-            confirmed_departure_time = flight.confirmed_departure_time,
-            confirmed_arrival_date = date.fromisoformat(confirmed_arrival_date.value),
-            confirmed_arrival_time = time.fromisoformat(confirmed_arrival_time.value),
-            flight_status = "Arrived"
-        )
-
-    def __prompt_update_status(self, flight: Flight) -> Flight | None:
-
-        flight_status = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select a flight status:\n",
-            options = [
-                ("Scheduled", ("Scheduled")),
-                ("Delayed", ("Delayed")),
-                ("On time", ("On time")),
-                ("Boarding", ("Boarding")),
-                ("Closed", ("Closed")),
-                ("Departed", ("Departed")),
-                ("Arrived", ("Arrived"))
-            ],
-            default_value = flight.flight_status,
-            key_bindings = self.__bindings
-        )
-        if flight_status.is_cancelled:
-            return None
-        print()
-
-        return Flight(
-            flight_id = flight.flight_id,
-            flight_number = flight.flight_number,
-            aircraft_id = flight.aircraft_id,
-            origin_location_id = flight.origin_location_id,
-            destination_location_id = flight.destination_location_id,
-            departure_gate_id = flight.departure_gate_id,
-            arrival_gate_id = flight.arrival_gate_id,
-            captain_id = flight.captain_id,
-            first_officer_id = flight.first_officer_id,
-            scheduled_departure_date = flight.scheduled_departure_date,
-            scheduled_departure_time = flight.scheduled_departure_time,
-            scheduled_arrival_date = flight.scheduled_arrival_date,
-            scheduled_arrival_time = flight.scheduled_arrival_time,
-            confirmed_departure_date = flight.confirmed_departure_date,
-            confirmed_departure_time = flight.confirmed_departure_time,
-            confirmed_arrival_date = flight.confirmed_arrival_date,
-            confirmed_arrival_time = flight.confirmed_arrival_time,
-            flight_status = flight_status.value
-        )
-
-    def __prompt_update_aircraft(self, flight: Flight) -> Flight | None:
-
-        aircraft_id = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select an aircraft:\n",
-            options = self.__aircraft_service.get_aircraft_choices(),
-            default_value = flight.aircraft_id,
-            key_bindings = self.__bindings
-        )
-        if aircraft_id.is_cancelled:
-            return None
-        print()
-
-        return Flight(
-            flight_id = flight.flight_id,
-            flight_number = flight.flight_number,
-            aircraft_id = int(aircraft_id.value),
-            origin_location_id = flight.origin_location_id,
-            destination_location_id = flight.destination_location_id,
-            departure_gate_id = flight.departure_gate_id,
-            arrival_gate_id = flight.arrival_gate_id,
-            captain_id = flight.captain_id,
-            first_officer_id = flight.first_officer_id,
-            scheduled_departure_date = flight.scheduled_departure_date,
-            scheduled_departure_time = flight.scheduled_departure_time,
-            scheduled_arrival_date = flight.scheduled_arrival_date,
-            scheduled_arrival_time = flight.scheduled_arrival_time,
-            confirmed_departure_date = flight.confirmed_departure_date,
-            confirmed_departure_time = flight.confirmed_departure_time,
-            confirmed_arrival_date = flight.confirmed_arrival_date,
-            confirmed_arrival_time = flight.confirmed_arrival_time,
-            flight_status = flight.flight_status
-        )
-
-    def __prompt_assign_pilot(self, flight: Flight) -> Flight | None:
-
-        assign_choice = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Would you like to assign the captain, the first officer, or both?\n",
-            options = [
-                (1, ("Captain")),
-                (2, ("First officer")),
-                (3, ("Both"))
-            ],
-            key_bindings = self.__bindings
-        )
-        if assign_choice.is_cancelled:
-            return None
-        print()
-
-        captain_id = None
-        first_officer_id = None
-
-        excluded_pilots = self.__flight_service.get_flight_relief_pilots(flight)
-
-        if assign_choice.value in [1, 3]:
-            captain_id  =  UserPrompt(
-                session = self.__session,
-                prompt_type = "choice",
-                prompt = "Select the pilot:\n",
-                options = self.__flight_service.get_available_pilot_choices(
-                    departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
-                    arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
+                return Flight(
                     flight_id = flight.flight_id,
-                    unavailable_pilots = excluded_pilots
-                ),
-                default_value = flight.captain_id,
-                key_bindings = self.__bindings
-            )
-            if captain_id.is_cancelled:
-                return None
-            print()
+                    flight_number = flight.flight_number,
+                    aircraft_id = flight.aircraft_id,
+                    origin_location_id = flight.origin_location_id,
+                    destination_location_id = flight.destination_location_id,
+                    departure_gate_id = flight.departure_gate_id,
+                    arrival_gate_id = flight.arrival_gate_id,
+                    captain_id = flight.captain_id,
+                    first_officer_id = flight.first_officer_id,
+                    scheduled_departure_date = flight.scheduled_departure_date,
+                    scheduled_departure_time = flight.scheduled_departure_time,
+                    scheduled_arrival_date = flight.scheduled_arrival_date,
+                    scheduled_arrival_time = flight.scheduled_arrival_time,
+                    confirmed_departure_date = self._required(confirmed_departure_date, "confirmed_departure_date"),
+                    confirmed_departure_time = self._required(confirmed_departure_time, "confirmed_departure_time"),
+                    confirmed_arrival_date = flight.confirmed_arrival_date,
+                    confirmed_arrival_time = flight.confirmed_arrival_time,
+                    flight_status = "Departed"
+                )
 
-        if assign_choice.value in [2, 3]:
-            # Add the captain to the excluded pilots list
-            excluded_pilots.append(int(captain_id.value) if captain_id else flight.captain_id)
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
 
-            first_officer_id = UserPrompt(
-                session = self.__session,
-                prompt_type = "choice",
-                prompt = "Select the copilot:\n",
-                options = self.__flight_service.get_available_pilot_choices(
-                    departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
-                    arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
+                if e.field == "confirmed_departure_date":
+                    confirmed_departure_date = unset
+                elif e.field == "confirmed_departure_time":
+                    confirmed_departure_time = unset
+            
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+
+                confirmed_departure_date = unset
+                confirmed_departure_time = unset
+
+    def _prompt_update_scheduled_times(self, flight: Flight) -> Flight:
+
+        unset = Unset()
+
+        scheduled_departure_date: Union[date, None, Unset] = unset
+        scheduled_departure_time: Union[time, None, Unset] = unset
+        scheduled_arrival_date: Union[date, None, Unset] = unset
+        scheduled_arrival_time: Union[time, None, Unset] = unset
+
+        while True:
+            try:            
+                if scheduled_departure_date is unset:
+                    scheduled_departure_date = self._prompt_until_valid(
+                        prompt_text = "Scheduled departure date (DD/MM/YYYY):",
+                        getter = lambda p: p.get_date(),
+                        field = "scheduled_departure_date",
+                        required = True,
+                        default_value = flight.scheduled_departure_date.strftime("%d/%m/%Y")
+                    )     
+
+                if scheduled_departure_time is unset:
+                    scheduled_departure_time = self._prompt_until_valid(
+                        prompt_text = "Scheduled departure time (HH:MM):",
+                        getter = lambda p: p.get_time(),
+                        field = "scheduled_departure_time",
+                        required = True,
+                        default_value = flight.scheduled_departure_time.strftime("%H:%M")
+                    )
+                
+                if scheduled_arrival_date is unset:
+                    scheduled_arrival_date = self._prompt_until_valid(
+                        prompt_text = "Scheduled arrival date (DD/MM/YYYY):",
+                        getter = lambda p: p.get_date(),
+                        field = "scheduled_arrival_date",
+                        required = True,
+                        default_value = flight.scheduled_arrival_date.strftime("%d/%m/%Y")
+                    )     
+
+                if scheduled_arrival_time is unset:
+                    scheduled_arrival_time = self._prompt_until_valid(
+                        prompt_text = "Scheduled arrival time (HH:MM):",
+                        getter = lambda p: p.get_time(),
+                        field = "scheduled_arrival_time",
+                        required = True,
+                        default_value = flight.scheduled_arrival_time.strftime("%H:%M")
+                    )
+
+                return Flight(
                     flight_id = flight.flight_id,
-                    unavailable_pilots = excluded_pilots
-                ),
-                default_value = flight.first_officer_id,
-                key_bindings = self.__bindings
-            )
-            if first_officer_id.is_cancelled:
-                return None
-            print()
+                    flight_number = flight.flight_number,
+                    aircraft_id = flight.aircraft_id,
+                    origin_location_id = flight.origin_location_id,
+                    destination_location_id = flight.destination_location_id,
+                    departure_gate_id = flight.departure_gate_id,
+                    arrival_gate_id = flight.arrival_gate_id,
+                    captain_id = flight.captain_id,
+                    first_officer_id = flight.first_officer_id,
+                    scheduled_departure_date = self._required(scheduled_departure_date, "scheduled_departure_date"),
+                    scheduled_departure_time = self._required(scheduled_departure_time, "scheduled_departure_time"),
+                    scheduled_arrival_date = self._required(scheduled_arrival_date, "scheduled_arrival_date"),
+                    scheduled_arrival_time = self._required(scheduled_arrival_time, "scheduled_arrival_time"),
+                    confirmed_departure_date = flight.confirmed_departure_date,
+                    confirmed_departure_time = flight.confirmed_departure_time,
+                    confirmed_arrival_date = flight.confirmed_arrival_date,
+                    confirmed_arrival_time = flight.confirmed_arrival_time,
+                    flight_status = "Departed"
+                )
 
-        return Flight(
-            flight_id = flight.flight_id,
-            flight_number = flight.flight_number,
-            aircraft_id = flight.aircraft_id,
-            origin_location_id = flight.origin_location_id,
-            destination_location_id = flight.destination_location_id,
-            departure_gate_id = flight.departure_gate_id,
-            arrival_gate_id = flight.arrival_gate_id,
-            captain_id = int(captain_id.value) if captain_id else flight.captain_id,
-            first_officer_id = int(first_officer_id.value) if first_officer_id else flight.first_officer_id,
-            scheduled_departure_date = flight.scheduled_departure_date,
-            scheduled_departure_time = flight.scheduled_departure_time,
-            scheduled_arrival_date = flight.scheduled_arrival_date,
-            scheduled_arrival_time = flight.scheduled_arrival_time,
-            confirmed_departure_date = flight.confirmed_departure_date,
-            confirmed_departure_time = flight.confirmed_departure_time,
-            confirmed_arrival_date = flight.confirmed_arrival_date,
-            confirmed_arrival_time = flight.confirmed_arrival_time,
-            flight_status = flight.flight_status
-        )
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
 
-    def __prompt_remove_relief_pilot(self, flight: Flight) -> int | None:
+                if e.field == "scheduled_departure_date":
+                    scheduled_departure_date = unset
+                elif e.field == "scheduled_departure_time":
+                    scheduled_departure_time = unset
+                elif e.field == "scheduled_arrival_date":
+                    scheduled_arrival_date = unset                    
+                elif e.field == "scheduled_arrival_time":
+                    scheduled_arrival_time = unset
+            
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+
+                scheduled_departure_date = unset
+                scheduled_departure_time = unset
+                scheduled_arrival_date = unset
+                scheduled_arrival_time = unset
+
+    def _prompt_log_arrival(self, flight: Flight) -> Flight:
+
+        unset = Unset()
+
+        confirmed_arrival_date: Union[date, None, Unset] = unset
+        confirmed_arrival_time: Union[time, None, Unset] = unset
+
+        while True:
+            try:            
+                if confirmed_arrival_date is unset:
+                    confirmed_arrival_date = self._prompt_until_valid(
+                        prompt_text = "Confirmed arrival date (DD/MM/YYYY):",
+                        getter = lambda p: p.get_date(),
+                        field = "confirmed_arrival_date",
+                        required = True,
+                        default_value = flight.scheduled_arrival_date.strftime("%d/%m/%Y")
+                    )     
+
+                if confirmed_arrival_time is unset:
+                    confirmed_arrival_time = self._prompt_until_valid(
+                        prompt_text = "Confirmed arrival time (HH:MM):",
+                        getter = lambda p: p.get_time(),
+                        field = "confirmed_arrival_time",
+                        required = True,
+                        default_value = flight.scheduled_arrival_time.strftime("%H:%M")
+                    )        
+
+                return Flight(
+                    flight_id = flight.flight_id,
+                    flight_number = flight.flight_number,
+                    aircraft_id = flight.aircraft_id,
+                    origin_location_id = flight.origin_location_id,
+                    destination_location_id = flight.destination_location_id,
+                    departure_gate_id = flight.departure_gate_id,
+                    arrival_gate_id = flight.arrival_gate_id,
+                    captain_id = flight.captain_id,
+                    first_officer_id = flight.first_officer_id,
+                    scheduled_departure_date = flight.scheduled_departure_date,
+                    scheduled_departure_time = flight.scheduled_departure_time,
+                    scheduled_arrival_date = flight.scheduled_arrival_date,
+                    scheduled_arrival_time = flight.scheduled_arrival_time,
+                    confirmed_departure_date = flight.confirmed_departure_date,
+                    confirmed_departure_time = flight.confirmed_departure_time,
+                    confirmed_arrival_date = self._required(confirmed_arrival_date, "confirmed_arrival_date"),
+                    confirmed_arrival_time = self._required(confirmed_arrival_time, "confirmed_arrival_time"),
+                    flight_status = "Arrived"
+                )
+
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+
+                if e.field == "confirmed_arrival_date":
+                    confirmed_arrival_date = unset
+                elif e.field == "confirmed_arrival_time":
+                    confirmed_arrival_time = unset
+            
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+
+                confirmed_arrival_date = unset
+                confirmed_arrival_time = unset
+
+    def _prompt_update_status(self, flight: Flight) -> Flight:
+
+        unset = Unset()
+
+        flight_status: Union[str, None, Unset] = unset
+
+        while True:
+            try:            
+                if flight_status is unset:
+                    flight_status = self._prompt_until_valid(
+                        prompt_text = "Select a flight status:",
+                        getter = lambda p: p.get_str(),
+                        field = "flight_status",
+                        options = [
+                            ("Scheduled", ("Scheduled")),
+                            ("Delayed", ("Delayed")),
+                            ("On time", ("On time")),
+                            ("Boarding", ("Boarding")),
+                            ("Closed", ("Closed")),
+                            ("Departed", ("Departed")),
+                            ("Arrived", ("Arrived"))
+                        ],
+                        default_value = flight.flight_status,
+                        required = True
+                    )
+                    print()
+
+                return Flight(
+                    flight_id = flight.flight_id,
+                    flight_number = flight.flight_number,
+                    aircraft_id = flight.aircraft_id,
+                    origin_location_id = flight.origin_location_id,
+                    destination_location_id = flight.destination_location_id,
+                    departure_gate_id = flight.departure_gate_id,
+                    arrival_gate_id = flight.arrival_gate_id,
+                    captain_id = flight.captain_id,
+                    first_officer_id = flight.first_officer_id,
+                    scheduled_departure_date = flight.scheduled_departure_date,
+                    scheduled_departure_time = flight.scheduled_departure_time,
+                    scheduled_arrival_date = flight.scheduled_arrival_date,
+                    scheduled_arrival_time = flight.scheduled_arrival_time,
+                    confirmed_departure_date = flight.confirmed_departure_date,
+                    confirmed_departure_time = flight.confirmed_departure_time,
+                    confirmed_arrival_date = flight.confirmed_arrival_date,
+                    confirmed_arrival_time = flight.confirmed_arrival_time,
+                    flight_status = self._required(flight_status, "flight_status")
+                )
+            
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+
+                if e.field == "flight_status":
+                    flight_status = unset
+            
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+
+                flight_status = unset
+
+    def _prompt_update_aircraft(self, flight: Flight) -> Flight:
+
+        unset = Unset()
+
+        aircraft_id: Union[int, None, Unset] = unset
+
+        while True:
+            try:
+
+                if aircraft_id is unset:
+                    aircraft_id = self._prompt_until_valid(
+                        prompt_text = "Select an aircraft:",
+                        getter = lambda p: p.get_int(),
+                        field = "aircraft_id",
+                        is_picklist = True,
+                        none_option = True,
+                        options = self._aircraft_service.get_aircraft_choices(),
+                        default_value = flight.aircraft_id
+                    )
+                    print()
+
+                return Flight(
+                    flight_id = flight.flight_id,
+                    flight_number = flight.flight_number,
+                    aircraft_id = self._optional(aircraft_id),
+                    origin_location_id = flight.origin_location_id,
+                    destination_location_id = flight.destination_location_id,
+                    departure_gate_id = flight.departure_gate_id,
+                    arrival_gate_id = flight.arrival_gate_id,
+                    captain_id = flight.captain_id,
+                    first_officer_id = flight.first_officer_id,
+                    scheduled_departure_date = flight.scheduled_departure_date,
+                    scheduled_departure_time = flight.scheduled_departure_time,
+                    scheduled_arrival_date = flight.scheduled_arrival_date,
+                    scheduled_arrival_time = flight.scheduled_arrival_time,
+                    confirmed_departure_date = flight.confirmed_departure_date,
+                    confirmed_departure_time = flight.confirmed_departure_time,
+                    confirmed_arrival_date = flight.confirmed_arrival_date,
+                    confirmed_arrival_time = flight.confirmed_arrival_time,
+                    flight_status = flight.flight_status
+                )
+
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+
+                if e.field == "aircraft_id":
+                    aircraft_id = unset
+            
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+
+                aircraft_id = unset
+
+    def _prompt_assign_pilot(self, flight: Flight) -> Flight:
+
+        unset = Unset()
+
+        captain_id: Union[int, None, Unset] = unset
+        first_officer_id: Union[int, None, Unset] = unset
+
+        while True:
+            try:
+
+                # Initialise the unavailable pilots list from any currently assigned refief pilots
+                excluded_pilots = self._flight_service.get_flight_relief_pilots(flight)
+
+                if captain_id is unset:
+                    captain_id  = self._prompt_until_valid(
+                        prompt_text = "Select a captain:",
+                        getter = lambda p: p.get_int(),
+                        field = "captain_id",
+                        is_picklist = True,
+                        none_option = True,
+                        options = self._flight_service.get_available_pilot_choices(
+                            departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
+                            arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
+                            flight_id = flight.flight_id,
+                            unavailable_pilots = excluded_pilots
+                        ),
+                        default_value = flight.captain_id
+                    )
+                    print()
+
+                # Add the captain to the excluded pilots list
+                excluded_pilots.append(captain_id) if captain_id is not None and captain_id is not unset else flight.captain_id
+
+                if first_officer_id is unset:
+                    first_officer_id = self._prompt_until_valid(
+                        prompt_text = "Select a first officer:",
+                        getter = lambda p: p.get_int(),
+                        field = "first_officer_id",
+                        is_picklist = True,
+                        none_option = True,
+                        options = self._flight_service.get_available_pilot_choices(
+                            departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
+                            arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
+                            flight_id = flight.flight_id,
+                            unavailable_pilots = excluded_pilots
+                        ),
+                        default_value = flight.first_officer_id
+                    )
+                    print()
+
+                    return Flight(
+                        flight_id = flight.flight_id,
+                        flight_number = flight.flight_number,
+                        aircraft_id = flight.aircraft_id,
+                        origin_location_id = flight.origin_location_id,
+                        destination_location_id = flight.destination_location_id,
+                        departure_gate_id = flight.departure_gate_id,
+                        arrival_gate_id = flight.arrival_gate_id,
+                        captain_id = self._optional(captain_id),
+                        first_officer_id = self._optional(first_officer_id),
+                        scheduled_departure_date = flight.scheduled_departure_date,
+                        scheduled_departure_time = flight.scheduled_departure_time,
+                        scheduled_arrival_date = flight.scheduled_arrival_date,
+                        scheduled_arrival_time = flight.scheduled_arrival_time,
+                        confirmed_departure_date = flight.confirmed_departure_date,
+                        confirmed_departure_time = flight.confirmed_departure_time,
+                        confirmed_arrival_date = flight.confirmed_arrival_date,
+                        confirmed_arrival_time = flight.confirmed_arrival_time,
+                        flight_status = flight.flight_status
+                    )
+
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+
+                if e.field == "captain_id":
+                    captain_id = unset
+                elif e.field == "first_officer_id":
+                    first_officer_id = unset
+            
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+
+                captain_id = unset
+                first_officer_id = unset
+
+    def _prompt_remove_relief_pilot(self, flight: Flight) -> int | None:
         
-        choices = self.__flight_service.get_flight_relief_pilot_choices(flight)
+        choices = self._flight_service.get_flight_relief_pilot_choices(flight)
         if len(choices) == 0:
             print("\nNo relief pilots currently assigned to this flight.\n")
             return None
         
-        staff_id  =  UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select the pilot to remove:\n",
-            options = choices,
-            key_bindings = self.__bindings
+        staff_id = self._prompt_until_valid(
+            prompt_text = "Select the pilot to remove:",
+            getter = lambda p: p.get_int(),
+            field = "staff_id",
+            is_picklist = True,
+            options = choices
         )
-        if staff_id.is_cancelled:
-            return None
         print()
 
-        return int(staff_id.value)
+        return staff_id
     
-    def __prompt_add_relief_pilot(self, flight: Flight) -> int | None:
+    def _prompt_add_relief_pilot(self, flight: Flight) -> int:
         
         # Exclude any currently assigned relief pilots, captain and first officer from the available options
-        excluded_pilots = self.__flight_service.get_flight_relief_pilots(flight)
+        excluded_pilots = self._flight_service.get_flight_relief_pilots(flight)
         
         if flight.captain_id is not None:
             excluded_pilots.append(flight.captain_id)
         if flight.first_officer_id is not None:
             excluded_pilots.append(flight.first_officer_id)
 
-        staff_id  =  UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select the pilot to assign:\n",
-            options = self.__flight_service.get_available_pilot_choices(
+        staff_id = self._prompt_until_valid(
+            prompt_text = "Select the pilot to assign:",
+            getter = lambda p: p.get_int(),
+            field = "staff_id",
+            is_picklist = True,
+            options = self._flight_service.get_available_pilot_choices(
                     departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
                     arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
                     flight_id = flight.flight_id,
                     unavailable_pilots = excluded_pilots
-                ),
-            key_bindings = self.__bindings
+                )
         )
-        if staff_id.is_cancelled:
-            return None
         print()
 
-        return int(staff_id.value)
+        return self._required(staff_id, "staff_id")
 
-    def __prompt_update_flight(self, flight: Flight) -> Flight | None:
+    def _prompt_update_flight(self, flight: Flight) -> Flight:
 
-        flight_number = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter a flight number: ",
-            allow_blank = False,
-            default_value = flight.flight_number
-        )        
-        if flight_number.is_cancelled:
-            return None
-        print()
-        
-        aircraft_id = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select the aircraft:\n",
-            options = self.__aircraft_service.get_aircraft_choices(),
-            default_value = flight.aircraft_id,
-            key_bindings = self.__bindings
-        )
-        if aircraft_id.is_cancelled:
-            return None
-        print()
+        unset = Unset()
 
-        origin_location_id = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select the origin location:\n",
-            options = self.__location_service.get_location_choices(),
-            default_value = flight.origin_location_id,
-            key_bindings = self.__bindings
-        )
-        if origin_location_id.is_cancelled:
-            return None
-        print()
+        flight_number: Union[str, None, Unset] = unset
+        aircraft_id: Union[int, None, Unset] = unset
+        origin_location_id: Union[int, None, Unset] = unset
+        destination_location_id: Union[int, None, Unset] = unset
+        departure_gate_id: Union[int, None, Unset] = unset
+        arrival_gate_id: Union[int, None, Unset] = unset
+        captain_id: Union[int, None, Unset] = unset
+        first_officer_id: Union[int, None, Unset] = unset
+        scheduled_departure_date: Union[date, None, Unset] = unset
+        scheduled_departure_time: Union[time, None, Unset] = unset
+        scheduled_arrival_date: Union[date, None, Unset] = unset
+        scheduled_arrival_time: Union[time, None, Unset] = unset
+        confirmed_departure_date: Union[date, None, Unset] = unset
+        confirmed_departure_time: Union[time, None, Unset] = unset
+        confirmed_arrival_date: Union[date, None, Unset] = unset
+        confirmed_arrival_time: Union[time, None, Unset] = unset
+        flight_status: Union[str, None, Unset] = unset
 
-        destination_location_id = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select the destination location:\n",
-            options = self.__location_service.get_location_choices(),
-            default_value = flight.destination_location_id,
-            key_bindings = self.__bindings
-        )
-        if destination_location_id.is_cancelled:
-            return None
-        print()
+        while True:
+            try:     
 
-        scheduled_departure_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "date",
-            prompt = "Scheduled departure date (DD/MM/YYYY): ",
-            allow_blank = False,
-            default_value = flight.scheduled_departure_date.strftime("%d/%m/%Y")
-        )        
-        if scheduled_departure_date.is_cancelled:
-            return None
+                if flight_number is unset:
+                    flight_number = self._prompt_until_valid(
+                        prompt_text = "Flight number:",
+                        getter = lambda p: p.get_str(),
+                        field = "flight_number",
+                        required = True,
+                        default_value = flight.flight_number
+                    )
+                
+                if aircraft_id is unset:
+                    print()                    
+                    aircraft_id = self._prompt_until_valid(
+                        prompt_text = "Select an aircraft:",
+                        getter = lambda p: p.get_int(),
+                        field = "aircraft_id",
+                        required = True,
+                        is_picklist = True,
+                        options = self._aircraft_service.get_aircraft_choices(),
+                        default_value = flight.aircraft_id
+                    )                
 
-        scheduled_departure_time = UserPrompt(
-            session = self.__session,
-            prompt_type = "time",
-            prompt = "Scheduled departure time (HH:MM): ",
-            allow_blank = False,
-            default_value = flight.scheduled_departure_time.strftime("%H:%M")
-        )        
-        if scheduled_departure_time.is_cancelled:
-            return None
+                if origin_location_id is unset:
+                    print()
+                    origin_location_id = self._prompt_until_valid(
+                        prompt_text = "Select an origin location:",
+                        getter = lambda p: p.get_int(),
+                        field = "origin_location_id",
+                        required = True,
+                        is_picklist = True,
+                        options = self._location_service.get_location_choices(),
+                        default_value = flight.origin_location_id
+                    )        
 
-        scheduled_arrival_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "date",
-            prompt = "Scheduled arrival date (DD/MM/YYYY): ",
-            allow_blank = False,
-            default_value = flight.scheduled_arrival_date.strftime("%d/%m/%Y")
-        )      
-        if scheduled_arrival_date.is_cancelled:
-            return None
+                if destination_location_id is unset:
+                    print()
+                    destination_location_id = self._prompt_until_valid(
+                        prompt_text = "Select a destination location:",
+                        getter = lambda p: p.get_int(),
+                        field = "destination_location_id",
+                        required = True,
+                        is_picklist = True,
+                        options = self._location_service.get_location_choices(),
+                        default_value = flight.destination_location_id
+                    )
+                    print()
 
-        scheduled_arrival_time = UserPrompt(
-            session = self.__session,
-            prompt_type = "time",
-            prompt = "Scheduled arrival time (HH:MM): ",
-            allow_blank = False,
-            default_value = flight.scheduled_arrival_time.strftime("%H:%M")
-        )        
-        if scheduled_arrival_time.is_cancelled:
-            return None
-        print()
+                if scheduled_departure_date is unset:
+                    scheduled_departure_date = self._prompt_until_valid(
+                        prompt_text = "Scheduled departure date (DD/MM/YYYY):",
+                        getter = lambda p: p.get_date(),
+                        field = "scheduled_departure_date",
+                        required = True,
+                        default_value = flight.scheduled_departure_date.strftime("%d/%m/%Y")
+                    )    
 
-        excluded_pilots = self.__flight_service.get_flight_relief_pilots(flight)
+                if scheduled_departure_time is unset:
+                    scheduled_departure_time = self._prompt_until_valid(
+                        prompt_text = "Scheduled departure time (HH:MM):",
+                        getter = lambda p: p.get_time(),
+                        field = "scheduled_departure_time",
+                        required = True,
+                        default_value = flight.scheduled_departure_time.strftime("%H:%M")
+                    )    
 
-        captain_id = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select the pilot:\n",
-            options = self.__flight_service.get_available_pilot_choices(
-                departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
-                arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
-                flight_id = flight.flight_id,
-                unavailable_pilots = excluded_pilots
-            ),
-            default_value = flight.captain_id if flight.captain_id is not None else -1,
-            key_bindings = self.__bindings,
-            include_none = True
-        )
-        if captain_id.is_cancelled:
-            return None
-        print()
+                if scheduled_arrival_date is unset:
+                    scheduled_arrival_date = self._prompt_until_valid(
+                        prompt_text = "Scheduled arrival date (DD/MM/YYYY):",
+                        getter = lambda p: p.get_date(),
+                        field = "scheduled_arrival_date",
+                        required = True,
+                        default_value = flight.scheduled_arrival_date.strftime("%d/%m/%Y")
+                    )
 
-        # Add the captain to the excluded pilots list
-        excluded_pilots.append(int(captain_id.value) if captain_id.value != "" else flight.captain_id)
+                if scheduled_arrival_time is unset:
+                    scheduled_arrival_time = self._prompt_until_valid(
+                        prompt_text = "Scheduled arrival time (HH:MM):",
+                        getter = lambda p: p.get_time(),
+                        field = "scheduled_arrival_time",
+                        required = True,
+                        default_value = flight.scheduled_arrival_time.strftime("%H:%M")
+                    )      
 
-        first_officer_id = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select the copilot:\n",
-            options = self.__flight_service.get_available_pilot_choices(
-                departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
-                arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
-                flight_id = flight.flight_id,
-                unavailable_pilots = excluded_pilots
-            ),
-            default_value = flight.first_officer_id,
-            key_bindings = self.__bindings,
-            include_none = True
-        )
-        if first_officer_id.is_cancelled:
-            return None
-        print()
+                excluded_pilots = self._flight_service.get_flight_relief_pilots(flight)
 
-        departure_terminal_id = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select the departure terminal:\n",
-            options = self.__location_service.get_airport_terminal_choices(int(origin_location_id.value)),
-            default_value = flight.first_officer_id,
-            key_bindings = self.__bindings,
-            include_none = True
-        )
-        if departure_terminal_id.is_cancelled:
-            return None
-        print()
+                if captain_id is unset:
+                    print()
+                    captain_id = self._prompt_until_valid(
+                        prompt_text = "Select the captain:",
+                        getter = lambda p: p.get_int(),
+                        field = "captain_id",
+                        is_picklist = True,
+                        none_option = True,
+                        options = self._flight_service.get_available_pilot_choices(
+                            departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
+                            arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
+                            flight_id = flight.flight_id,
+                            unavailable_pilots = excluded_pilots
+                        ),
+                        default_value = flight.captain_id if flight.captain_id is not None else -1
+                    )
+                    print()
 
-        departure_gate_id = None
-        if departure_terminal_id.value != "":
-            departure_gate_id = UserPrompt(
-                session = self.__session,
-                prompt_type = "choice",
-                prompt = "Select the departure terminal:\n",
-                options = self.__location_service.get_terminal_gate_choices(int(departure_terminal_id.value)),
-                default_value = flight.first_officer_id,
-                key_bindings = self.__bindings,
-                include_none = True
-            )
-            if departure_gate_id.is_cancelled:
-                return None
-            print()
+                # Add the captain to the excluded pilots list
+                excluded_pilots.append(captain_id) if captain_id is not None and captain_id is not unset else flight.captain_id
 
-        confirmed_departure_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "date",
-            prompt = "Confirmed departure date (DD/MM/YYYY): ",
-            allow_blank = True,
-            default_value = flight.confirmed_departure_date.strftime("%d/%m/%Y") if flight.confirmed_departure_date else None
-        )     
-        if confirmed_departure_date.is_cancelled:
-            return None
+                if first_officer_id is unset:
+                    first_officer_id = self._prompt_until_valid(
+                        prompt_text = "Select the first officer:",
+                        getter = lambda p: p.get_int(),
+                        field = "first_officer_id",
+                        options = self._flight_service.get_available_pilot_choices(
+                            departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
+                            arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
+                            flight_id = flight.flight_id,
+                            unavailable_pilots = excluded_pilots
+                        ),
+                        default_value = flight.first_officer_id if flight.first_officer_id is not None else -1,
+                        is_picklist = True,
+                        none_option = True
+                    )
+                    print()
 
-        confirmed_departure_time = UserPrompt(
-            session = self.__session,
-            prompt_type = "time",
-            prompt = "Confirmed departure time (HH:MM): ",
-            allow_blank = True,
-            default_value = flight.confirmed_departure_time.strftime("%H:%M") if flight.confirmed_departure_time else None
-        )        
-        if confirmed_departure_time.is_cancelled:
-            return None
-        print()
+                origin_location = self._location_service.get_location_by_id(cast(int, origin_location_id))
+                origin_name = origin_location.location_name if origin_location else ""
 
-        arrival_terminal_id = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select the arrival terminal:\n",
-            options = self.__location_service.get_airport_terminal_choices(int(destination_location_id.value)),
-            default_value = flight.first_officer_id,
-            key_bindings = self.__bindings,
-            include_none = True
-        )
-        if arrival_terminal_id.is_cancelled:
-            return None
-        print()
+                if departure_gate_id is unset:
+                    departure_gate_id = self._prompt_until_valid(
+                        prompt_text = f"Select the departure gate ({origin_name}):",
+                        getter = lambda p: p.get_int(),
+                        field = "departure_gate_id",
+                        is_picklist = True,
+                        none_option = True,
+                        options = self._location_service.get_airport_gate_choices(cast(int, origin_location_id)),
+                        default_value = flight.departure_gate_id
+                    )
+                    print()
 
-        arrival_gate_id = None
-        if arrival_terminal_id.value != "":
-            arrival_gate_id = UserPrompt(
-                session = self.__session,
-                prompt_type = "choice",
-                prompt = "Select the arrival terminal:\n",
-                options = self.__location_service.get_terminal_gate_choices(int(arrival_terminal_id.value)),
-                default_value = flight.first_officer_id,
-                key_bindings = self.__bindings,
-                include_none = True
-            )
-            if arrival_gate_id.is_cancelled:
-                return None
-            print()
+                if confirmed_departure_date is unset:
+                    confirmed_departure_date = self._prompt_until_valid(
+                        prompt_text = "Confirmed departure date (DD/MM/YYYY):",
+                        getter = lambda p: p.get_date(),
+                        field = "confirmed_departure_date",
+                        default_value = flight.confirmed_departure_date.strftime("%d/%m/%Y") if flight.confirmed_departure_date else None
+                    )    
 
-        confirmed_arrival_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "date",
-            prompt = "Confirmed arrival date (DD/MM/YYYY): ",
-            allow_blank = True,
-            default_value = flight.confirmed_arrival_date.strftime("%d/%m/%Y") if flight.confirmed_arrival_date else None
-        )   
-        if confirmed_arrival_date.is_cancelled:
-            return None
+                if confirmed_departure_time is unset:
+                    confirmed_departure_time = self._prompt_until_valid(
+                        prompt_text = "Confirmed departure time (HH:MM):",
+                        getter = lambda p: p.get_time(),
+                        field = "confirmed_departure_time",
+                        default_value = flight.confirmed_departure_time.strftime("%H:%M") if flight.confirmed_departure_time else None
+                    )    
 
-        confirmed_arrival_time = UserPrompt(
-            session = self.__session,
-            prompt_type = "time",
-            prompt = "Confirmed arrival time (HH:MM): ",
-            allow_blank = True,
-            default_value = flight.confirmed_arrival_time.strftime("%H:%M") if flight.confirmed_arrival_time else None
-        )        
-        if confirmed_arrival_time.is_cancelled:
-            return None
-        print()
+                destination_location = self._location_service.get_location_by_id(cast(int, destination_location_id))
+                destination_name = destination_location.location_name if destination_location else ""
 
-        flight_status = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select a flight status:\n",
-            options = [
-                ("Scheduled", ("Scheduled")),
-                ("Delayed", ("Delayed")),
-                ("On time", ("On time")),
-                ("Boarding", ("Boarding")),
-                ("Closed", ("Closed")),
-                ("Departed", ("Departed")),
-                ("Arrived", ("Arrived"))
-            ],
-            default_value = flight.flight_status,
-            key_bindings = self.__bindings
-        )
-        if flight_status.is_cancelled:
-            return None
-        print()
+                if arrival_gate_id is unset:
+                    arrival_gate_id = self._prompt_until_valid(
+                        prompt_text = f"Select the arrival gate ({destination_name}):",
+                        getter = lambda p: p.get_int(),
+                        field = "arrival_gate_id",
+                        is_picklist = True,
+                        none_option = True,
+                        options = self._location_service.get_airport_gate_choices(cast(int, destination_location_id)),
+                        default_value = flight.arrival_gate_id
+                    )
+                    print()
 
-        return Flight(
-            flight_id = flight.flight_id,
-            flight_number = flight_number.value,
-            aircraft_id = int(aircraft_id.value),
-            origin_location_id = int(origin_location_id.value),
-            destination_location_id = int(destination_location_id.value),
-            departure_gate_id = int(departure_gate_id.value) if departure_gate_id else None,
-            arrival_gate_id = int(arrival_gate_id.value) if arrival_gate_id else None,
-            captain_id = int(captain_id.value),
-            first_officer_id = int(first_officer_id.value),
-            scheduled_departure_date = date.fromisoformat(scheduled_departure_date.value),
-            scheduled_departure_time = time.fromisoformat(scheduled_departure_time.value),
-            scheduled_arrival_date = date.fromisoformat(scheduled_arrival_date.value),
-            scheduled_arrival_time = time.fromisoformat(scheduled_arrival_time.value),
-            confirmed_departure_date = date.fromisoformat(confirmed_departure_date.value) if len(confirmed_departure_date.value) > 0 else None,
-            confirmed_departure_time = time.fromisoformat(confirmed_departure_time.value) if len(confirmed_departure_time.value) > 0 else None,
-            confirmed_arrival_date = date.fromisoformat(confirmed_arrival_date.value) if len(confirmed_arrival_date.value) > 0 else None,
-            confirmed_arrival_time = time.fromisoformat(confirmed_arrival_time.value) if len(confirmed_arrival_time.value) > 0 else None,
-            flight_status = flight_status.value
-        )
+                if confirmed_arrival_date is unset:
+                    confirmed_arrival_date = self._prompt_until_valid(
+                        prompt_text = "Confirmed arrival date (DD/MM/YYYY):",
+                        getter = lambda p: p.get_date(),
+                        field = "confirmed_arrival_date",
+                        default_value = flight.confirmed_arrival_date.strftime("%d/%m/%Y") if flight.confirmed_arrival_date else None
+                    )    
+
+                if confirmed_arrival_time is unset:
+                    confirmed_arrival_time = self._prompt_until_valid(
+                        prompt_text = "Confirmed arrival time (HH:MM):",
+                        getter = lambda p: p.get_time(),
+                        field = "confirmed_arrival_time",
+                        default_value = flight.confirmed_arrival_time.strftime("%H:%M") if flight.confirmed_arrival_time else None
+                    )    
+
+                if flight_status is unset:
+                    flight_status = self._prompt_until_valid(
+                        prompt_text = "Select a flight status:",
+                        getter = lambda p: p.get_str(),
+                        field = "flight_status",
+                        is_picklist = True,
+                        options = [
+                            ("Scheduled", ("Scheduled")),
+                            ("Delayed", ("Delayed")),
+                            ("On time", ("On time")),
+                            ("Boarding", ("Boarding")),
+                            ("Closed", ("Closed")),
+                            ("Departed", ("Departed")),
+                            ("Arrived", ("Arrived"))
+                        ],
+                        default_value = flight.flight_status,
+                        required = True
+                    )
+                    print()
+
+                return Flight(
+                    flight_id = flight.flight_id,
+                    flight_number = self._required(flight_number, "flight_number"),
+                    aircraft_id = self._optional(aircraft_id),
+                    origin_location_id = self._required(origin_location_id, "origin_location_id"),
+                    destination_location_id = self._required(destination_location_id, "destination_location_id"),
+                    departure_gate_id = self._optional(departure_gate_id),
+                    arrival_gate_id = self._optional(arrival_gate_id),
+                    captain_id = self._optional(captain_id),
+                    first_officer_id = self._optional(first_officer_id),
+                    scheduled_departure_date = self._required(scheduled_departure_date, "scheduled_departure_date"),
+                    scheduled_departure_time = self._required(scheduled_departure_time, "scheduled_departure_time"),
+                    scheduled_arrival_date = self._required(scheduled_arrival_date, "scheduled_arrival_date"),
+                    scheduled_arrival_time = self._required(scheduled_arrival_time, "scheduled_arrival_time"),
+                    confirmed_departure_date = self._optional(confirmed_departure_date),
+                    confirmed_departure_time = self._optional(confirmed_departure_time),
+                    confirmed_arrival_date = self._optional(confirmed_arrival_date),
+                    confirmed_arrival_time = self._optional(confirmed_arrival_time),
+                    flight_status = self._required(flight_status, "flight_status")
+                )
+
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+
+                if e.field == "flight_number":
+                    flight_number = unset
+                elif e.field == "aircraft_id":
+                    aircraft_id = unset
+                elif e.field == "origin_location_id":
+                    origin_location_id = unset
+                elif e.field == "destination_location_id":
+                    destination_location_id = unset
+                elif e.field == "departure_gate_id":
+                    departure_gate_id = unset
+                elif e.field == "arrival_gate_id":
+                    arrival_gate_id = unset    
+                elif e.field == "captain_id":
+                    captain_id = unset
+                elif e.field == "first_officer_id":
+                    first_officer_id = unset
+                elif e.field == "scheduled_departure_date":
+                    scheduled_departure_date = unset
+                elif e.field == "scheduled_departure_time":
+                    scheduled_departure_time = unset
+                elif e.field == "scheduled_arrival_date":
+                    scheduled_arrival_date = unset
+                elif e.field == "scheduled_arrival_time":
+                    scheduled_arrival_time = unset
+                elif e.field == "confirmed_departure_date":
+                    confirmed_departure_date = unset
+                elif e.field == "confirmed_departure_time":
+                    confirmed_departure_time = unset
+                elif e.field == "confirmed_arrival_date":
+                    confirmed_arrival_date = unset
+                elif e.field == "confirmed_arrival_time":
+                    confirmed_arrival_time = unset
+                elif e.field == "flight_status":
+                    flight_status = unset
+            
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+
+                flight_number = unset
+                aircraft_id = unset
+                origin_location_id = unset
+                destination_location_id = unset
+                departure_gate_id = unset
+                arrival_gate_id = unset
+                captain_id = unset
+                first_officer_id = unset
+                scheduled_departure_date = unset
+                scheduled_departure_time = unset
+                scheduled_arrival_date = unset
+                scheduled_arrival_time = unset
+                confirmed_departure_date = unset
+                confirmed_departure_time = unset
+                confirmed_arrival_date = unset
+                confirmed_arrival_time = unset
+                flight_status = unset

@@ -1,26 +1,39 @@
 from flightmanagement.models.location import Location, Terminal, Gate
+from flightmanagement.repositories.base_repository import BaseRepository
 
-class LocationRepository:
+class LocationRepository(BaseRepository):
+
+    LOCATION_SEARCH_FIELDS = {
+        'location_type', 
+        'icao_location_code',
+        'iata_airport_code', 
+        'location_name',
+        'town_or_city',
+        'state_or_county',
+        'country',
+        'geographic_region',
+        'decimal_latitude',
+        'decimal_longitude'
+    }
 
     def __init__(self, conn):
-        self.conn = conn
+        super().__init__(conn)
 
     # Core locations functionality
 
     def get_location_by_id(self, location_id: int) -> Location | None:        
-        cursor = self.conn.execute(
+        row = self._execute_fetchone(
             """
             SELECT *
             FROM locations
             WHERE location_id = ?
             """,
             (location_id, )
-        )
-        result = cursor.fetchone()        
-        return self.dict_to_location(result)
+        )    
+        return self.dict_to_location(row)
 
     def get_location_by_code(self, code: str) -> Location | None:
-        cursor = self.conn.execute(
+        row = self._execute_fetchone(
             """
             SELECT *
             FROM locations
@@ -28,27 +41,43 @@ class LocationRepository:
             """,
             (code, )
         )
-        result = cursor.fetchone()
-        return self.dict_to_location(result)
+        return self.dict_to_location(row)
 
     def get_location_list(self) -> list[Location]:
-        cursor = self.conn.execute(
+        rows = self._execute_fetchall(
             """
             SELECT *
             FROM locations
             ORDER BY location_type desc, iata_airport_code
             """
         )
-        results = cursor.fetchall()
 
         result_list = []
-        for row in results:
+        for row in rows:
+            result_list.append(self.dict_to_location(row))
+
+        return result_list
+
+    def search_on_field(self, field_name: str, value) -> list[Location]:
+        if field_name not in self.LOCATION_SEARCH_FIELDS:
+            raise ValueError(f"Invalid search field: {field_name}")
+
+        sql = f"""
+            SELECT *
+            FROM locations
+            WHERE {field_name} = ?
+            ORDER BY location_type, iata_airport_code
+        """
+        rows = self._execute_fetchall(sql, (value, ))
+        
+        result_list = []
+        for row in rows:
             result_list.append(self.dict_to_location(row))
 
         return result_list
 
     def get_location_terminals(self, location_id) -> list[Terminal]:
-        cursor = self.conn.execute(
+        rows = self._execute_fetchall(
             """
             SELECT *
             FROM terminals
@@ -57,27 +86,39 @@ class LocationRepository:
             """,
             (location_id, )
         )
-        results = cursor.fetchall()
 
         result_list = []
-        for row in results:
+        for row in rows:
             result_list.append(self.dict_to_terminal(row))
 
         return result_list
 
-    def insert_location(self, location: Location) -> None:        
-        self.conn.execute(
+    def insert_location(self, location: Location) -> int:        
+        row = self._execute_fetchone(
             """
             INSERT INTO locations
                 (location_type, icao_location_code, iata_airport_code, location_name, town_or_city, state_or_county, country, geographic_region, decimal_latitude, decimal_longitude)
             VALUES
                 (:location_type, :icao_location_code, :iata_airport_code, :location_name, :town_or_city, :state_or_county, :country, :geographic_region, :decimal_latitude, :decimal_longitude)
+            RETURNING location_id
             """,
-            location.to_dict()
+            {
+                "location_type": location.location_type, 
+                "icao_location_code": location.icao_location_code,
+                "iata_airport_code": location.iata_airport_code, 
+                "location_name": location.location_name,
+                "town_or_city": location.town_or_city,
+                "state_or_county": location.state_or_county,
+                "country": location.country,
+                "geographic_region": location.geographic_region,
+                "decimal_latitude": location.decimal_latitude,
+                "decimal_longitude": location.decimal_longitude
+            }
         )
+        return row["location_id"]
 
     def update_location(self, location: Location):
-        self.conn.execute(
+        self._execute(
             """
             UPDATE locations
             SET
@@ -109,29 +150,13 @@ class LocationRepository:
         )
     
     def delete_location(self, location: Location):
-        self.conn.execute(
+        self._execute(
             """
             DELETE FROM locations
             WHERE location_id = ?
             """,
             (location.location_id, )
         )
-    
-    def search_on_field(self, field_name: str, value) -> list[Location]:
-        sql = f"""
-            SELECT *
-            FROM locations
-            WHERE {field_name} = ?
-            ORDER BY location_type, iata_airport_code
-        """
-        cursor = self.conn.execute(sql, (value, ))
-        results = cursor.fetchall()
-        
-        result_list = []
-        for row in results:
-            result_list.append(self.dict_to_location(row))
-
-        return result_list
     
     def dict_to_location(self, data: dict | None) -> Location | None:
         if data is None or len(data) == 0:
@@ -154,17 +179,17 @@ class LocationRepository:
     # Terminal functionality
 
     def get_terminal_by_id(self, terminal_id: int) -> Terminal | None:        
-        cursor = self.conn.execute(
+        row = self._execute_fetchone(
             """
             SELECT *
             FROM terminals
             WHERE terminal_id = ?
             """,
             (terminal_id, )
-        )
-        result = cursor.fetchone()        
-        return self.dict_to_terminal(result)
+        )      
+        return self.dict_to_terminal(row)
 
+    '''
     def get_terminal_by_name(self, terminal_name: str) -> Terminal | None:
         cursor = self.conn.execute(
             """
@@ -176,9 +201,10 @@ class LocationRepository:
         )
         result = cursor.fetchone()
         return self.dict_to_terminal(result)
-
+    '''
+        
     def get_terminal_gates(self, terminal_id) -> list[Gate]:
-        cursor = self.conn.execute(
+        rows = self._execute_fetchall(
             """
             SELECT *
             FROM gates
@@ -187,16 +213,15 @@ class LocationRepository:
             """,
             (terminal_id, )
         )
-        results = cursor.fetchall()
 
         result_list = []
-        for row in results:
+        for row in rows:
             result_list.append(self.dict_to_gate(row))
 
         return result_list
 
     def insert_terminal(self, terminal: Terminal) -> None:        
-        self.conn.execute(
+        self._execute(
             """
             INSERT INTO terminals
                 (location_id, terminal_name)
@@ -207,7 +232,7 @@ class LocationRepository:
         )
 
     def update_terminal(self, terminal: Terminal):
-        self.conn.execute(
+        self._execute(
             """
             UPDATE terminals
             SET
@@ -221,7 +246,7 @@ class LocationRepository:
         )
     
     def delete_terminal(self, terminal: Terminal):
-        self.conn.execute(
+        self._execute(
             """
             DELETE FROM terminals
             WHERE terminal_id = ?
@@ -243,17 +268,17 @@ class LocationRepository:
     # Gate functionality
 
     def get_gate_by_id(self, gate_id: int) -> Gate | None:        
-        cursor = self.conn.execute(
+        row = self._execute_fetchone(
             """
             SELECT *
             FROM gates
             WHERE gate_id = ?
             """,
             (gate_id, )
-        )
-        result = cursor.fetchone()        
-        return self.dict_to_gate(result)
+        )     
+        return self.dict_to_gate(row)
 
+    '''
     def get_gate_by_number(self, gate_number: str) -> Gate | None:
         cursor = self.conn.execute(
             """
@@ -265,9 +290,10 @@ class LocationRepository:
         )
         result = cursor.fetchone()
         return self.dict_to_gate(result)
-
+    '''
+        
     def insert_gate(self, gate: Gate) -> None:        
-        self.conn.execute(
+        self._execute(
             """
             INSERT INTO gates
                 (terminal_id, gate_number)
@@ -278,7 +304,7 @@ class LocationRepository:
         )
 
     def update_gate(self, gate: Gate):
-        self.conn.execute(
+        self._execute(
             """
             UPDATE gates
             SET
@@ -292,7 +318,7 @@ class LocationRepository:
         )
     
     def delete_gate(self, gate: Gate):
-        self.conn.execute(
+        self._execute(
             """
             DELETE FROM gates
             WHERE gate_id = ?

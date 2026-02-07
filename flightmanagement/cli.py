@@ -24,23 +24,27 @@ def main():
         print_welcome()
 
         # Check if the database file already exists in the relevant location
-        db_exists = os.path.exists(DB_PATH)
+        db_exists = DB_PATH.exists()
 
-        # Initialise the database connection (and create the database file if it doesn't exist)
-        conn = get_connection(DB_PATH)
+        # Initialise the database connection
+        with get_connection(DB_PATH) as conn:
 
-        # If the database has just been created, initialise and populate the schema
-        if not db_exists:
-            print("Initialising database for first use.....")
-            initialise_schema(conn)
-            seed_database_data(conn)
-            print("Done!")
+            # Initialise the database if the database file didn't exist on application start
+            if not db_exists:
+                initialise_database(conn)
 
-        # Load the main menu
-        MainMenu(session, bindings, conn).load()
+            # Load the main menu
+            MainMenu(session, bindings, conn).load()
 
-    except RuntimeError as e:
-        print(e)
+    except Exception as e:
+        print("Unexpected error:", e)
+        raise
+
+def initialise_database(conn):
+    print("Initialising database for first use.....")
+    initialise_schema(conn)
+    seed_database_data(conn)
+    print("Done!")
 
 def print_welcome():
     print(r"""
@@ -58,7 +62,7 @@ def print_welcome():
        | |__ | || |__| || |_| |
        |____||_||______||_____|
 
-   The first rule is...    (sssshhhhhh)
+   You know what the first rule is...
           """)
 
 if __name__ == "__main__":

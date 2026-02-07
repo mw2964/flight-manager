@@ -1,5 +1,7 @@
 from prettytable import PrettyTable, TableStyle, ALL, NONE
+from flightmanagement.error import ConstraintViolation
 from flightmanagement.repositories.aircraft_repository import AircraftRepository
+from flightmanagement.error import ForeignKeyDependencyViolation
 from flightmanagement.models.aircraft import Aircraft
 from flightmanagement.db.db import transaction
 
@@ -11,9 +13,9 @@ class AircraftService:
             aircraft_repository or AircraftRepository(self.conn)
         )
 
-    def add_aircraft(self, aircraft: Aircraft):
+    def add_aircraft(self, aircraft: Aircraft) -> int:
         with transaction(self.conn):
-            self.__aircraft_repository.insert_aircraft(aircraft)
+            return self.__aircraft_repository.insert_aircraft(aircraft)
 
     def update_aircraft(self, aircraft: Aircraft):
         with transaction(self.conn):
@@ -22,8 +24,12 @@ class AircraftService:
     def delete_aircraft(self, aircraft: Aircraft):
         if aircraft.aircraft_id is None:
             raise ValueError("Aircraft to delete lacks an ID")
-        with transaction(self.conn):
-            self.__aircraft_repository.delete_aircraft(aircraft)
+        
+        try:
+            with transaction(self.conn):
+                self.__aircraft_repository.delete_aircraft(aircraft)
+        except ForeignKeyDependencyViolation as e:
+            raise ConstraintViolation(e)
 
     def get_aircraft_table(self) -> str:
         aircraft = self.__aircraft_repository.get_aircraft_list()
@@ -98,3 +104,4 @@ class AircraftService:
             indented_table += (" " * 5) + row + "\n"
         
         return str(indented_table)
+    

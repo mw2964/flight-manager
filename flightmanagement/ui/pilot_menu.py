@@ -1,691 +1,737 @@
-from prompt_toolkit import PromptSession
-from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
-from datetime import datetime, date
-from flightmanagement.ui.ui_utils import format_title
-from flightmanagement.ui.user_prompt import UserPrompt
+from typing import Union
+from datetime import date
+from flightmanagement.error import FieldValidationError, DomainValidationError, UserCancelled, ConstraintViolation
+from flightmanagement.ui.base_menu import BaseMenu, Unset
 from flightmanagement.services.pilot_service import PilotService
 from flightmanagement.models.pilot import Pilot
 
-class PilotMenu:
+class PilotMenu(BaseMenu):
 
-    __MENU_NAME = "Main -> Manage Pilots"
-    __MENU_OPTIONS = [
-        ("show", "Show all pilots"),
-        ("search", "Search pilots"),
-        ("add", "Add a pilot"),
-        ("update", "Update a pilot"),
-        ("update_time_logs", "Update flight time logs"),
-        ("update_leave_bookings", "Update leave bookings"),
-        ("delete", "Remove a pilot"),
-        ("back", "Back to main menu")
-    ]
-
-    def __init__(self, session: PromptSession, bindings: KeyBindings, conn = None, pilot_service = None):
-        self.__pilot_service = pilot_service or PilotService(conn)
-        self.__session = session
-        self.__bindings = bindings
+    def __init__(self, session, bindings, conn = None, pilot_service = None):
+        super().__init__(session, bindings, conn)
+        
+        self._pilot_service = pilot_service or PilotService(conn)
+        self._menu_name = "Main -> Manage Pilots"
+        self._menu_options = [
+            ("show", "Show all pilots"),
+            ("search", "Search pilots"),
+            ("add", "Add a pilot"),
+            ("update", "Update a pilot"),
+            ("update_time_logs", "Update flight time logs"),
+            ("update_leave_bookings", "Update leave bookings"),
+            ("delete", "Remove a pilot"),
+            ("back", "Back to main menu")
+        ]
 
     def load(self):
         while True:
-            __choose_menu = choice(message = format_title(self.__MENU_NAME), options = self.__MENU_OPTIONS)
+            _selected_option = choice(message = self._format_title(self._menu_name), options = self._menu_options)
 
-            if __choose_menu == "show":
-                self.__show_option()
-            elif __choose_menu == "search":                
-                if not self.__search_option():
-                    print("\nSearch cancelled.\n")
-                    continue
-            elif __choose_menu == "add":
-                if not self.__add_option():
-                    print("\nAction cancelled.\n")
-                    continue
-            elif __choose_menu == "update":
-                if not self.__update_option():
-                    print("\nUpdate cancelled.\n")
-                    continue
-            elif __choose_menu == "update_time_logs":
-                if not self.__update_time_logs_option():
-                    print("\nAction cancelled.\n")
-                    continue
-            elif __choose_menu == "update_leave_bookings":
-                if not self.__update_leave_bookings_option():
-                    print("\nAction cancelled.\n")
-                    continue
-            elif __choose_menu == "delete":
-                if not self.__delete_option():
-                    print("\nDelete cancelled.\n")
-                    continue
-            elif __choose_menu == "back":
-                return
-            else:
-                print("Invalid choice.")
+            try:
+                if _selected_option == "show":
+                    self._show_option()
+                elif _selected_option == "search":                
+                    self._search_option()
+                elif _selected_option == "add":
+                    self._add_option()
+                elif _selected_option == "update":
+                    self._update_option()
+                elif _selected_option == "update_time_logs":
+                    self._update_time_logs_option()
+                elif _selected_option == "update_leave_bookings":
+                    self._update_leave_bookings_option()
+                elif _selected_option == "delete":
+                    self._delete_option()
+                elif _selected_option == "back":
+                    return                
+            except UserCancelled as e:
+                print(e)
+                continue
 
-    def __show_option(self) -> None:
+    def _show_option(self) -> None:
         print("\n>> Displaying all pilots\n")
-        print(self.__pilot_service.get_pilot_table())
+        print(self._pilot_service.get_pilot_table())
 
-    def __search_option(self) -> bool:
+    def _search_option(self) -> None:
         print("\n>> Search for a pilot (or hit CTRL+C to cancel)\n")
 
-        family_name = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter a family name: ",
-            allow_blank = True
-        )        
-        if family_name.is_cancelled:
-            return False
+        family_name = self._prompt_until_valid(
+                prompt_text = "Family name:",
+                getter = lambda p: p.get_str(),
+                field = "family_name"
+            )
+        result = self._pilot_service.search_pilots("family_name", family_name)
+        print(self._format_results_text(len(result), self._pilot_service.get_results_view(result)))        
 
-        result = self.__pilot_service.search_pilots("family_name", family_name.value)
-
-        if len(result) == 0:
-            print("\n     No matching results.")
-        else:
-            print(f"\n     {len(result)} match(es) found:\n")
-            print(self.__pilot_service.get_results_view(result))
-
-        return True
-
-    def __add_option(self) -> bool:
+    def _add_option(self) -> None:
         print("\n>> Add a pilot (or hit CTRL+C to cancel)\n")
 
-        # Prompt the user to complete fields
-        new = self.__prompt_add_pilot()
-        if new is None: # Process was cancelled by the user
-            return False
-        
-        try:
-            self.__pilot_service.add_pilot(new)
-            print("\nNew record successfully added.\n")
-        except:
-            print("\nError adding pilot.\n")
+        new = self._prompt_add_pilot()        
+        new_id = self._pilot_service.add_pilot(new)
+        print(f"\nNew record successfully added (staff ID: {new_id}).\n")
        
-        return True
-
-    def __update_option(self) -> bool:
+    def _update_option(self) -> None:
         print("\n>> Update a pilot (or hit CTRL+C to cancel)\n")
 
         # Prompt for the pilot to edit
-        pilot = self.__get_pilot_from_selection()
-        if pilot is None or pilot.staff_id is None:
-            return False
+        pilot = self._get_pilot_from_selection()
+        print(f"\nEditing information (staff ID {pilot.staff_id})\n")
 
-        print(f"\nEditing information (pilot ID {pilot.staff_id})\n")
+        update = self._prompt_update_pilot(pilot)        
+        self._pilot_service.update_pilot(update)
+        print("\nRecord successfully updated.\n")
 
-        # Prompt the user to edit fields
-        update = self.__prompt_update_pilot(pilot)
-        if update is None: # Process was cancelled by the user
-            return False
-        
-        try:
-            self.__pilot_service.update_pilot(update)
-            print("\nRecord successfully updated.\n")
-        except:
-            print("\nError updating pilot.\n")
-            
-        return True
-
-    def __update_time_logs_option(self) -> bool:
+    def _update_time_logs_option(self) -> None:
         print("\n>> Update flight time logs (or hit CTRL+C to cancel)\n")
 
         # Prompt for the pilot
-        pilot = self.__get_pilot_from_selection()
+        pilot = self._get_pilot_from_selection()
 
-        if pilot is None or pilot.staff_id is None:
-            return False
+        if pilot.staff_id is None:
+            raise ValueError
 
         print(f"\nLog records for {pilot.first_name} {pilot.family_name}:\n")
-        print(self.__pilot_service.get_flight_logs_table(pilot.staff_id))
+        print(self._pilot_service.get_flight_logs_table(pilot.staff_id))
 
         while True:
-            option = UserPrompt(
-                session = self.__session,
-                prompt_type = "choice",
-                prompt = "What would you like to do?\n",
+
+            option = self._prompt_until_valid(
+                prompt_text = "What would you like to do?:",
+                getter = lambda p: p.get_int(),
+                field = "option",
+                required = True,
+                is_picklist = True,
                 options = [
                     (1, ("Add a time log record")),
                     (2, ("Update a time log record")),
                     (3, ("Delete a time log record")),
                     (4, ("Back to pilot menu"))
-                ],
-                key_bindings = self.__bindings
+                ]
             )
-            if option.is_cancelled:
-                return False
             print()
 
-            if option.value == 1:            
-                record_to_add = self.__prompt_add_time_log_record(pilot.staff_id)
-                if record_to_add is None: # Process was cancelled by the user
-                    print("\nAction cancelled.\n")
-                    continue
+            if option == 1:            
+                record_to_add = self._prompt_add_time_log_record(pilot.staff_id)
+                self._pilot_service.add_time_log_record(pilot.staff_id, record_to_add[0], record_to_add[1])
+                print("\nFlight time log record successfully added:\n")
+                print(self._pilot_service.get_flight_logs_table(pilot.staff_id))
 
-                try:
-                    self.__pilot_service.add_time_log_record(pilot.staff_id, record_to_add[0], record_to_add[1])
-                    print("\nFlight time log record successfully added:\n")
-                    print(self.__pilot_service.get_flight_logs_table(pilot.staff_id))
-                except:
-                    print("\nError adding log record.\n")
             
-            elif option.value == 2:
-                record_to_update = self.__prompt_update_time_log_record(pilot.staff_id)
-                if record_to_update is None: # Process was cancelled by the user
-                    print("\nAction cancelled.\n")
-                    continue
+            elif option == 2:
+                record_to_update = self._prompt_update_time_log_record(pilot.staff_id)
+                self._pilot_service.update_time_log_record(pilot.staff_id, record_to_update[0], record_to_update[1])
+                print("\nFlight time log record successfully updated:\n")
+                print(self._pilot_service.get_flight_logs_table(pilot.staff_id))
 
-                try:
-                    self.__pilot_service.update_time_log_record(pilot.staff_id, record_to_update[0], record_to_update[1])
-                    print("\nFlight time log record successfully removed:\n")
-                    print(self.__pilot_service.get_flight_logs_table(pilot.staff_id))
-                except:
-                    print("\nError updating log record.\n")
-
-            elif option.value == 3:
-                record_to_delete = self.__prompt_delete_time_log_record(pilot.staff_id)
-                if record_to_delete is None: # Process was cancelled by the user
-                    print("\nAction cancelled.\n")
-                    continue
-
-                try:
-                    self.__pilot_service.delete_time_log_record(pilot.staff_id, record_to_delete)
-                    print("\nFlight time log record successfully removed:\n")
-                    print(self.__pilot_service.get_flight_logs_table(pilot.staff_id))
-                except:
-                    print("\nError removing log record.\n")
+            elif option == 3:
+                record_to_delete = self._prompt_delete_time_log_record(pilot.staff_id)
+                self._pilot_service.delete_time_log_record(pilot.staff_id, record_to_delete)
+                print("\nFlight time log record successfully removed:\n")
+                print(self._pilot_service.get_flight_logs_table(pilot.staff_id))
             
-            elif option.value == 4:
+            elif option == 4:
                 break
 
-        return True
-
-    def __update_leave_bookings_option(self) -> bool:
+    def _update_leave_bookings_option(self) -> None:
         print("\n>> Update staff leave bookings (or hit CTRL+C to cancel)\n")
 
         # Prompt for the pilot
-        pilot = self.__get_pilot_from_selection()
+        pilot = self._get_pilot_from_selection()
 
-        if pilot is None or pilot.staff_id is None:
-            return False
+        if pilot.staff_id is None:
+            raise ValueError
 
         print(f"\nLeave bookings for {pilot.first_name} {pilot.family_name}:\n")
-        print(self.__pilot_service.get_leave_bookings_table(pilot.staff_id))
+        print(self._pilot_service.get_leave_bookings_table(pilot.staff_id))
 
         while True:
-            option = UserPrompt(
-                session = self.__session,
-                prompt_type = "choice",
-                prompt = "What would you like to do?\n",
+
+            option = self._prompt_until_valid(
+                prompt_text = "What would you like to do?:",
+                getter = lambda p: p.get_int(),
+                field = "option",
+                required = True,
+                is_picklist = True,
                 options = [
                     (1, ("Add a leave booking")),
                     (2, ("Update a leave booking")),
                     (3, ("Delete a leave booking")),
                     (4, ("Back to pilot menu"))
                 ],
-                key_bindings = self.__bindings
             )
-            if option.is_cancelled:
-                return False
             print()
 
-            if option.value == 1:            
-                record_to_add = self.__prompt_add_leave_booking_record(pilot.staff_id)
-                if record_to_add is None: # Process was cancelled by the user
-                    print("\nAction cancelled.\n")
-                    continue
-
-                try:
-                    self.__pilot_service.add_leave_booking_record(pilot.staff_id, record_to_add[0], record_to_add[1])
-                    print("\nLeave booking successfully added:\n")
-                    print(self.__pilot_service.get_leave_bookings_table(pilot.staff_id))
-                except:
-                    print("\nError adding leave booking.\n")
+            if option == 1:            
+                record_to_add = self._prompt_add_leave_booking_record(pilot.staff_id)
+                self._pilot_service.add_leave_booking_record(pilot.staff_id, record_to_add[0], record_to_add[1])
+                print("\nLeave booking successfully added:\n")
+                print(self._pilot_service.get_leave_bookings_table(pilot.staff_id))
             
-            elif option.value == 2:
-                record_to_update = self.__prompt_update_leave_booking_record(pilot.staff_id)
-                if record_to_update is None: # Process was cancelled by the user
-                    print("\nAction cancelled.\n")
-                    continue
+            elif option == 2:
+                record_to_update = self._prompt_update_leave_booking_record(pilot.staff_id)
+                self._pilot_service.update_leave_booking_record(pilot.staff_id, record_to_update[0], record_to_update[1])
+                print("\nLeave booking successfully updated:\n")
+                print(self._pilot_service.get_leave_bookings_table(pilot.staff_id))
 
-                try:
-                    self.__pilot_service.update_leave_booking_record(pilot.staff_id, record_to_update[0], record_to_update[1])
-                    print("\nLeave booking successfully removed:\n")
-                    print(self.__pilot_service.get_leave_bookings_table(pilot.staff_id))
-                except:
-                    print("\nError updating leave booking.\n")
-
-            elif option.value == 3:
-                record_to_delete = self.__prompt_delete_leave_booking_record(pilot.staff_id)
-                if record_to_delete is None: # Process was cancelled by the user
-                    print("\nAction cancelled.\n")
-                    continue
-
-                try:
-                    self.__pilot_service.delete_leave_booking_record(pilot.staff_id, record_to_delete)
-                    print("\nLeave booking successfully removed:\n")
-                    print(self.__pilot_service.get_leave_bookings_table(pilot.staff_id))
-                except:
-                    print("\nError removing leave booking.\n")
-            
-            elif option.value == 4:
+            elif option == 3:
+                record_to_delete = self._prompt_delete_leave_booking_record(pilot.staff_id)
+                self._pilot_service.delete_leave_booking_record(pilot.staff_id, record_to_delete)
+                print("\nLeave booking successfully removed:\n")
+                print(self._pilot_service.get_leave_bookings_table(pilot.staff_id))
+        
+            elif option == 4:
                 break
-
-        return True
     
-    def __delete_option(self) -> bool:
+    def _delete_option(self) -> None:
         print("\n>> Delete a pilot (or hit CTRL+C to cancel)\n")
 
         # Prompt for the pilot to delete
-        pilot = self.__prompt_delete_pilot()
-        if pilot is None:
-            return False
+        pilot = self._prompt_delete_pilot()
         
         # Delete the pilot
         try:
-            self.__pilot_service.delete_pilot(pilot)
+            self._pilot_service.delete_pilot(pilot)
             print("\nRecord successfully deleted.\n")
-        except:
-            print("\nError deleting pilot.\n")
-        
-        return True
+        except ConstraintViolation as e:
+            print("\nError deleting pilot: the pilot still has related records.")
 
-    def __prompt_add_pilot(self) -> Pilot | None:
+    def _prompt_add_pilot(self) -> Pilot:
 
-        first_name = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter a first name: ",
-            allow_blank = False
-        )        
-        if first_name.is_cancelled:
-            return None
-        
-        family_name = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter a family name: ",
-            allow_blank = False
-        )        
-        if family_name.is_cancelled:
-            return None
-        
-        employee_number = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the employee number: ",
-            allow_blank = False
-        )        
-        if employee_number.is_cancelled:
-            return None
-        
-        employment_start_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "date",
-            prompt = "Enter the employment start date (DD/MM/YYYY): ",
-            allow_blank = False
-        )        
-        if employment_start_date.is_cancelled:
-            return None
+        unset = Unset()
 
-        license_number = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the pilot license number: ",
-            allow_blank = True
-        )        
-        if license_number.is_cancelled:
-            return None
+        first_name: Union[str, None, Unset] = unset
+        family_name: Union[str, None, Unset] = unset
+        employee_number: Union[str, None, Unset] = unset
+        employment_start_date: Union[date, None, Unset] = unset
+        license_number: Union[str, None, Unset] = unset
+        license_type: Union[str, None, Unset] = unset
+        license_expiration_date: Union[date, None, Unset] = unset
 
-        license_type = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the pilot license type: ",
-            allow_blank = True
-        )        
-        if license_type.is_cancelled:
-            return None
+        while True:
+            try:
+                if first_name is unset:
+                    first_name = self._prompt_until_valid(
+                        prompt_text = "First name:",
+                        getter = lambda p: p.get_str(),
+                        field = "first_name",
+                        required = True
+                    )
+                
+                if family_name is unset:
+                    family_name = self._prompt_until_valid(
+                        prompt_text = "Family name:",
+                        getter = lambda p: p.get_str(),
+                        field = "first_name",
+                        required = True
+                    )
+                
+                if employee_number is unset:
+                    employee_number = self._prompt_until_valid(
+                        prompt_text = "Employee number:",
+                        getter = lambda p: p.get_str(),
+                        field = "employee_number"
+                    )
+                
+                if employment_start_date is unset:
+                    employment_start_date = self._prompt_until_valid(
+                        prompt_text = "Employment start date:",
+                        getter = lambda p: p.get_date(),
+                        field = "employment_status",
+                        required = True
+                    )
 
-        license_expiration_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "date",
-            prompt = "Enter the license expiry date (DD/MM/YYYY): ",
-            allow_blank = True
-        )        
-        if license_expiration_date.is_cancelled:
-            return None
+                if license_number is unset:
+                    license_number =self._prompt_until_valid(
+                        prompt_text = "License number:",
+                        getter = lambda p: p.get_str(),
+                        field = "license_number"
+                    )
 
-        return Pilot(
-            first_name = first_name.value,
-            family_name = family_name.value,
-            employee_number = employee_number.value,
-            employment_status = "Current",
-            employment_start_date = datetime.strptime(employment_start_date.value, "%Y-%m-%d"),
-            license_number = license_number.value,
-            license_type = license_type.value,
-            license_expiration_date = datetime.strptime(license_expiration_date.value, "%Y-%m-%d") if len(license_expiration_date.value) > 0 else None
-        )
+                if license_type is unset:
+                    license_type = self._prompt_until_valid(
+                        prompt_text = "License type:",
+                        getter = lambda p: p.get_str(),
+                        field = "license_type"
+                    )
 
-    def __prompt_update_pilot(self, pilot: Pilot) -> Pilot | None:
+                if license_expiration_date is unset:
+                    license_expiration_date = self._prompt_until_valid(
+                        prompt_text = "License expiration date:",
+                        getter = lambda p: p.get_date(),
+                        field = "license_expiration_date"
+                    )
 
-        first_name = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter a first name: ",
-            allow_blank = False,
-            default_value = pilot.first_name
-        )        
-        if first_name.is_cancelled:
-            return None
-        
-        family_name = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter a family name: ",
-            allow_blank = False,
-            default_value = pilot.family_name
-        )        
-        if family_name.is_cancelled:
-            return None
-        print()
+                return Pilot(
+                    first_name = self._required(first_name, "first_name"),
+                    family_name = self._required(family_name, "family_name"),
+                    employee_number = self._required(employee_number, "employee_number"),
+                    employment_status = "Current",
+                    employment_start_date = self._required(employment_start_date, "employment_start_date"),
+                    license_number = self._optional(license_number),
+                    license_type = self._optional(license_type),
+                    license_expiration_date = self._optional(license_expiration_date)
+                )
 
-        employment_status = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select an employment status:\n",
-            options = [
-                ("Current", ("Current")),
-                ("Left", ("Left"))
-            ],
-            key_bindings = self.__bindings,
-            default_value = pilot.employment_status
-        )
-        if employment_status.is_cancelled:
-            return None
-        print()
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
 
-        employee_number = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the employee number: ",
-            allow_blank = False,
-            default_value = pilot.employee_number
-        )        
-        if employee_number.is_cancelled:
-            return None
+                if e.field == "first_name":
+                    first_name = unset
+                elif e.field == "family_name":
+                    family_name = unset
+                elif e.field == "employee_number":
+                    employee_number = unset
+                elif e.field == "employment_start_date":
+                    employment_start_date = unset
+                elif e.field == "license_number":
+                    license_number = unset
+                elif e.field == "license_type":
+                    license_type = unset
+                elif e.field == "license_expiration_date":
+                    license_expiration_date = unset
+            
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
 
-        employment_start_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "date",
-            prompt = "Enter the employment start date (DD/MM/YYYY): ",
-            allow_blank = False,
-            default_value = pilot.employment_start_date.strftime("%d/%m/%Y")
-        )        
-        if employment_start_date.is_cancelled:
-            return None
-        
-        employment_end_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "date",
-            prompt = "Enter the employment end date (DD/MM/YYYY): ",
-            allow_blank = True,
-            default_value = pilot.employment_end_date.strftime("%d/%m/%Y") if pilot.employment_end_date else None
-        )        
-        if employment_end_date.is_cancelled:
-            return None
+                first_name = unset
+                family_name = unset
+                employee_number = unset
+                employment_start_date = unset
+                license_number = unset
+                license_type = unset
+                license_expiration_date = unset
 
-        license_number = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the pilot license number: ",
-            allow_blank = True,
-            default_value = pilot.license_number
-        )        
-        if license_number.is_cancelled:
-            return None
+    def _prompt_update_pilot(self, pilot: Pilot) -> Pilot:
 
-        license_type = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the pilot license type: ",
-            allow_blank = True,
-            default_value = pilot.license_type
-        )        
-        if license_type.is_cancelled:
-            return None
+        unset = Unset()
 
-        license_expiration_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "date",
-            prompt = "Enter the license expiry date (DD/MM/YYYY): ",
-            allow_blank = True,
-            default_value = pilot.license_expiration_date.strftime("%d/%m/%Y") if pilot.license_expiration_date else None
-        )        
-        if license_expiration_date.is_cancelled:
-            return None
+        first_name: Union[str, None, Unset] = unset
+        family_name: Union[str, None, Unset] = unset
+        employment_status: Union[str, None, Unset] = unset
+        employee_number: Union[str, None, Unset] = unset
+        employment_start_date: Union[date, None, Unset] = unset
+        employment_end_date: Union[date, None, Unset] = unset
+        license_number: Union[str, None, Unset] = unset
+        license_type: Union[str, None, Unset] = unset
+        license_expiration_date: Union[date, None, Unset] = unset
 
-        return Pilot(
-            staff_id = pilot.staff_id,
-            first_name = first_name.value,
-            family_name = family_name.value,
-            employee_number = employee_number.value,
-            employment_status = employment_status.value,
-            employment_start_date = datetime.strptime(employment_start_date.value, "%Y-%m-%d"),
-            employment_end_date = datetime.strptime(employment_end_date.value, "%Y-%m-%d") if len(employment_end_date.value) > 0 else None,
-            license_number = license_number.value,
-            license_type = license_type.value,
-            license_expiration_date = datetime.strptime(license_expiration_date.value, "%Y-%m-%d") if len(license_expiration_date.value) > 0 else None
-        )
+        while True:
+            try:
+                if first_name is unset:
+                    first_name = self._prompt_until_valid(
+                        prompt_text = "First name:",
+                        getter = lambda p: p.get_str(),
+                        field = "first_name",
+                        required = True,
+                        default_value = pilot.first_name
+                    )
+                
+                if family_name is unset:
+                    family_name = self._prompt_until_valid(
+                        prompt_text = "Family name:",
+                        getter = lambda p: p.get_str(),
+                        field = "family_name",
+                        required = True,
+                        default_value = pilot.family_name
+                    )
+                
+                if employment_status is unset:      
+                    print()                  
+                    employment_status = self._prompt_until_valid(                                
+                        prompt_text = "Select an employment status:",
+                        is_picklist = True,
+                        getter = lambda p: p.get_str(),
+                        field = "employment_status",
+                        required = True,
+                        options = [
+                            ("Current", ("Current")),
+                            ("Left", ("Left"))
+                        ],
+                        default_value = pilot.employment_status
+                    )
+                    print()
 
-    def __prompt_delete_pilot(self) -> Pilot | None:
+                if employee_number is unset:
+                    employee_number = self._prompt_until_valid(
+                        prompt_text = "Employee number:",
+                        getter = lambda p: p.get_str(),
+                        field = "employee_number",
+                        required = True,
+                        default_value = pilot.employee_number
+                    )
+                
+                if employment_start_date is unset:
+                    employment_start_date = self._prompt_until_valid(
+                        prompt_text = "Employment start date:",
+                        getter = lambda p: p.get_date(),
+                        field = "employment_start_date",
+                        required = True,
+                        default_value = pilot.employment_start_date.strftime("%d/%m/%Y")
+                    )
+
+                if employment_end_date is unset:
+                    employment_end_date = self._prompt_until_valid(
+                        prompt_text = "Employment end date:",
+                        getter = lambda p: p.get_date(),
+                        field = "employment_end_date",
+                        default_value = pilot.employment_end_date.strftime("%d/%m/%Y") if pilot.employment_end_date else None
+                    )
+
+                if license_number is unset:
+                    license_number = self._prompt_until_valid(
+                        prompt_text = "License number:",
+                        getter = lambda p: p.get_str(),
+                        field = "license_number",
+                        default_value = pilot.license_number
+                    )
+
+                if license_type is unset:
+                    license_type = self._prompt_until_valid(
+                        prompt_text = "License type:",
+                        getter = lambda p: p.get_str(),
+                        field = "license_type",
+                        default_value = pilot.license_type
+                    )
+
+                if license_expiration_date is unset:
+                    license_expiration_date = self._prompt_until_valid(
+                        prompt_text = "License expiration date:",
+                        getter = lambda p: p.get_date(),
+                        field = "license_expiration_date",
+                        default_value = pilot.license_expiration_date.strftime("%d/%m/%Y") if pilot.license_expiration_date else None
+                    )
+
+                return Pilot(
+                    staff_id = pilot.staff_id,
+                    first_name = self._required(first_name, "first_name"),
+                    family_name = self._required(family_name, "family_name"),
+                    employee_number = self._required(employee_number, "employee_number"),
+                    employment_status = self._required(employment_status, "employment_status"),
+                    employment_start_date = self._required(employment_start_date, "employment_start_date"),
+                    employment_end_date = self._optional(employment_end_date),
+                    license_number = self._optional(license_number),
+                    license_type = self._optional(license_type),
+                    license_expiration_date = self._optional(license_expiration_date)
+                )
+
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+
+                if e.field == "first_name":
+                    first_name = unset
+                elif e.field == "family_name":
+                    family_name = unset
+                elif e.field == "employee_number":
+                    employee_number = unset
+                elif e.field == "employment_start_date":
+                    employment_start_date = unset
+                elif e.field == "employment_end_date":
+                    employment_end_date = unset
+                elif e.field == "employment_status":
+                    employment_end_date = unset
+                elif e.field == "license_number":
+                    license_number = unset
+                elif e.field == "license_type":
+                    license_type = unset
+                elif e.field == "license_expiration_date":
+                    license_expiration_date = unset
+            
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+
+                first_name = unset
+                family_name = unset
+                employment_status = unset
+                employee_number = unset
+                employment_start_date = unset
+                employment_end_date = unset
+                license_number = unset
+                license_type = unset
+                license_expiration_date = unset
+
+    def _prompt_delete_pilot(self) -> Pilot:
 
         # Prompt for the pilot to delete
-        pilot = self.__get_pilot_from_selection()
-        if pilot is None or pilot.staff_id is None:
-            return None
-        
-        # Prompt for confirmation and delete if confirmed
-        confirm = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Are you sure you want to delete this record?\n",
-            options = [(1, "yes"),(0, "no")],
-            key_bindings = self.__bindings
-        )
+        pilot = self._get_pilot_from_selection()
+        print()
 
-        if confirm.is_cancelled or confirm.value == False:
-            return None
-        
+        # Delete will be cancelled if the user doesn't confirm
+        self._prompt_delete_confirmation()
+
         return pilot
 
-    def __prompt_add_time_log_record(self, staff_id: int) -> tuple | None:
+    def _prompt_add_time_log_record(self, staff_id: int) -> tuple:
+
+        effective_date = None
+        flight_hours = None
+
         while True:
-            effective_date = UserPrompt(
-                session = self.__session,
-                prompt_type = "date",
-                prompt = "Enter the effective date: ",
-                allow_blank = False,
-                key_bindings = self.__bindings
-            )
-            if effective_date.is_cancelled:
-                return None
-            
-            if not self.__pilot_service.log_record_exists(staff_id, date.fromisoformat(effective_date.value)):
-                break
-            print("The pilot already has a log record for this date. Please try again.")
+            try:
+                while effective_date is None:
+                    effective_date = self._prompt_until_valid(
+                        prompt_text = "Enter the effective date:",
+                        getter = lambda p: p.get_date(),
+                        field = "effective_date",
+                        required = True
+                    )
+                
+                if self._pilot_service.log_record_exists(staff_id, effective_date):
+                    raise FieldValidationError("effective_date", "The pilot already has a log record for this date. Please try again.")
 
-        flight_hours = UserPrompt(
-            session = self.__session,
-            prompt_type = "float",
-            prompt = "Enter the flight hours to log: ",
-            allow_blank = False,
-            key_bindings = self.__bindings
-        )
-        if flight_hours.is_cancelled:
-            return None
-            
-        return date.fromisoformat(effective_date.value), float(flight_hours.value)
+                while flight_hours is None:
+                    flight_hours = self._prompt_until_valid(                            
+                        prompt_text = "Enter the flight hours to log:",
+                        getter = lambda p: p.get_float(),
+                        field = "flight_hours",
+                        required = True
+                    )
 
-    def __prompt_update_time_log_record(self, staff_id: int) -> tuple | None:
+                return effective_date, flight_hours
+            
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+                print()
+
+                if e.field == "effective_date":
+                    effective_date = None
+                elif e.field == "flight_hours":
+                    flight_hours = None
+
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+                print()
+
+                effective_date = None
+                flight_hours = None
+
+    def _prompt_update_time_log_record(self, staff_id: int) -> tuple:
         
-        effective_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Choose a record to update:\n",
-            options = self.__pilot_service.get_log_record_choices(staff_id),
-            key_bindings = self.__bindings
-        )
-        if effective_date.is_cancelled:
-            return None
-        print()
+        effective_date = None
+        flight_hours = None
 
-        log_record = self.__pilot_service.get_time_log_record(staff_id, date.fromisoformat(effective_date.value))
-
-        flight_hours = UserPrompt(
-            session = self.__session,
-            prompt_type = "float",
-            prompt = "Enter the flight hours to log: ",
-            allow_blank = False,
-            default_value = log_record["flight_hours"] if log_record else None,
-            key_bindings = self.__bindings
-        )
-        if flight_hours.is_cancelled:
-            return None
-            
-        return date.fromisoformat(effective_date.value), float(flight_hours.value)
-
-    def __prompt_delete_time_log_record(self, staff_id: int) -> date | None:
-
-        effective_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Choose a record to delete:\n",
-            options = self.__pilot_service.get_log_record_choices(staff_id),
-            key_bindings = self.__bindings
-        )
-        if effective_date.is_cancelled:
-            return None
-
-        # Prompt for confirmation and delete if confirmed
-        confirm = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Are you sure you want to delete this record?\n",
-            options = [(1, "yes"),(0, "no")],
-            key_bindings = self.__bindings
-        )
-
-        if confirm.is_cancelled or confirm.value == False:
-            return None
-
-        return date.fromisoformat(effective_date.value)
-
-    def __prompt_add_leave_booking_record(self, staff_id: int) -> tuple | None:
         while True:
-            leave_date = UserPrompt(
-                session = self.__session,
-                prompt_type = "date",
-                prompt = "Enter the leave date: ",
-                allow_blank = False,
-                key_bindings = self.__bindings
-            )
-            if leave_date.is_cancelled:
-                return None
+            try:
+                while effective_date is None:
+                    effective_date = self._prompt_until_valid(
+                        prompt_text = "Choose a record to update:",
+                        is_picklist = True,
+                        field = "effective_date",
+                        required = True,
+                        getter = lambda p: p.get_date(),
+                        options = self._pilot_service.get_log_record_choices(staff_id)
+                    )       
+                    print()
+
+                log_record = self._pilot_service.get_time_log_record(staff_id, effective_date)
+
+                while flight_hours is None:
+                    flight_hours = self._prompt_until_valid(                            
+                        prompt_text = "Enter the flight hours to log:",
+                        getter = lambda p: p.get_float(),
+                        field = "flight_hours",
+                        required = True,
+                        default_value = log_record["flight_hours"] if log_record else None
+                    )
+
+                return effective_date, flight_hours
             
-            if not self.__pilot_service.leave_record_exists(staff_id, date.fromisoformat(leave_date.value)):
-                break
-            print("The staff member already has a leave booking for this date. Please try again.")
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+                print()
 
-        leave_type = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Enter the leave type: \n",
-            options = [
-                ("Annual leave", ("Annual leave")),
-                ("Sick leave", ("Sick leave")),
-                ("Parental leave", ("Parental leave")),
-                ("Compassionate leave", ("Compassionate leave")),
-                ("Study leave", ("Study leave"))
-            ],
-            key_bindings = self.__bindings
-        )
-        if leave_type.is_cancelled:
-            return None
-        print()
+                if e.field == "effective_date":
+                    effective_date = None
+                elif e.field == "flight_hours":
+                    flight_hours = None
 
-        return date.fromisoformat(leave_date.value), leave_type.value
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+                print()
 
-    def __prompt_update_leave_booking_record(self, staff_id: int) -> tuple | None:
+                effective_date = None
+                flight_hours = None
+
+    def _prompt_delete_time_log_record(self, staff_id: int) -> date:
+
+        effective_date = None
+
+        while effective_date is None:
+            effective_date = self._prompt_until_valid(
+                prompt_text = "Choose a record to update:",
+                is_picklist = True,
+                field = "effective_date",
+                required = True,
+                getter = lambda p: p.get_date(),
+                options = self._pilot_service.get_log_record_choices(staff_id)
+            )                   
+            print()
+
+        # Delete will be cancelled if the user doesn't confirm
+        self._prompt_delete_confirmation()
+
+        return effective_date
+
+    def _prompt_add_leave_booking_record(self, staff_id: int) -> tuple:
         
-        leave_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Choose a record to update:\n",
-            options = self.__pilot_service.get_leave_record_choices(staff_id),
-            key_bindings = self.__bindings
-        )
-        if leave_date.is_cancelled:
-            return None
-        print()
+        leave_date = None
+        leave_type = None
 
-        leave_record = self.__pilot_service.get_leave_booking_record(staff_id, date.fromisoformat(leave_date.value))
+        while True:
+            try:
+                while leave_date is None:
+                    leave_date = self._prompt_until_valid(
+                        prompt_text = "Enter the leave date:",
+                        getter = lambda p: p.get_date(),
+                        field = "leave_date",
+                        required = True
+                    )
+                
+                if self._pilot_service.leave_record_exists(staff_id, leave_date):
+                    raise FieldValidationError("effective_date", "The staff member already has a leave booking for this date.")
 
-        leave_type = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Enter the leave type: \n",
-            options = [
-                ("Annual leave", ("Annual leave")),
-                ("Sick leave", ("Sick leave")),
-                ("Parental leave", ("Parental leave")),
-                ("Compassionate leave", ("Compassionate leave")),
-                ("Study leave", ("Study leave"))
-            ],
-            default_value = leave_record["leave_type"] if leave_record else None,
-            key_bindings = self.__bindings
-        )
-        if leave_type.is_cancelled:
-            return None
-        print()
+                while leave_type is None:
+                    print()
+                    leave_type = self._prompt_until_valid(
+                        is_picklist = True,                            
+                        prompt_text = "Enter the leave type:",
+                        getter = lambda p: p.get_str(),
+                        field = "leave_type",
+                        required = True,
+                        options = [
+                            ("Annual leave", ("Annual leave")),
+                            ("Sick leave", ("Sick leave")),
+                            ("Parental leave", ("Parental leave")),
+                            ("Compassionate leave", ("Compassionate leave")),
+                            ("Study leave", ("Study leave"))
+                        ]
+                    )
+                    print()
+
+                return leave_date, leave_type
             
-        return date.fromisoformat(leave_date.value), leave_type.value
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+                print()
 
-    def __prompt_delete_leave_booking_record(self, staff_id: int) -> date | None:
+                if e.field == "leave_date":
+                    leave_date = None
+                elif e.field == "leave_type":
+                    leave_type = None
 
-        leave_date = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Choose a record to update:\n",
-            options = self.__pilot_service.get_leave_record_choices(staff_id),
-            key_bindings = self.__bindings
-        )
-        if leave_date.is_cancelled:
-            return None
-        print()
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+                print()
 
-        # Prompt for confirmation and delete if confirmed
-        confirm = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Are you sure you want to delete this record?\n",
-            options = [(1, "yes"),(0, "no")],
-            key_bindings = self.__bindings
-        )
+                leave_date = None
+                leave_type = None
+        
+    def _prompt_update_leave_booking_record(self, staff_id: int) -> tuple:
+        
+        leave_date = None
+        leave_type = None
 
-        if confirm.is_cancelled or confirm.value == False:
-            return None
+        while True:
+            try:
+                while leave_date is None:
+                    leave_date = self._prompt_until_valid(
+                        is_picklist = True,
+                        getter = lambda p: p.get_date(),
+                        field = "leave_date",
+                        required = True,
+                        prompt_text = "Choose a record to update:",
+                        options = self._pilot_service.get_leave_record_choices(staff_id)
+                    )
+                    print()
 
-        return date.fromisoformat(leave_date.value)
+                leave_record = self._pilot_service.get_leave_booking_record(staff_id, leave_date)
 
-    def __get_pilot_from_selection(self) -> Pilot | None:
-        pilot_id = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Choose a pilot:\n",
-            options = self.__pilot_service.get_pilot_choices(),
-            key_bindings = self.__bindings
-        )
-        if pilot_id.is_cancelled:
-            return None
-        print()
+                while leave_type is None:
+                    leave_type = self._prompt_until_valid(
+                        is_picklist = True,                            
+                        prompt_text = "Enter the leave type:",
+                        getter = lambda p: p.get_str(),
+                        field = "leave_type",
+                        required = True,
+                        options = [
+                            ("Annual leave", ("Annual leave")),
+                            ("Sick leave", ("Sick leave")),
+                            ("Parental leave", ("Parental leave")),
+                            ("Compassionate leave", ("Compassionate leave")),
+                            ("Study leave", ("Study leave"))
+                        ],
+                        default_value = leave_record["leave_type"] if leave_record else None
+                    )
+                    print()
 
-        return self.__pilot_service.get_pilot_by_id(int(pilot_id.value))
+                return leave_date, leave_type
+
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+                print()
+
+                if e.field == "leave_type":
+                    leave_type = None
+
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+                print()
+
+                leave_date = None
+                leave_type = None 
+        
+    def _prompt_delete_leave_booking_record(self, staff_id: int) -> date:
+
+        leave_date = None
+
+        while leave_date is None:
+            leave_date = self._prompt_until_valid(
+                prompt_text = "Choose a record to update:",
+                field = "leave_date",
+                required = True,
+                is_picklist = True,
+                getter = lambda p: p.get_date(),
+                options = self._pilot_service.get_leave_record_choices(staff_id)
+            )                 
+            print()
+
+        # Delete will be cancelled if user doesn't confirm
+        self._prompt_delete_confirmation()
+
+        return leave_date
+
+    def _get_pilot_from_selection(self) -> Pilot:
+
+        pilot_id = None
+
+        while pilot_id is None:
+            pilot_id = self._prompt_until_valid(
+                prompt_text = "Select a pilot:",
+                getter = lambda p: p.get_int(),
+                field = "pilot_id",
+                required = True,
+                is_picklist = True,
+                options = self._pilot_service.get_pilot_choices()
+            )
+
+        pilot = self._pilot_service.get_pilot_by_id(pilot_id)
+
+        if pilot is None:
+            raise ValueError("No pilot returned from selection.")
+        
+        if pilot.staff_id is None:
+            raise ValueError("Selected pilot missing unique identifier.")
+
+        return pilot

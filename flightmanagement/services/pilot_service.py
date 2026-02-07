@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 from prettytable import PrettyTable, TableStyle, ALL, NONE
 from flightmanagement.repositories.pilot_repository import PilotRepository
 from flightmanagement.models.pilot import Pilot
@@ -12,9 +12,9 @@ class PilotService:
             pilot_repository or PilotRepository(self.conn)
         )
 
-    def add_pilot(self, pilot: Pilot):
+    def add_pilot(self, pilot: Pilot) -> int:
         with transaction(self.conn):
-            self.__pilot_repository.insert_pilot(pilot)
+            return self.__pilot_repository.insert_pilot(pilot)
 
     def update_pilot(self, pilot: Pilot):
         with transaction(self.conn):
@@ -25,6 +25,7 @@ class PilotService:
             raise ValueError("Pilot to delete lacks an ID")
         with transaction(self.conn):
             self.__pilot_repository.delete_pilot(pilot)
+            self.__pilot_repository.delete_staff(pilot)
 
     def add_time_log_record(self, staff_id: int, effective_date: date, flight_hours: float):
         with transaction(self.conn):
@@ -123,7 +124,8 @@ class PilotService:
         record_choices = []
         if records:
             for record in records:
-                record_choices.append((record["leave_date"], f"{record['leave_date']} ({record['leave_type']})"))
+                leave_date = datetime.strptime(record["leave_date"], "%Y-%m-%d").strftime("%d/%m/%Y")
+                record_choices.append((leave_date, f"{leave_date} ({record['leave_type']})"))
 
         return record_choices
 
@@ -153,7 +155,8 @@ class PilotService:
         record_choices = []
         if records:
             for record in records:
-                record_choices.append((record["effective_date"], f"{record['effective_date']}: {record['flight_hours']} hrs"))
+                effective_date = datetime.strptime(record["effective_date"], "%Y-%m-%d").strftime("%d/%m/%Y")
+                record_choices.append((effective_date, f"{effective_date}: {record['flight_hours']} hrs"))
 
         return record_choices
 

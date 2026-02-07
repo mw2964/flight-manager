@@ -1,6 +1,7 @@
 from flightmanagement.models.aircraft import Aircraft, AircraftType
+from flightmanagement.repositories.base_repository import BaseRepository
 
-class AircraftRepository:
+class AircraftRepository(BaseRepository):
 
     AIRCRAFT_SEARCH_FIELDS = {
         'aircraft_type_id',
@@ -17,25 +18,23 @@ class AircraftRepository:
     }
 
     def __init__(self, conn):
-        self.conn = conn
+        super().__init__(conn)
 
     # Core aircraft functionality
-
+    
     def get_aircraft_by_id(self, aircraft_id: int) -> Aircraft | None:
-
-        cursor = self.conn.execute(
+        row = self._execute_fetchone(
             """
             SELECT *
             FROM aircraft
             WHERE aircraft_id = ?
             """,
             (aircraft_id, )
-        )
-        result = cursor.fetchone()        
-        return self.dict_to_aircraft(result)
+        )    
+        return self.dict_to_aircraft(row)
 
     def get_aircraft_by_registration(self, registration: str) -> Aircraft | None:
-        cursor = self.conn.execute(
+        row = self._execute_fetchone(
             """
             SELECT *
             FROM aircraft
@@ -43,34 +42,52 @@ class AircraftRepository:
             """,
             (registration, )
         )
-        result = cursor.fetchone()
-        
-        return self.dict_to_aircraft(result)
+        return self.dict_to_aircraft(row)
 
     def get_aircraft_list(self) -> list:
-        cursor = self.conn.execute(
+        rows = self._execute_fetchall(
             """
             SELECT *
             FROM vw_aircraft
             ORDER BY registration
             """
         )
-        results = cursor.fetchall()
-        return results
+        return rows
 
-    def insert_aircraft(self, aircraft: Aircraft) -> None:        
-        self.conn.execute(
+    def search_aircraft_on_field(self, field_name: str, value) -> list:        
+        if field_name not in self.AIRCRAFT_SEARCH_FIELDS:
+            raise ValueError(f"Invalid search field: {field_name}")
+
+        sql = f"""
+            SELECT *
+            FROM vw_aircraft
+            WHERE {field_name} = ?
+            ORDER BY registration
+        """
+        rows = self._execute_fetchall(sql, (value, ))
+        return rows
+
+    def insert_aircraft(self, aircraft: Aircraft) -> int:        
+        row = self._execute_fetchone(
             """
             INSERT INTO aircraft
                 (aircraft_type_id, registration, manufacturer_serial_no, icao_hex, aircraft_status)
             VALUES
                 (:aircraft_type_id, :registration, :manufacturer_serial_no, :icao_hex, :aircraft_status)
+            RETURNING aircraft_id
             """,
-            aircraft.to_dict()
+            {
+                "aircraft_type_id": aircraft.aircraft_type_id,
+                "registration": aircraft.registration, 
+                "manufacturer_serial_no": aircraft.manufacturer_serial_no,
+                "icao_hex": aircraft.icao_hex,
+                "aircraft_status": aircraft.aircraft_status
+            }
         )
-
+        return row["aircraft_id"]
+        
     def update_aircraft(self, aircraft: Aircraft):
-        self.conn.execute(
+        self._execute(
             """
             UPDATE aircraft
             SET
@@ -92,28 +109,13 @@ class AircraftRepository:
         )
     
     def delete_aircraft(self, aircraft: Aircraft):
-        self.conn.execute(
+        self._execute(
             """
             DELETE FROM aircraft
             WHERE aircraft_id = ?
             """,
             (aircraft.aircraft_id, )
         )
-    
-    def search_aircraft_on_field(self, field_name: str, value) -> list:
-        
-        if field_name not in self.AIRCRAFT_SEARCH_FIELDS:
-            raise ValueError(f"Invalid search field: {field_name}")
-
-        sql = f"""
-            SELECT *
-            FROM vw_aircraft
-            WHERE {field_name} = ?
-            ORDER BY registration
-        """
-        cursor = self.conn.execute(sql, (value, ))
-        results = cursor.fetchall()
-        return results
     
     def dict_to_aircraft(self, data: dict | None) -> Aircraft | None:
         if data is None or len(data) == 0:
@@ -131,20 +133,18 @@ class AircraftRepository:
     # Aircraft type functionality
 
     def get_aircraft_type_by_id(self, aircraft_type_id: int) -> AircraftType | None:
-
-        cursor = self.conn.execute(
+        row = self._execute_fetchone(
             """
             SELECT *
             FROM aircraft_types
             WHERE aircraft_type_id = ?
             """,
             (aircraft_type_id, )
-        )
-        result = cursor.fetchone()        
-        return self.dict_to_aircraft_type(result)
+        )      
+        return self.dict_to_aircraft_type(row)
 
     def get_aircraft_type_by_model(self, model: str) -> AircraftType | None:
-        cursor = self.conn.execute(
+        row = self._execute_fetchone(
             """
             SELECT *
             FROM aircraft_types
@@ -152,34 +152,37 @@ class AircraftRepository:
             """,
             (model, )
         )
-        result = cursor.fetchone()
+        return self.dict_to_aircraft_type(row)
         
-        return self.dict_to_aircraft_type(result)
-
     def get_aircraft_type_list(self) -> list:
-        cursor = self.conn.execute(
+        rows = self._execute_fetchall(
             """
             SELECT *
             FROM aircraft_types
             ORDER BY manufacturer, model
             """
         )
-        results = cursor.fetchall()
-        return results
+        return rows
 
     def insert_aircraft_type(self, aircraft_type: AircraftType) -> None:        
-        self.conn.execute(
+        row = self._execute_fetchone(
             """
             INSERT INTO aircraft_types
                 (manufacturer, model, icao_type)
             VALUES
                 (:manufacturer, :model, :icao_type)
+            RETURNING aircraft_type_id
             """,
-            aircraft_type.to_dict()
+            {
+                "manufacturer": aircraft_type.manufacturer,
+                "model": aircraft_type.model, 
+                "icao_type": aircraft_type.icao_type
+            }
         )
+        return row["aircraft_type_id"]
 
     def update_aircraft_type(self, aircraft_type: AircraftType):
-        self.conn.execute(
+        self._execute(
             """
             UPDATE aircraft_types
             SET
@@ -195,9 +198,9 @@ class AircraftRepository:
                 aircraft_type.aircraft_type_id
             )
         )
-    
+
     def delete_aircraft_type(self, aircraft_type: AircraftType):
-        self.conn.execute(
+        self._execute(
             """
             DELETE FROM aircraft_types
             WHERE aircraft_type_id = ?
@@ -206,7 +209,7 @@ class AircraftRepository:
         )
     
     def search_aircraft_type_on_field(self, field_name: str, value) -> list[AircraftType]:
-        
+
         if field_name not in self.AIRCRAFT_TYPE_SEARCH_FIELDS:
             raise ValueError(f"Invalid search field: {field_name}")
 
@@ -216,15 +219,14 @@ class AircraftRepository:
             WHERE {field_name} = ?
             ORDER BY manufacturer, model
         """
-        cursor = self.conn.execute(sql, (value, ))
-        results = cursor.fetchall()
+        results = self._execute_fetchall(sql, (value, ))        
         
         result_list = []
         for row in results:
             result_list.append(self.dict_to_aircraft_type(row))
 
         return result_list
-    
+        
     def dict_to_aircraft_type(self, data: dict | None) -> AircraftType | None:
         if data is None or len(data) == 0:
             return None

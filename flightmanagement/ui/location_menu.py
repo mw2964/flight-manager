@@ -1,415 +1,434 @@
-from prompt_toolkit import PromptSession
-from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
-from flightmanagement.ui.ui_utils import format_title
-from flightmanagement.ui.user_prompt import UserPrompt
+from typing import Union
+from flightmanagement.error import FieldValidationError, DomainValidationError, UserCancelled, ConstraintViolation
+from flightmanagement.ui.base_menu import BaseMenu, Unset
 from flightmanagement.services.location_service import LocationService
 from flightmanagement.models.location import Location
 
-class LocationMenu:
+class LocationMenu(BaseMenu):
 
-    __MENU_NAME = "Main -> Manage Destinations"
-    __MENU_OPTIONS = [
-        ("show", "Show all destinations"),
-        ("search", "Search destinations"),
-        ("add", "Add a destination"),
-        ("update", "Update a destination"),
-        ("delete", "Remove a destination"),
-        ("back", "Back to main menu")
-    ]
+    def __init__(self, session, bindings, conn = None, location_service = None):
+        super().__init__(session, bindings, conn)
 
-    def __init__(self, session: PromptSession, bindings: KeyBindings, conn = None, location_service = None):
-        self.__location_service = location_service or LocationService(conn)
-        self.__session = session
-        self.__bindings = bindings
+        self._location_service = location_service or LocationService(conn)
+        self._menu_name = "Main -> Manage Destinations"
+        self._menu_options = [
+            ("show", "Show all destinations"),
+            ("search", "Search destinations"),
+            ("add", "Add a destination"),
+            ("update", "Update a destination"),
+            ("delete", "Remove a destination"),
+            ("back", "Back to main menu")
+        ]
 
     def load(self):
         while True:
-            __choose_menu = choice(message = format_title(self.__MENU_NAME), options = self.__MENU_OPTIONS)
+            _selected_option = choice(message = self._format_title(self._menu_name), options = self._menu_options)
 
-            if __choose_menu == "show":
-                self.__show_option()
-            elif __choose_menu == "search":                
-                if not self.__search_option():
-                    print("\nSearch cancelled.\n")
-                    continue
-            elif __choose_menu == "add":
-                if not self.__add_option():
-                    print("\nAction cancelled.\n")
-                    continue
-            elif __choose_menu == "update":
-                if not self.__update_option():
-                    print("\nUpdate cancelled.\n")
-                    continue
-            elif __choose_menu == "delete":
-                if not self.__delete_option():
-                    print("\nDelete cancelled.\n")
-                    continue
-            elif __choose_menu == "back":
-                return
-            else:
-                print("Invalid choice.")
+            try: 
+                if _selected_option == "show":
+                    self._show_option()
+                elif _selected_option == "search":                
+                    self._search_option()
+                elif _selected_option == "add":
+                    self._add_option()
+                elif _selected_option == "update":
+                    self._update_option()
+                elif _selected_option == "delete":
+                    self._delete_option()
+                elif _selected_option == "back":
+                    return
+            except UserCancelled as e:
+                print(e)
+                continue
 
-    def __show_option(self) -> None:
-        print("\n>> Displaying all locations\n")
-        print(self.__location_service.get_location_table())
+    def _show_option(self) -> None:
+        print("\n>> Displaying all destinations\n")
+        print(self._location_service.get_location_table())
 
-    def __search_option(self) -> bool:
-        print("\n>> Search for a location (or hit CTRL+C to cancel)\n")
+    def _search_option(self) -> None:
+        print("\n>> Search for a destination (or hit CTRL+C to cancel)\n")
 
-        code = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter an airport code: ",
-            allow_blank = True
-        )        
-        if code.is_cancelled:
-            return False
+        iata_airport_code = self._prompt_until_valid(
+            prompt_text = "Airport code:",
+            getter = lambda p: p.get_str(),
+            field = "iata_airport_code",
+            required = True
+        )
+        result = self._location_service.search_locations("iata_airport_code", iata_airport_code)
+        print(self._format_results_text(len(result), self._location_service.get_results_view(result)))
 
-        result = self.__location_service.search_locations("iata_airport_code", code.value)
+    def _add_option(self) -> None:
+        print("\n>> Add a destination (or hit CTRL+C to cancel)\n")
 
-        if len(result) == 0:
-            print("\n     No matching results.")
-        else:
-            print(f"\n     {len(result)} match(es) found:\n")
-            print(self.__location_service.get_results_view(result))
+        new = self._prompt_add_location()
+        new_id = self._location_service.add_location(new)
+        print(f"\nNew record successfully added (Location ID {new_id}).\n")
 
-        return True
-
-    def __add_option(self) -> bool:
-        print("\n>> Add a location (or hit CTRL+C to cancel)\n")
-
-        # Prompt the user to edit fields
-        new = self.__prompt_add_location()
-        if new is None: # Process was cancelled by the user
-            return False
-
-        try:
-            self.__location_service.add_location(new)
-            print("\nNew record successfully added.\n")
-        except:
-            print("\nError adding location.\n")
-       
-        return True
-
-    def __update_option(self) -> bool:
-        print("\n>> Update a location (or hit CTRL+C to cancel)\n")
+    def _update_option(self) -> None:
+        print("\n>> Update a destination (or hit CTRL+C to cancel)\n")
 
         # Prompt for the location to edit
-        location = self.__get_location_from_selection()
-        if location is None or location.location_id is None:
-            return False
-        
-        print(f"\nEditing information (location ID {id})\n")
+        location = self._get_location_from_selection()
+        print(f"\nEditing information (location ID {location.location_id})\n")
 
-        # Prompt the user to edit fields
-        update = self.__prompt_update_location(location)
-        if update is None: # Process was cancelled by the user
-            return False
+        update = self._prompt_update_location(location)
+        self._location_service.update_location(update)
+        print("\nRecord successfully updated.\n")
 
-        # Update the aircraft record
-        try:
-            self.__location_service.update_location(location)
-            print("\nRecord successfully updated.\n")
-        except:
-            print("\nError updating pilot.\n")
-
-        return True
-
-    def __delete_option(self) -> bool:
-        print("\n>> Delete a location (or hit CTRL+C to cancel)\n")
-
-        # Prompt for the aircraft to delete
-        location = self.__prompt_delete_location()
-        if location is None:
-            return False
-        
-        # Delete the location
-        try:
-            self.__location_service.delete_location(location)
-            print("\nRecord successfully deleted.\n")
-        except:
-            print("\nError deleting aircraft.\n")
-        
-        return True
-
-    def __prompt_add_location(self) -> Location | None:
-
-        location_type = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select a location type:\n",
-            options = [
-                ("Airport", ("Airport")),
-                ("Airfield", ("Airfield"))
-            ],
-            default_value = "Airport",
-            key_bindings = self.__bindings
-        )
-        if location_type.is_cancelled:
-            return None
-        print()
-
-       
-        iata_airport_code = None
-        if location_type.value == "Airport":
-            while True:
-                iata_airport_code = UserPrompt(
-                    session = self.__session,
-                    prompt_type = "text",
-                    prompt = "Enter the 3-character IATA airport code: ",
-                    allow_blank = False
-                )
-                if iata_airport_code is None or Location.is_valid_iata_airport_code(iata_airport_code.value, location_type.value):
-                    break
-                else:
-                    print("   Invalid airport code - please try again")
-            if iata_airport_code.is_cancelled:
-                return None
-        
-
-        icao_location_code = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the 4-character ICAO location code: ",
-            allow_blank = location_type.value != "Airfield"
-        )        
-        if icao_location_code.is_cancelled:
-            return None
-
-        location_name = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the airport or airfield name: ",
-            allow_blank = False
-        )        
-        if location_name.is_cancelled:
-            return None
-
-        town_or_city = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the city: ",            
-            allow_blank = True
-        )        
-        if town_or_city.is_cancelled:
-            return None
-
-        state_or_county = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the state, county or province: ",            
-            allow_blank = True
-        )        
-        if state_or_county.is_cancelled:
-            return None
-
-        country = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the country: ",
-            allow_blank = True
-        )        
-        if country.is_cancelled:
-            return None
-        
-        geographic_region = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the geographic region: ",
-            allow_blank = True
-        )        
-        if geographic_region.is_cancelled:
-            return None
-
-        decimal_latitude = UserPrompt(
-            session = self.__session,
-            prompt_type = "float",
-            prompt = "Enter the decimal latitude (between -90 and 90): ",
-            allow_blank = True
-        )        
-        if decimal_latitude.is_cancelled:
-            return None
-
-        decimal_longitude = UserPrompt(
-            session = self.__session,
-            prompt_type = "float",
-            prompt = "Enter the decimal longitude (between -180 and 180): ",
-            allow_blank = True
-        )        
-        if decimal_longitude.is_cancelled:
-            return None
-
-        return Location(
-            location_type = location_type.value,
-            iata_airport_code = iata_airport_code.value if iata_airport_code else None,
-            icao_location_code = icao_location_code.value,
-            location_name = location_name.value,
-            town_or_city = town_or_city.value,
-            state_or_county = state_or_county.value,
-            country = country.value,
-            geographic_region = geographic_region.value,
-            decimal_latitude = float(decimal_latitude.value) if decimal_latitude.value != '' else None,
-            decimal_longitude = float(decimal_longitude.value) if decimal_latitude.value != '' else None
-        )
-
-    def __prompt_update_location(self, location: Location) -> Location | None:
-        
-        location_type = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select a location type:\n",
-            options = [
-                ("Airport", ("Airport")),
-                ("Airfield", ("Airfield"))
-            ],
-            default_value = location.location_type,
-            key_bindings = self.__bindings
-        )
-        if location_type.is_cancelled:
-            return None
-        print()
-
-        if location_type == "Airport":
-            iata_airport_code = UserPrompt(
-                session = self.__session,
-                prompt_type = "text",
-                prompt = "Enter the location code: ",
-                allow_blank = False,
-                default_value = location.iata_airport_code
-            )        
-            if iata_airport_code.is_cancelled:
-                return None
-        else:
-            iata_airport_code = None
-        
-        icao_location_code = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the 4-character ICAO location code: ",
-            allow_blank = location_type.value != "Airfield",
-            default_value = location.icao_location_code
-        )        
-        if icao_location_code.is_cancelled:
-            return None
-
-        location_name = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the airport or airfield name: ",
-            allow_blank = False,
-            default_value = location.location_name
-        )        
-        if location_name.is_cancelled:
-            return None
-
-        town_or_city = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the city: ",            
-            allow_blank = True,
-            default_value = location.town_or_city
-        )        
-        if town_or_city.is_cancelled:
-            return None
-
-        state_or_county = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the state, county or province: ",            
-            allow_blank = True,
-            default_value = location.state_or_county
-        )        
-        if state_or_county.is_cancelled:
-            return None
-
-        country = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the country: ",
-            allow_blank = True,
-            default_value = location.country
-        )        
-        if country.is_cancelled:
-            return None
-        
-        geographic_region = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the geographic region: ",
-            allow_blank = True,
-            default_value = location.geographic_region
-        )        
-        if geographic_region.is_cancelled:
-            return None
-        print()
-
-        decimal_latitude = UserPrompt(
-            session = self.__session,
-            prompt_type = "float",
-            prompt = "Enter the decimal latitude (between -90 and 90 degrees): ",
-            allow_blank = True,
-            default_value = location.decimal_latitude
-        )        
-        if decimal_latitude.is_cancelled:
-            return None
-        print()
-
-        decimal_longitude = UserPrompt(
-            session = self.__session,
-            prompt_type = "float",
-            prompt = "Enter the decimal longitude (between -180 and 180 degrees): ",
-            allow_blank = True,
-            default_value = location.decimal_longitude
-        )        
-        if decimal_longitude.is_cancelled:
-            return None
-        print()
-
-        return Location(
-            location_id = location.location_id,
-            location_type = location_type.value,
-            iata_airport_code = iata_airport_code.value if iata_airport_code else None,
-            icao_location_code = icao_location_code.value,
-            location_name = location_name.value,
-            town_or_city = town_or_city.value,
-            state_or_county = state_or_county.value,
-            country = country.value,
-            geographic_region = geographic_region.value,
-            decimal_latitude = float(decimal_latitude.value),
-            decimal_longitude = float(decimal_longitude.value)
-        )
-
-    def __prompt_delete_location(self) -> Location | None:
+    def _delete_option(self) -> None:
+        print("\n>> Delete a destination (or hit CTRL+C to cancel)\n")
 
         # Prompt for the location to delete
-        location = self.__get_location_from_selection()
-        if location is None or location.location_id is None:
-            return None
+        location = self._prompt_delete_location()
+        
+        # Delete the aircraft
+        try:
+            self._location_service.delete_location(location)
+            print("\nRecord successfully deleted.\n")
+        except ConstraintViolation as e:
+            print("\nError deleting destination: the destination still has related records.")
 
-        # Prompt for confirmation and delete if confirmed
-        confirm = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Are you sure you want to delete this record?\n",
-            options = [(1, "yes"),(0, "no")],
-            key_bindings = self.__bindings
-        )
+    def _prompt_add_location(self) -> Location:
 
-        if confirm.is_cancelled or confirm.value == False:
-            return None
+        unset = Unset()
+
+        location_type: Union[str, None, Unset] = unset
+        location_name: Union[str, None, Unset] = unset
+        iata_airport_code: Union[str, None, Unset] = unset
+        icao_location_code: Union[str, None, Unset] = unset
+        town_or_city: Union[str, None, Unset] = unset
+        state_or_county: Union[str, None, Unset] = unset
+        country: Union[str, None, Unset] = unset
+        geographic_region: Union[str, None, Unset] = unset
+        decimal_latitude: Union[float, None, Unset] = unset
+        decimal_longitude: Union[float, None, Unset] = unset
+
+        while True:
+            try:
+                if location_type is unset:
+                    location_type = self._prompt_until_valid(
+                        prompt_text="Select a location type:",
+                        getter = lambda p: p.get_str(),
+                        field = "location_type",
+                        required = True,
+                        is_picklist=True,
+                        options=[
+                            ("Airport", ("Airport")),
+                            ("Airfield", ("Airfield"))
+                        ],
+                        default_value = "Airport"
+                    )
+                    print()
+
+                if iata_airport_code is unset:
+                    iata_airport_code = self._prompt_until_valid(
+                        prompt_text = "Airport code (3-character):",
+                        getter = lambda p: p.get_str(),
+                        field = "iata_airport_code"
+                    )
+                    
+                if icao_location_code is unset:
+                    icao_location_code = self._prompt_until_valid(
+                        prompt_text = "ICAO location code (4-character):",
+                        getter = lambda p: p.get_str(),
+                        field = "icao_location_code"
+                    )
+                    
+                if location_name is unset:
+                    location_name = self._prompt_until_valid(
+                        prompt_text = "Name of the airport (or other type of location):",
+                        getter = lambda p: p.get_str(),
+                        field = "location_name",
+                        required = True
+                    )
+
+                if town_or_city is unset:
+                    town_or_city = self._prompt_until_valid(
+                        prompt_text = "Town/city:",
+                        getter = lambda p: p.get_str(),
+                        field = "town_or_city"
+                    )
+
+                if state_or_county is unset:
+                    state_or_county = self._prompt_until_valid(
+                        prompt_text = "State/county/province:",
+                        getter = lambda p: p.get_str(),
+                        field = "state_or_county"
+                    )
+
+                if country is unset:
+                    country = self._prompt_until_valid(
+                        prompt_text = "Country:",
+                        getter = lambda p: p.get_str(),
+                        field = "country",
+                        required = True
+                    )
+
+                if geographic_region is unset:
+                    geographic_region = self._prompt_until_valid(
+                        prompt_text = "Wider geographic region:",
+                        getter = lambda p: p.get_str(),
+                        field = "geographic_region"
+                    )
+
+                if decimal_latitude is unset:
+                    decimal_latitude = self._prompt_until_valid(
+                        prompt_text = "Latitude (decimal):",
+                        getter = lambda p: p.get_float(),
+                        field = "decimal_latitude"
+                    )
+
+                if decimal_longitude is unset:
+                    decimal_longitude = self._prompt_until_valid(
+                        prompt_text = "Longitude (decimal):",
+                        getter = lambda p: p.get_float(),
+                        field = "decimal_longitude"
+                    )
+
+                return Location(
+                    location_type = self._required(location_type, "location_type"),
+                    iata_airport_code = self._optional(iata_airport_code),
+                    icao_location_code = self._optional(icao_location_code),
+                    location_name = self._required(location_name, "location_name"),
+                    town_or_city = self._optional(town_or_city),
+                    state_or_county = self._optional(state_or_county),
+                    country = self._required(country, "country"),
+                    geographic_region = self._optional(geographic_region),
+                    decimal_latitude = self._optional(decimal_latitude),
+                    decimal_longitude = self._optional(decimal_longitude)
+                )
+
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+
+                if e.field == "location_type":
+                    location_type = unset
+                elif e.field == "location_name":
+                    location_name = unset
+                elif e.field == "iata_airport_code":
+                    iata_airport_code = unset
+                elif e.field == "icao_location_code":
+                    icao_location_code = unset
+                elif e.field == "town_or_city":
+                    town_or_city = unset
+                elif e.field == "state_or_county":
+                    state_or_county = unset
+                elif e.field == "country":
+                    country = unset
+                elif e.field == "geographic_region":
+                    geographic_region = unset
+                elif e.field == "decimal_latitude":
+                    decimal_latitude = unset
+                elif e.field == "decimal_longitude":
+                    decimal_longitude = unset
+            
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+
+                location_type = unset
+                location_name = unset
+                iata_airport_code = unset
+                icao_location_code = unset
+                town_or_city = unset
+                state_or_county = unset
+                country = unset
+                geographic_region = unset
+                decimal_latitude = unset
+                decimal_longitude = unset
+
+    def _prompt_update_location(self, location: Location) -> Location:
+
+        unset = Unset()
+
+        location_type: Union[str, None, Unset] = unset
+        location_name: Union[str, None, Unset] = unset
+        iata_airport_code: Union[str, None, Unset] = unset
+        icao_location_code: Union[str, None, Unset] = unset
+        town_or_city: Union[str, None, Unset] = unset
+        state_or_county: Union[str, None, Unset] = unset
+        country: Union[str, None, Unset] = unset
+        geographic_region: Union[str, None, Unset] = unset
+        decimal_latitude: Union[float, None, Unset] = unset
+        decimal_longitude: Union[float, None, Unset] = unset
+
+        while True:
+            try:
+                if location_type is unset:
+                    location_type = self._prompt_until_valid(
+                        prompt_text="Select a location type:",
+                        getter = lambda p: p.get_str(),
+                        field = "location_type",
+                        required = True,
+                        is_picklist=True,
+                        options=[
+                            ("Airport", ("Airport")),
+                            ("Airfield", ("Airfield"))
+                        ],
+                        default_value = location.location_type
+                    )
+                    print()
+
+                if iata_airport_code is unset:
+                    iata_airport_code = self._prompt_until_valid(
+                        prompt_text = "Airport code (3-character):",
+                        getter = lambda p: p.get_str(),
+                        field = "iata_airport_code",
+                        default_value = location.iata_airport_code
+                    )
+                    
+                if icao_location_code is unset:
+                    icao_location_code = self._prompt_until_valid(
+                        prompt_text = "ICAO location code (4-character):",
+                        getter = lambda p: p.get_str(),
+                        field = "icao_location_code",
+                        default_value = location.icao_location_code
+                    )
+                    
+                if location_name is unset:
+                    location_name = self._prompt_until_valid(
+                        prompt_text = "Name of the airport (or other type of location):",
+                        getter = lambda p: p.get_str(),
+                        field = "location_name",
+                        required = True,
+                        default_value = location.location_name
+                    )
+
+                if town_or_city is unset:
+                    town_or_city = self._prompt_until_valid(
+                        prompt_text = "Town/city:",
+                        getter = lambda p: p.get_str(),
+                        field = "town_or_city",
+                        default_value = location.town_or_city
+                    )
+
+                if state_or_county is unset:
+                    state_or_county = self._prompt_until_valid(
+                        prompt_text = "State/county/province:",
+                        getter = lambda p: p.get_str(),
+                        field = "state_or_county",
+                        default_value = location.state_or_county
+                    )
+
+                if country is unset:
+                    country = self._prompt_until_valid(
+                        prompt_text = "Country:",
+                        getter = lambda p: p.get_str(),
+                        field = "country",
+                        required = True,
+                        default_value = location.country
+                    )
+
+                if geographic_region is unset:
+                    geographic_region = self._prompt_until_valid(
+                        prompt_text = "Wider geographic region:",
+                        getter = lambda p: p.get_str(),
+                        field = "geographic_region",
+                        default_value = location.geographic_region
+                    )
+
+                if decimal_latitude is unset:
+                    decimal_latitude = self._prompt_until_valid(
+                        prompt_text = "Latitude (decimal):",
+                        getter = lambda p: p.get_float(),
+                        field = "decimal_latitude",
+                        default_value = location.decimal_latitude
+                    )
+
+                if decimal_longitude is unset:
+                    decimal_longitude = self._prompt_until_valid(
+                        prompt_text = "Longitude (decimal):",
+                        getter = lambda p: p.get_float(),
+                        field = "decimal_longitude",
+                        default_value = location.decimal_longitude
+                    )
+
+                return Location(
+                    location_id = location.location_id,
+                    location_type = self._required(location_type, "location_type"),
+                    iata_airport_code = self._optional(iata_airport_code),
+                    icao_location_code = self._optional(icao_location_code),
+                    location_name = self._required(location_name, "location_name"),
+                    town_or_city = self._optional(town_or_city),
+                    state_or_county = self._optional(state_or_county),
+                    country = self._required(country, "country"),
+                    geographic_region = self._optional(geographic_region),
+                    decimal_latitude = self._optional(decimal_latitude),
+                    decimal_longitude = self._optional(decimal_longitude)
+                )
+
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+
+                if e.field == "location_type":
+                    location_type = unset
+                elif e.field == "location_name":
+                    location_name = unset
+                elif e.field == "iata_airport_code":
+                    iata_airport_code = unset
+                elif e.field == "icao_location_code":
+                    icao_location_code = unset
+                elif e.field == "town_or_city":
+                    town_or_city = unset
+                elif e.field == "state_or_county":
+                    state_or_county = unset
+                elif e.field == "country":
+                    country = unset
+                elif e.field == "geographic_region":
+                    geographic_region = unset
+                elif e.field == "decimal_latitude":
+                    decimal_latitude = unset
+                elif e.field == "decimal_longitude":
+                    decimal_longitude = unset
+            
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+
+                location_type = unset
+                location_name = unset
+                iata_airport_code = unset
+                icao_location_code = unset
+                town_or_city = unset
+                state_or_county = unset
+                country = unset
+                geographic_region = unset
+                decimal_latitude = unset
+                decimal_longitude = unset
+
+    def _prompt_delete_location(self) -> Location:
+
+        # Prompt for the pilot to delete
+        location = self._get_location_from_selection()
+        print()
+
+        # Delete will be cancelled if the user doesn't confirm
+        self._prompt_delete_confirmation()
         
         return location
 
-    def __get_location_from_selection(self) -> Location | None:
-        location_id = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Choose a location to update:\n",
-            options = self.__location_service.get_location_choices(),
-            key_bindings = self.__bindings
-        )
-        if location_id.is_cancelled:
-            return None
+    def _get_location_from_selection(self) -> Location:
 
-        return self.__location_service.get_location_by_id(int(location_id.value))
+        location_id = None
+
+        while location_id is None:
+            location_id = self._prompt_until_valid(
+                prompt_text = "Select a destination:",
+                getter = lambda p: p.get_int(),
+                field = "location_id",
+                required = True,
+                is_picklist = True,
+                options = self._location_service.get_location_choices()
+            )
+
+        location = self._location_service.get_location_by_id(location_id)
+
+        if location is None:
+            raise ValueError("No location returned from selection.")
+        if location.location_id is None:
+            raise ValueError("No location returned from selection.")
+
+        return location

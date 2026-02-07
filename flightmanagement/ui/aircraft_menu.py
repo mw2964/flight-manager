@@ -1,302 +1,321 @@
-from prompt_toolkit import PromptSession
-from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
-from flightmanagement.ui.ui_utils import format_title
-from flightmanagement.ui.user_prompt import UserPrompt
-from flightmanagement.services.aircraft_service import AircraftService
+from typing import Union
+from flightmanagement.error import FieldValidationError, DomainValidationError, UserCancelled, MissingMandatoryValueError
+from flightmanagement.ui.base_menu import BaseMenu, Unset
+from flightmanagement.services.aircraft_service import AircraftService, ConstraintViolation
 from flightmanagement.models.aircraft import Aircraft
 
-class AircraftMenu:
+class AircraftMenu(BaseMenu):
 
-    __MENU_NAME = "Main -> Manage Aircraft"
-    __MENU_OPTIONS = [
-        ("show", "Show all aircraft"),
-        ("search", "Search aircraft"),
-        ("add", "Add an aircraft"),
-        ("update", "Update an aircraft"),
-        ("delete", "Remove an aircraft"),
-        ("back", "Back to main menu")
-    ]
+    def __init__(self, session, bindings, conn = None, aircraft_service = None):
+        super().__init__(session, bindings, conn)
 
-    def __init__(self, session: PromptSession, bindings: KeyBindings, conn = None, aircraft_service = None):
-        self.__aircraft_service = aircraft_service or AircraftService(conn)
-        self.__session = session
-        self.__bindings = bindings
+        self._aircraft_service = aircraft_service or AircraftService(conn)
+        self._menu_name = "Main -> Manage Aircraft"
+        self._menu_options = [
+            ("show", "Show all aircraft"),
+            ("search", "Search aircraft"),
+            ("add", "Add an aircraft"),
+            ("update", "Update an aircraft"),
+            ("delete", "Remove an aircraft"),
+            ("back", "Back to main menu")
+        ]
 
     def load(self):
         while True:
-            __choose_menu = choice(message = format_title(self.__MENU_NAME), options = self.__MENU_OPTIONS)
+            _selected_option = choice(message = self._format_title(self._menu_name), options = self._menu_options)
 
-            if __choose_menu == "show":
-                self.__show_option()
-            elif __choose_menu == "search":                
-                if not self.__search_option():
-                    print("\nSearch cancelled.\n")
-                    continue
-            elif __choose_menu == "add":
-                if not self.__add_option():
-                    print("\nAction cancelled.\n")
-                    continue
-            elif __choose_menu == "update":
-                if not self.__update_option():
-                    print("\nUpdate cancelled.\n")
-                    continue
-            elif __choose_menu == "delete":
-                if not self.__delete_option():
-                    print("\nDelete cancelled.\n")
-                    continue
-            elif __choose_menu == "back":
-                return
-            else:
-                print("Invalid choice.")
+            try:
+                if _selected_option == "show":
+                    self._show_option()
+                elif _selected_option == "search":                
+                    self._search_option()
+                elif _selected_option == "add":
+                    self._add_option()
+                elif _selected_option == "update":
+                    self._update_option()
+                elif _selected_option == "delete":
+                    self._delete_option()
+                elif _selected_option == "back":
+                    return
+            except UserCancelled as e:
+                print(e)
+                continue
 
-    def __show_option(self) -> None:
+    def _show_option(self) -> None:
         print("\n>> Displaying all aircraft\n")
-        print(self.__aircraft_service.get_aircraft_table())
+        print(self._aircraft_service.get_aircraft_table())
 
-    def __search_option(self) -> bool:
+    def _search_option(self) -> None:
         print("\n>> Search for an aircraft (or hit CTRL+C to cancel)\n")
 
-        registration = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the aircraft registration: ",
-            allow_blank = True
-        )        
-        if registration.is_cancelled:
-            return False
+        registration = self._prompt_until_valid(
+            prompt_text = "Aircraft registration:",
+            getter = lambda p: p.get_str(),
+            field = "registration"
+        )
 
-        result = self.__aircraft_service.search_aircraft("registration", registration.value)
+        result = self._aircraft_service.search_aircraft("registration", registration)
+        print(self._format_results_text(len(result), self._aircraft_service.get_results_view(result)))
 
-        if len(result) == 0:
-            print("\n     No matching results.")
-        else:
-            print(f"\n     {len(result)} match(es) found:\n")
-            print(self.__aircraft_service.get_results_view(result))
-
-        return True
-
-    def __add_option(self) -> bool:
+    def _add_option(self) -> None:
         print("\n>> Add an aircraft (or hit CTRL+C to cancel)\n")
 
-        # Prompt the user to complete fields
-        new = self.__prompt_add_aircraft()
-        if new is None: # Process was cancelled by the user
-            return False
+        new = self._prompt_add_aircraft()
+        new_id = self._aircraft_service.add_aircraft(new)
+        print(f"\nNew aircraft successfully added (aircraft ID: {new_id}).\n")
 
-        try:
-            self.__aircraft_service.add_aircraft(new)
-            print("\nNew record successfully added.\n")
-        except:
-            print("\nError adding aircraft.\n")
-        
-        return True
-
-    def __update_option(self) -> bool:
+    def _update_option(self) -> None:
         print("\n>> Update an aircraft (or hit CTRL+C to cancel)\n")
 
         # Prompt for the aircraft to edit
-        aircraft = self.__get_aircraft_from_selection()
-        if aircraft is None or aircraft.aircraft_id is None:
-            return False
-
+        aircraft = self._get_aircraft_from_selection()
         print(f"\nEditing information (aircraft ID {aircraft.aircraft_id})\n")
 
-        # Prompt the user to edit fields
-        update = self.__prompt_update_aircraft(aircraft)
-        if update is None: # Process was cancelled by the user
-            return False
+        update = self._prompt_update_aircraft(aircraft)
+        self._aircraft_service.update_aircraft(update)
+        print("\nRecord successfully updated.\n")
 
-        # Update the aircraft record
-        try:
-            self.__aircraft_service.update_aircraft(update)
-            print("\nRecord successfully updated.\n")
-        except:
-            print("\nError updating aircraft.\n")
-
-        return True
-
-    def __delete_option(self) -> bool:
+    def _delete_option(self) -> None:
         print("\n>> Delete an aircraft (or hit CTRL+C to cancel)\n")
 
         # Prompt for the aircraft to delete
-        aircraft = self.__prompt_delete_aircraft()
-        if aircraft is None:
-            return False
+        aircraft = self._prompt_delete_aircraft()
         
         # Delete the aircraft
         try:
-            self.__aircraft_service.delete_aircraft(aircraft)
+            self._aircraft_service.delete_aircraft(aircraft)
             print("\nRecord successfully deleted.\n")
-        except:
-            print("\nError deleting aircraft.\n")
+        except ConstraintViolation as e:
+            print("\nError deleting aircraft: the aircraft still has related records.")
         
-        return True
+    def _prompt_add_aircraft(self) -> Aircraft:
+        
+        unset = Unset()
 
-    def __prompt_add_aircraft(self) -> Aircraft | None:
+        aircraft_type_id: Union[int, None, Unset] = unset
+        registration: Union[str, None, Unset] = unset
+        manufacturer_serial_no: Union[int, None, Unset] = unset
+        icao_hex: Union[str, None, Unset] = unset
+        aircraft_status: Union[str, None, Unset] = unset
 
-        aircraft_type_id = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select an aircraft type:\n",
-            options = self.__aircraft_service.get_aircraft_type_choices(),
-            key_bindings = self.__bindings
-        )
-        if aircraft_type_id.is_cancelled:
-            return None
-        print()
+        while True:
+            try:
+                if aircraft_type_id is unset:
+                    aircraft_type_id = self._prompt_until_valid(
+                        prompt_text = "Select an aircraft type:",
+                        getter = lambda p: p.get_int(),
+                        field = "aircraft_type_id",
+                        required = True,                       
+                        is_picklist = True,                        
+                        options = self._aircraft_service.get_aircraft_type_choices()
+                    )
+                    print()
 
-        registration = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the aircraft registration: ",
-            allow_blank = False
-        )        
-        if registration.is_cancelled:
-            return None
+                if registration is unset:
+                    registration = self._prompt_until_valid(
+                        prompt_text = "Aircraft registration:",
+                        getter = lambda p: p.get_str(),
+                        field = "registration",
+                        required = True
+                    )
 
-        manufacturer_serial_no = UserPrompt(
-            session = self.__session,
-            prompt_type = "integer",
-            prompt = "Enter the manufacturer serial number: ",
-            allow_blank = True
-        )        
-        if manufacturer_serial_no.is_cancelled:
-            return None
+                if manufacturer_serial_no is unset:
+                    manufacturer_serial_no = self._prompt_until_valid(
+                        prompt_text = "Manufacturer serial number:",
+                        getter = lambda p: p.get_int(),
+                        field = "manufacturer_serial_no"
+                    )
 
-        icao_hex = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the ICAO hex code: ",
-            allow_blank = True
-        )        
-        if icao_hex.is_cancelled:
-            return None
-        print()
+                if icao_hex is unset:
+                    icao_hex = self._prompt_until_valid(
+                        prompt_text = "ICAO hex code:",
+                        getter = lambda p: p.get_str(),
+                        field = "icao_hex"
+                    )
 
-        aircraft_status = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select an aircraft status:\n",
-            options = [
-                ("Active", ("Active")),
-                ("Inactive", ("Inactive")),
-                ("Retired", ("Retired"))
-            ],
-            key_bindings = self.__bindings
-        )
-        if aircraft_status.is_cancelled:
-            return None
-        print()
+                if aircraft_status is unset:
+                    print()
+                    aircraft_status = self._prompt_until_valid(
+                        prompt_text="Select an aircraft status:",
+                        getter = lambda p: p.get_str(),                                
+                        is_picklist=True,
+                        options=[
+                            ("Active", "Active"),
+                            ("Inactive", "Inactive"),
+                            ("Decommissioned", "Decommissioned"),
+                        ],
+                        field = "aircraft_status"
+                    )
+                    print()
 
-        return Aircraft(
-            aircraft_type_id = int(aircraft_type_id.value),
-            registration = registration.value,
-            manufacturer_serial_no = int(manufacturer_serial_no.value) if manufacturer_serial_no.value is not None else None,
-            icao_hex = icao_hex.value,
-            aircraft_status = aircraft_status.value
-        )
+                return Aircraft(
+                    aircraft_type_id = self._required(aircraft_type_id, "aircraft_type_id"),
+                    registration = self._required(registration, "registration"),
+                    manufacturer_serial_no = self._optional(manufacturer_serial_no),
+                    icao_hex = self._optional(icao_hex),
+                    aircraft_status = self._required(aircraft_status, "aircraft_status")
+                )
+            
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+                print()
 
-    def __prompt_update_aircraft(self, aircraft: Aircraft) -> Aircraft | None:
+                if e.field == "registration":
+                    registration = unset
+                elif e.field == "manufacturer_serial_no":
+                    manufacturer_serial_no = unset
+                elif e.field == "icao_hex":
+                    icao_hex = unset
+                elif e.field == "aircraft_type_id":
+                    aircraft_type_id = unset
+                elif e.field == "aircraft_status":
+                    aircraft_status = unset
+            
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+                print()
 
-        aircraft_type_id = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select an aircraft type:\n",
-            options = self.__aircraft_service.get_aircraft_type_choices(),
-            key_bindings = self.__bindings,
-            default_value = aircraft.aircraft_type_id
-        )
-        if aircraft_type_id.is_cancelled:
-            return None
-        print()
+                aircraft_type_id = unset
+                registration = unset
+                manufacturer_serial_no = unset
+                icao_hex = unset
+                aircraft_status = unset
 
-        registration = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the aircraft registration: ",
-            allow_blank = False,
-            default_value = aircraft.registration
-        )        
-        if registration.is_cancelled:
-            return None
+    def _prompt_update_aircraft(self, aircraft: Aircraft) -> Aircraft:
 
-        manufacturer_serial_no = UserPrompt(
-            session = self.__session,
-            prompt_type = "integer",
-            prompt = "Enter the manufacturer serial number: ",
-            allow_blank = True,
-            default_value = aircraft.manufacturer_serial_no
-        )        
-        if manufacturer_serial_no.is_cancelled:
-            return None
+        unset = Unset()
 
-        icao_hex = UserPrompt(
-            session = self.__session,
-            prompt_type = "text",
-            prompt = "Enter the ICAO hex code: ",
-            allow_blank = True,
-            default_value = aircraft.icao_hex
-        )        
-        if icao_hex.is_cancelled:
-            return None
+        aircraft_type_id: Union[int, None, Unset] = unset
+        registration: Union[str, None, Unset] = unset
+        manufacturer_serial_no: Union[int, None, Unset] = unset
+        icao_hex: Union[str, None, Unset] = unset
+        aircraft_status: Union[str, None, Unset] = unset
 
-        aircraft_status = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Select an aircraft status:\n",
-            options = [
-                ("Active", ("Active")),
-                ("Inactive", ("Inactive")),
-                ("Retired", ("Retired"))
-            ],
-            default_value = aircraft.aircraft_status,
-            key_bindings = self.__bindings
-        )
-        if aircraft_status.is_cancelled:
-            return None
-        print()
+        while True:
+            try:
+                if aircraft_type_id is unset:
+                    aircraft_type_id = self._prompt_until_valid(
+                        prompt_text = "Select an aircraft type:",
+                        getter = lambda p: p.get_int(),
+                        field = "aircraft_type_id",
+                        required = True,
+                        is_picklist = True,
+                        options = self._aircraft_service.get_aircraft_type_choices(),
+                        default_value = aircraft.aircraft_type_id
+                    )
+                    print()
 
-        return Aircraft(
-            aircraft_id = aircraft.aircraft_id,
-            aircraft_type_id = int(aircraft_type_id.value),
-            registration = registration.value,
-            manufacturer_serial_no = int(manufacturer_serial_no.value) if manufacturer_serial_no.value is not None else None,
-            icao_hex = icao_hex.value,
-            aircraft_status = aircraft_status.value
-        )
-    
-    def __prompt_delete_aircraft(self) -> Aircraft | None:
+                if registration is unset:
+                    registration = self._prompt_until_valid(
+                        prompt_text = "Aircraft registration:",
+                        getter = lambda p: p.get_str(),
+                        field = "registration",
+                        required = True,
+                        default_value = aircraft.registration
+                    )
+
+                if manufacturer_serial_no is unset:
+                    manufacturer_serial_no = self._prompt_until_valid(
+                        prompt_text = "Manufacturer serial number:",
+                        getter = lambda p: p.get_int(),
+                        field = "manufacturer_serial_no",
+                        default_value = aircraft.manufacturer_serial_no
+                    )
+
+                if icao_hex is unset:
+                    icao_hex = self._prompt_until_valid(
+                        prompt_text = "ICAO hex code:",
+                        getter = lambda p: p.get_str(),
+                        field = "icao_hex",
+                        default_value = aircraft.icao_hex
+                    )
+                
+                if aircraft_status is unset:
+                    print()
+                    aircraft_status = self._prompt_until_valid(
+                        prompt_text="Select an aircraft status:",
+                        getter = lambda p: p.get_str(),
+                        field = "aircraft_status",
+                        required = True,
+                        is_picklist=True,
+                        options=[
+                            ("Active", "Active"),
+                            ("Inactive", "Inactive"),
+                            ("Decommissioned", "Decommissioned"),
+                        ],
+                        default_value = aircraft.aircraft_status
+                    )
+                    print()
+
+                return Aircraft(
+                    aircraft_id = aircraft.aircraft_id,
+                    aircraft_type_id = self._required(aircraft_type_id, "aircraft_type_id"),
+                    registration = self._required(registration, "registration"),
+                    manufacturer_serial_no = self._optional(manufacturer_serial_no),
+                    icao_hex = self._optional(icao_hex),
+                    aircraft_status = self._required(aircraft_status, "aircraft_status")
+                )
+            
+            except FieldValidationError as e:
+                # Field validation error, so prompt for a field retry
+                print(self._retry_message(e))
+
+                if e.field == "registration":
+                    registration = unset
+                elif e.field == "manufacturer_serial_no":
+                    manufacturer_serial_no = unset
+                elif e.field == "icao_hex":
+                    icao_hex = unset
+                elif e.field == "aircraft_type_id":
+                    aircraft_type_id = unset
+                elif e.field == "aircraft_status":
+                    aircraft_status = unset
+            
+            
+            except DomainValidationError as e:
+                # Cross-field validation error, so restart the process                
+                print(self._retry_message(e))
+
+                aircraft_type_id = unset
+                registration = unset
+                manufacturer_serial_no = unset
+                icao_hex = unset
+                aircraft_status = unset
+            
+    def _prompt_delete_aircraft(self) -> Aircraft:
 
         # Prompt for the aircraft to delete
-        aircraft = self.__get_aircraft_from_selection()
-        if aircraft is None or aircraft.aircraft_id is None:
-            return None
+        aircraft = self._get_aircraft_from_selection()
         print()
 
-        # Prompt for confirmation and delete if confirmed
-        confirm = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Are you sure you want to delete this record?\n",
-            options = [(1, "yes"),(0, "no")],
-            key_bindings = self.__bindings
-        )
+        # Delete will be cancelled if the user doesn't confirm
+        self._prompt_delete_confirmation()
 
-        if confirm.is_cancelled or confirm.value == False:
-            return None
-        
         return aircraft
 
-    def __get_aircraft_from_selection(self) -> Aircraft | None:
-        aircraft_id = UserPrompt(
-            session = self.__session,
-            prompt_type = "choice",
-            prompt = "Choose an aircraft to update:\n",
-            options = self.__aircraft_service.get_aircraft_choices(),
-            key_bindings = self.__bindings
-        )
-        if aircraft_id.is_cancelled:
-            return None
+    def _get_aircraft_from_selection(self) -> Aircraft:
+        
+        aircraft_id = None
 
-        return self.__aircraft_service.get_aircraft_by_id(int(aircraft_id.value))
+        while aircraft_id is None:
+            aircraft_id = self._prompt_until_valid(
+                prompt_text = "Select an aircraft:",
+                getter = lambda p: p.get_int(),
+                field = "aircraft_id",
+                required = True,
+                is_picklist = True,
+                options = self._aircraft_service.get_aircraft_choices()
+            )
+
+        aircraft = self._aircraft_service.get_aircraft_by_id(aircraft_id)
+
+        if aircraft is None:
+            raise ValueError("No aircraft returned from selection.")
+        
+        if aircraft.aircraft_id is None:
+            raise ValueError("Selected aircraft missing unique identifier.")
+
+        return aircraft

@@ -1,130 +1,102 @@
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
+from flightmanagement.error import FieldValidationError, DomainValidationError
 
 @dataclass(frozen = True)
 class Location:
     location_type: str
     location_name: str
+    country: str
         
     location_id: int | None = None
     icao_location_code: str | None = None
     iata_airport_code: str | None = None
     town_or_city: str | None = None
     state_or_county: str | None = None
-    country: str | None = None
     geographic_region: str | None = None
     decimal_latitude: float | None = None
     decimal_longitude: float | None = None
 
     def __post_init__(self):
         
-        self.__validate_attributes()
-        self.__correct_case()
+        self._validate()
+        self._correct_case()
         
     def __str__(self):
         return f"{self.iata_airport_code} ({self.location_name})"
 
-    def __validate_attributes(self):        
-        if not self.__is_valid_iata_airport_code():
-            raise ValueError("Invalid airport code")
-        if not self.__is_valid_icao_location_code():
-            raise ValueError("Invalid ICAO location code")
-        if not self.__is_valid_alpha(self.town_or_city):
-            raise ValueError("Invalid town/city name")
-        if not self.__is_valid_alpha(self.state_or_county):
-            raise ValueError("Invalid state/county/province name")
-        if not self.__is_valid_alpha(self.country):
-            raise ValueError("Invalid country name")
-        if not self.__is_valid_alpha(self.geographic_region):
-            raise ValueError("Invalid geograpic region name")
-        if not self.__is_valid_latitude():
-            raise ValueError("Invalid latitude")
-        if not self.__is_valid_longitude():
-            raise ValueError("Invalid longitude")
+    def _validate(self):
 
-    def __is_valid_iata_airport_code(self) -> bool:
+        # Field-level validations
+        if not self.location_type:
+            raise FieldValidationError(field = "location_type", message = "Location type is missing.")
 
-        # If the location is an airport, it must have a valid airport code
-        if self.location_type == "Airport" and self.iata_airport_code is not None and re.fullmatch(r"[A-Z]{3}", self.iata_airport_code):
-            return True
+        if not self.location_name:
+            raise FieldValidationError(field = "location_name", message = "Location name is missing.")
+
+        if self.location_type == "Airport":
+            if not self.iata_airport_code:
+                raise FieldValidationError(field = "iata_airport_code", message = "Airport code is missing.")
+            elif not re.fullmatch(r"[A-Z]{3}", self.iata_airport_code):
+                raise FieldValidationError(field = "iata_airport_code", message = "Airport code should be 3 uppercase letters (e.g. LHR).")
+        else:
+            if self.iata_airport_code:
+                raise FieldValidationError(field = "iata_airport_code", message = "Non-airport locations cannot have an airport code.")
+
+        if self.location_type != "Airport":
+            if not self.icao_location_code:
+                raise FieldValidationError(field = "icao_location_code", message = "ICAO location code is required for non-airport locations.")
         
-        # If the location is not an airport, it must not have an airport code
-        if self.location_type != "Airport" and self.iata_airport_code is None:
-            return True
+        if self.icao_location_code and not re.fullmatch(r"[A-Z]{4}", self.icao_location_code):
+            raise FieldValidationError(field = "iata_airport_code", message = "ICAO location code should be 4 uppercase letters (e.g. EGLL).")
 
-        return False
+        if self.location_type == "Airport" and not self.town_or_city:
+            raise FieldValidationError(field = "town_or_city", message = "Town or city is missing.")
 
-    @staticmethod
-    def is_valid_iata_airport_code(iata_airport_code: str, location_type: str) -> bool:
-
-        # If the location is an airport, it must have a valid airport code
-        if location_type == "Airport" and iata_airport_code is not None and re.fullmatch(r"[A-Z]{3}", iata_airport_code):
-            return True
+        if self.town_or_city and not self._is_valid_name(self.town_or_city):
+            raise FieldValidationError(field = "town_or_city", message = "Name may only contain upper and lower case letters (including diacritics), apostrophes and hyphens.")
         
-        # If the location is not an airport, it must not have an airport code
-        if location_type != "Airport" and iata_airport_code is None:
-            return True
-
-        return False
-
-    def __is_valid_icao_location_code(self) -> bool:
-
-        # If the location is not an airport, it must have a location code
-        if self.location_type != "Airport" and self.icao_location_code is None:
-            return False
+        if self.state_or_county and not self._is_valid_name(self.state_or_county):
+            raise FieldValidationError(field = "state_or_county", message = "Name may only contain upper and lower case letters (including diacritics), apostrophes and hyphens.")
         
-        # If the location has a code, it must be of the correct format
-        if self.icao_location_code is not None and not re.fullmatch(r"[A-Z]{4}", self.icao_location_code):
+        if not self.country:
+            raise FieldValidationError(field = "country", message = "Country is missing.")
+
+        if self.country and not self._is_valid_name(self.country):
+            raise FieldValidationError(field = "country", message = "Name may only contain upper and lower case letters (including diacritics), apostrophes and hyphens.")
+        
+        if self.geographic_region and not self._is_valid_name(self.geographic_region):
+            raise FieldValidationError(field = "geographic_region", message = "Name may only contain upper and lower case letters (including diacritics), apostrophes and hyphens.")
+        
+        if self.decimal_latitude:
+            if not self._is_float(self.decimal_latitude):
+                raise FieldValidationError(field = "decimal_latitude", message = "Latitude must be a number.")
+            if not (-90 <= self.decimal_latitude <= 90):
+                raise FieldValidationError(field = "decimal_latitude", message = "Latitude must be between -90 and 90 degrees.")
+
+        if self.decimal_longitude:
+            if not self._is_float(self.decimal_longitude):
+                raise FieldValidationError(field = "decimal_longitude", message = "Longitude must be a number.")
+            if not (-180 <= self.decimal_longitude <= 180):
+                raise FieldValidationError(field = "decimal_longitude", message = "Longitude must be between -180 and 180 degrees.")
+        
+        # Domain-level validations
+        if (self.decimal_latitude and not self.decimal_longitude) or (self.decimal_longitude and not self.decimal_latitude):
+            raise DomainValidationError("If coordinates are entered, a latitude and longitude are both required.")
+
+    def _is_float(self, value: float) -> bool:
+        try:
+            float(value)
+        except:
             return False
         
         return True
 
-    def __is_valid_latitude(self):
-
-        # Field is not mandatory
-        if self.decimal_latitude is None:
-            return True
-        
-        # Validate data type
-        try:
-            float(self.decimal_latitude)
-        except:
-            return False
-        
-        # Validate range
-        if -90 <= self.decimal_latitude <= 90:
-            return True
-        
-        return False
-    
-    def __is_valid_longitude(self):
-
-        # Field is not mandatory
-        if self.decimal_longitude is None:
-            return True
-        
-        # Validate data type
-        try:
-            float(self.decimal_longitude)
-        except:
-            return False
-        
-        # Validate range
-        if -180 <= self.decimal_longitude <= 180:
-            return True
-        
-        return False
-
-    def __is_valid_alpha(self, string: str | None, optional: bool = True):
-        
-        # Missing is ok if the attribute isn't mandatory
-        if string is None:
-            return optional
-        
+    def _is_valid_name(self, string: str) -> bool:        
         # Return true if all characters are letters, spaces, hyphens or apostrophes
         return all(char.isalpha() or char in {" ", "-", "'"} for char in string)
     
-    def __correct_case(self):
+    def _correct_case(self):
         # Ensure correct capitalisation
         if self.icao_location_code is not None:
             object.__setattr__(self, "icao_location_code", self.icao_location_code.upper())
@@ -163,8 +135,8 @@ class Terminal:
 
     def __post_init__(self):
         pass
-        #self.__validate_attributes()
-        #self.__correct_case()
+        #self._validate()
+        #self._correct_case()
         
     def __str__(self):
         return f"{self.terminal_name}"
@@ -186,8 +158,8 @@ class Gate:
 
     def __post_init__(self):
         pass
-        #self.__validate_attributes()
-        #self.__correct_case()
+        #self._validate()
+        #self._correct_case()
         
     def __str__(self):
         return f"{self.gate_number}"

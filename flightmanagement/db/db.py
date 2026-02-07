@@ -3,24 +3,28 @@ from pathlib import Path
 from contextlib import contextmanager
 from typing import Optional
 from flightmanagement.config import settings
-    
-def get_connection(db_path) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path)
 
-    # Set the connection to return rows as dictionaries rather than lists
+@contextmanager
+def get_connection(db_path: Path):
+    conn = sqlite3.connect(db_path, timeout=10)
+
+    # Set the connection to return table rows as dictionaries rather than lists
     conn.row_factory = sqlite3.Row
 
-    # Foreign keys are off by default in SQLite, so need to set them to on
+    # Foreign keys are off by default in SQLite, so set them to on to enforce referential integrity
     conn.execute("PRAGMA foreign_keys = ON;")
 
-    return conn
+    try:
+        yield conn
+    finally:
+        conn.close()
 
 @contextmanager
 def transaction(conn):
-    try:
+    try:        
         yield
         conn.commit()
-    except Exception:
+    except sqlite3.DatabaseError:
         conn.rollback()
         raise
 
@@ -39,7 +43,7 @@ def initialise_schema(conn):
         conn.execute("DROP TABLE IF EXISTS aircraft_types")
         conn.execute("DROP TABLE IF EXISTS gates")
         conn.execute("DROP TABLE IF EXISTS terminals")
-        conn.execute("DROP TABLE IF EXISTS locations")    
+        conn.execute("DROP TABLE IF EXISTS locations")
 
         # Create the tables
         conn.execute("""
@@ -59,7 +63,7 @@ def initialise_schema(conn):
                 registration TEXT NOT NULL UNIQUE,
                 manufacturer_serial_no INTEGER UNIQUE,
                 icao_hex TEXT UNIQUE,
-                aircraft_status TEXT CHECK(aircraft_status IN ('Active', 'Inactive', 'Decommissioned'))
+                aircraft_status TEXT NOT NULL CHECK(aircraft_status IN ('Active', 'Inactive', 'Decommissioned'))
             )          
         """)
 
@@ -67,7 +71,7 @@ def initialise_schema(conn):
             CREATE TABLE IF NOT EXISTS locations (
                 location_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 location_type TEXT NOT NULL CHECK(location_type IN ('Airport', 'Airfield')),
-                icao_location_code TEXT UNIQUE,
+                icao_location_code TEXT UNIQUE CHECK(location_type = 'Airport' OR icao_location_code IS NOT NULL),
                 iata_airport_code TEXT UNIQUE CHECK(location_type <> 'Airport' OR iata_airport_code IS NOT NULL),
                 location_name TEXT NOT NULL,
                 town_or_city TEXT CHECK(location_type <> 'Airport' OR town_or_city IS NOT NULL),

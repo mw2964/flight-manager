@@ -1,51 +1,48 @@
-from prompt_toolkit import PromptSession
-from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
+from flightmanagement.error import UserCancelled
+from flightmanagement.ui.base_menu import BaseMenu
 from flightmanagement.services.admin_service import AdminService
-from flightmanagement.ui.ui_utils import format_title
-from flightmanagement.ui.user_prompt import UserPrompt
 
-class AdminMenu:
+class AdminMenu(BaseMenu):
 
-    __MENU_NAME = "Main -> Admin"
-    __MENU_OPTIONS = [
-        ("init_db", "Reinitialise database"),
-        ("back", "Back to main menu")
-    ]
-
-    def __init__(self, session: PromptSession, bindings: KeyBindings, conn):
+    def __init__(self, session, bindings, conn):
+        super().__init__(session, bindings, conn)
         self.__admin_service = AdminService(conn)
-        self.__session = session
-        self.__bindings = bindings
+
+        self._menu_name = "Main -> Admin"
+        self._menu_options = [
+            ("init_db", "Reinitialise database"),
+            ("back", "Back to main menu")
+    ]
 
     def load(self):
         while True:
 
-            __choose_menu = choice(
-                message = format_title(self.__MENU_NAME),
-                options = self.__MENU_OPTIONS
-            )
+            _selected_option = choice(message = self._format_title(self._menu_name), options = self._menu_options)
 
-            if __choose_menu == "init_db":
-                confirm = UserPrompt(
-                    session = self.__session,
-                    prompt_type = "choice",
-                    prompt = "\nWARNING - This will reset all data to the example data. Do you wish to continue? \n",
-                    options = [
-                        ("no", "No"),
-                        ("yes", "Yes")
-                    ],
-                    key_bindings = self.__bindings
-                )
-                if confirm.is_cancelled:
-                    continue
-                if confirm.value == "yes":
-                    self.__admin_service.initialise_database()
-                    print("\nDatabase reinitialised successfully.")
-                else:
-                    print("\nAction cancelled.")
-                
-            elif __choose_menu == "back":
-                break
-            else:
-                print("Invalid Choice")
+            try:
+                if _selected_option == "init_db":
+                    confirm = self._prompt_until_valid(
+                        prompt_text = "\nWARNING - This will reset all data to the example data. Do you wish to continue? \n",
+                        getter = lambda p: p.get_str(),
+                        field = "confirm",
+                        is_picklist = True,
+                        required = True,
+                        options = [
+                            ("no", "No"),
+                            ("yes", "Yes")
+                        ],
+                        default_value = "no"
+                    )
+
+                    if confirm == "yes":
+                        self.__admin_service.initialise_database()
+                        print("\nDatabase reinitialised successfully.")
+                    else:
+                        print("\nAction cancelled.")
+                    
+                elif _selected_option == "back":
+                    return
+            except UserCancelled as e:
+                print(e)
+                continue

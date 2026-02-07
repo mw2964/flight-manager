@@ -12,9 +12,9 @@ class LocationService:
             location_repository or LocationRepository(self.conn)
         )
 
-    def add_location(self, location: Location):
+    def add_location(self, location: Location) -> int:
         with transaction(self.conn):
-            self.__location_repository.insert_location(location)        
+            return self.__location_repository.insert_location(location)        
 
     def update_location(self, location: Location):
         with transaction(self.conn):
@@ -64,6 +64,18 @@ class LocationService:
         if gates:
             for gate in gates:
                 gate_choices.append((gate.gate_id, gate.gate_number))
+        
+        return gate_choices
+
+    def get_airport_gate_choices(self, location_id: int) -> list:        
+        terminals = self.__location_repository.get_location_terminals(location_id)
+        
+        gate_choices = []
+        if terminals:
+            for terminal in terminals:
+                gates = self.__location_repository.get_terminal_gates(terminal.terminal_id)
+                for gate in gates:
+                    gate_choices.append((gate.gate_id, f"{terminal.terminal_name} -> {gate.gate_number}"))
         
         return gate_choices
 

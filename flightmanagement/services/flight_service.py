@@ -18,9 +18,9 @@ class FlightService:
         self.__location_repository = LocationRepository(self.conn)
         self.__pilot_repository = PilotRepository(self.conn)
 
-    def add_flight(self, flight: Flight):
+    def add_flight(self, flight: Flight) -> int:
         with transaction(self.conn):
-            self.__flight_repository.insert_flight(flight)
+            return self.__flight_repository.insert_flight(flight)
 
     def update_flight(self,flight: Flight):
         with transaction(self.conn):

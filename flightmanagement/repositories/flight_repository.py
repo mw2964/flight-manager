@@ -1,14 +1,23 @@
 from datetime import datetime, date, time
 from flightmanagement.models.flight import Flight
 from flightmanagement.models.pilot import Pilot
+from flightmanagement.repositories.base_repository import BaseRepository
 
-class FlightRepository:
+class FlightRepository(BaseRepository):
+
+    FLIGHT_SEARCH_FIELDS = {
+        'aircraft_type_id',
+        'registration',
+        'manufacturer_serial_no',
+        'icao_hex',
+        'aircraft_status'
+    }
 
     def __init__(self, conn):
-        self.conn = conn
+        super().__init__(conn)
     
     def get_flight_by_id(self, flight_id: int) -> Flight | None:
-        cursor = self.conn.execute(
+        row = self._execute_fetchone(
             """
             SELECT *
             FROM flights
@@ -16,44 +25,59 @@ class FlightRepository:
             """,
             (flight_id, )
         )
-        result = cursor.fetchone()
-
-        return self.dict_to_flight(result)
+        return self.dict_to_flight(row)
 
     def search_on_field(self, field_name: str, value) -> list[Flight]:
+        if field_name not in self.FLIGHT_SEARCH_FIELDS:
+            raise ValueError(f"Invalid search field: {field_name}")
+
         sql = f"""
             SELECT *
             FROM flights
             WHERE {field_name} = ?
             ORDER BY scheduled_departure_date DESC, scheduled_departure_time DESC
         """
-        cursor = self.conn.execute(sql, (value, ))
-        results = cursor.fetchall()
+        rows = self._execute_fetchall(sql, (value, ))
         
         result_list = []
-        for row in results:
+        for row in rows:
             result_list.append(self.dict_to_flight(row))
 
         return result_list
 
     def get_flight_list(self) -> list[Flight]:
-        cursor = self.conn.execute(
+        rows = self._execute_fetchall(
             """
             SELECT *
             FROM flights
             ORDER BY scheduled_departure_date DESC, scheduled_departure_time DESC
             """
         )
-        results = cursor.fetchall()
         
         result_list = []
-        for row in results:
+        for row in rows:
             result_list.append(self.dict_to_flight(row))
 
         return result_list
 
-    def insert_flight(self, flight: Flight) -> None:
-        self.conn.execute(
+    def get_relief_pilots_by_flight_id(self, flight_id: int) -> list[int]:
+        rows = self._execute_fetchall(
+            """
+            SELECT staff_id
+            FROM flight_relief_pilots
+            WHERE flight_id = ?
+            """,
+            (flight_id, )
+        )
+
+        result_list = []
+        for row in rows:
+            result_list.append(row["staff_id"])
+
+        return result_list
+
+    def insert_flight(self, flight: Flight) -> int:
+        row = self._execute_fetchone(
             """
             INSERT INTO flights (                
                 aircraft_id,
@@ -93,12 +117,32 @@ class FlightRepository:
                 :confirmed_arrival_time,
                 :flight_status
             )
+            RETURNING flight_id
             """,
-            flight.to_dict()
+            {
+                "aircraft_id": flight.aircraft_id,
+                "origin_location_id": flight.origin_location_id, 
+                "destination_location_id": flight.destination_location_id,
+                "departure_gate_id": flight.departure_gate_id,
+                "arrival_gate_id": flight.arrival_gate_id,
+                "captain_id": flight.captain_id,
+                "first_officer_id": flight.first_officer_id,
+                "flight_number": flight.flight_number,
+                "scheduled_departure_date": flight.scheduled_departure_date.strftime("%Y-%m-%d"),
+                "scheduled_departure_time": flight.scheduled_departure_time.strftime("%H:%M"),
+                "scheduled_arrival_date": flight.scheduled_arrival_date.strftime("%Y-%m-%d"),
+                "scheduled_arrival_time": flight.scheduled_arrival_time.strftime("%H:%M"),
+                "confirmed_departure_date": flight.confirmed_departure_date.strftime("%Y-%m-%d") if flight.confirmed_departure_date else None,
+                "confirmed_departure_time": flight.confirmed_departure_time.strftime("%H:%M") if flight.confirmed_departure_time else None,
+                "confirmed_arrival_date": flight.confirmed_arrival_date.strftime("%Y-%m-%d") if flight.confirmed_arrival_date else None,
+                "confirmed_arrival_time": flight.confirmed_arrival_time.strftime("%H:%M") if flight.confirmed_arrival_time else None,
+                "flight_status": flight.flight_status
+            }
         )
+        return row["flight_id"]
 
     def update_flight(self, flight: Flight):
-        self.conn.execute(
+        self._execute(
             """
             UPDATE flights
             SET
@@ -143,25 +187,8 @@ class FlightRepository:
             )
         )
 
-    def get_relief_pilots_by_flight_id(self, flight_id: int) -> list[int]:
-        cursor = self.conn.execute(
-            """
-            SELECT staff_id
-            FROM flight_relief_pilots
-            WHERE flight_id = ?
-            """,
-            (flight_id, )
-        )
-        results = cursor.fetchall()
-
-        result_list = []
-        for row in results:
-            result_list.append(row["staff_id"])
-
-        return result_list
-
     def delete_flight(self, flight: Flight):
-        self.conn.execute(
+        self._execute(
             """
             DELETE FROM flights
             WHERE flight_id = ?
@@ -170,7 +197,7 @@ class FlightRepository:
         )
     
     def insert_relief_pilot(self, flight: Flight, staff_id: int):
-        self.conn.execute(
+        self._execute(
             """
             INSERT INTO flight_relief_pilots (
                 flight_id,
@@ -188,7 +215,7 @@ class FlightRepository:
         )
 
     def delete_relief_pilot(self, flight: Flight, staff_id: int):
-        self.conn.execute(
+        self._execute(
             """
             DELETE FROM flight_relief_pilots
             WHERE flight_id = ?
@@ -198,7 +225,7 @@ class FlightRepository:
         )
 
     def get_available_pilots(self, departure_time: datetime, arrival_time: datetime, flight_id: int) -> list[Pilot] | None:
-        cursor = self.conn.execute(
+        rows = self._execute_fetchall(
             """
             WITH flight_pilot AS (
                 SELECT flight_id,
@@ -257,10 +284,9 @@ class FlightRepository:
                 departure_time
             )
         )
-        results = cursor.fetchall()
 
         result_list = []
-        for row in results:
+        for row in rows:
             result_list.append(self.dict_to_pilot(row))
 
         return result_list

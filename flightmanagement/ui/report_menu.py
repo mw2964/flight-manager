@@ -2,7 +2,6 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
 from flightmanagement.services.report_service import ReportService
-from flightmanagement.ui.ui_utils import format_title
 
 class ReportMenu:
 
