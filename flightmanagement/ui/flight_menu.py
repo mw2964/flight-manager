@@ -6,7 +6,6 @@ from flightmanagement.ui.base_menu import BaseMenu, Unset
 from flightmanagement.services.flight_service import FlightService
 from flightmanagement.services.aircraft_service import AircraftService
 from flightmanagement.services.location_service import LocationService
-from flightmanagement.services.pilot_service import PilotService
 from flightmanagement.models.flight import Flight
 from flightmanagement.ui.flight_update_menu import FlightUpdateMenu
 

@@ -1,5 +1,6 @@
 from datetime import datetime
 from prettytable import PrettyTable, TableStyle, ALL, NONE
+from flightmanagement.error import ConstraintViolation, ForeignKeyDependencyViolation
 from flightmanagement.repositories.aircraft_repository import AircraftRepository
 from flightmanagement.repositories.location_repository import LocationRepository
 from flightmanagement.repositories.flight_repository import FlightRepository
@@ -29,8 +30,12 @@ class FlightService:
     def delete_flight(self, flight: Flight):
         if flight.flight_id is None:
             raise ValueError("Flight to delete lacks an ID")
-        with transaction(self.conn):
-            self.__flight_repository.delete_flight(flight)
+        
+        try:
+            with transaction(self.conn):
+                self.__flight_repository.delete_flight(flight)
+        except ForeignKeyDependencyViolation as e:
+            raise ConstraintViolation(e)
 
     def get_flight_table(self) -> str:
         flights = self.__flight_repository.get_flight_list()

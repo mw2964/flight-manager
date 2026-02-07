@@ -124,7 +124,7 @@ def initialise_schema(conn):
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS pilots (
-                staff_id INTEGER NOT NULL PRIMARY KEY REFERENCES staff(staff_id),
+                staff_id INTEGER NOT NULL PRIMARY KEY REFERENCES staff(staff_id) ON DELETE RESTRICT,
                 license_number TEXT UNIQUE,
                 license_type TEXT,
                 license_expiration_date DATE CHECK(license_expiration_date = date(license_expiration_date))
@@ -708,7 +708,7 @@ def seed_database_data(conn):
         """)
         
         conn.execute("""
-    INSERT INTO flights (aircraft_id, origin_location_id, destination_location_id, departure_gate_id, arrival_gate_id, captain_id, first_officer_id, flight_number, scheduled_departure_date, scheduled_departure_time, scheduled_arrival_date, scheduled_arrival_time, confirmed_departure_date, confirmed_departure_time, confirmed_arrival_date, confirmed_arrival_time, flight_status)
+            INSERT INTO flights (aircraft_id, origin_location_id, destination_location_id, departure_gate_id, arrival_gate_id, captain_id, first_officer_id, flight_number, scheduled_departure_date, scheduled_departure_time, scheduled_arrival_date, scheduled_arrival_time, confirmed_departure_date, confirmed_departure_time, confirmed_arrival_date, confirmed_arrival_time, flight_status)
             VALUES
                 (6, 1, 4, 1, 45, 10, 9, 'ZMY002', '2026-02-01', '03:15', '2026-02-01', '07:10', '2026-02-01', '03:30', '2026-02-01', '07:10', 'Arrived'),
                 (6, 4, 1, 48, 4, 10, 9, 'ZMY013', '2026-02-01', '07:50', '2026-02-01', '11:40', '2026-02-01', '07:50', '2026-02-01', '11:45', 'Arrived'),

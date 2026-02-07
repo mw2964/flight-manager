@@ -40,6 +40,13 @@ class PilotRepository(BaseRepository):
             ORDER BY family_name, first_name
             """
         )
+
+        result_list = []
+        for row in rows:
+            result_list.append(self.dict_to_pilot(row))
+
+        return result_list
+
         return rows
 
     def search_on_field(self, field_name: str, value) -> list:
@@ -53,7 +60,12 @@ class PilotRepository(BaseRepository):
             ORDER BY family_name, first_name
         """
         rows = self._execute_fetchall(sql, (value, ))
-        return rows
+        
+        result_list = []
+        for row in rows:
+            result_list.append(self.dict_to_pilot(row))
+
+        return result_list
 
     def insert_pilot(self, pilot: Pilot) -> int:
         row = self._execute_fetchone(

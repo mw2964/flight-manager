@@ -28,16 +28,24 @@ class TestCreation:
 
 class TestAttributeValidation:
 
-    def test_invalid_registration_raises_value_error(self):
-        with pytest.raises(ValueError, match="Invalid registration"):
+    def test_missing_registration_raises_value_error(self):
+        with pytest.raises(ValueError, match="Registration is missing."):
             Aircraft(
                 aircraft_type_id=1,
                 registration="",
                 aircraft_status="Active"
             )
 
+    def test_invalid_registration_raises_value_error(self):
+        with pytest.raises(ValueError, match="Invalid registration."):
+            Aircraft(
+                aircraft_type_id=1,
+                registration="TEST123",
+                aircraft_status="Active"
+            )
+
     def test_invalid_status_raises_value_error(self):
-        with pytest.raises(ValueError, match="Invalid status"):
+        with pytest.raises(ValueError, match="Aircraft status is missing or invalid."):
             Aircraft(
                 aircraft_type_id=1,
                 registration="G-TEST",

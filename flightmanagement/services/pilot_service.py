@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from prettytable import PrettyTable, TableStyle, ALL, NONE
+from flightmanagement.error import ConstraintViolation, ForeignKeyDependencyViolation
 from flightmanagement.repositories.pilot_repository import PilotRepository
 from flightmanagement.models.pilot import Pilot
 from flightmanagement.db.db import transaction
@@ -23,9 +24,13 @@ class PilotService:
     def delete_pilot(self, pilot: Pilot):
         if pilot.staff_id is None:
             raise ValueError("Pilot to delete lacks an ID")
-        with transaction(self.conn):
-            self.__pilot_repository.delete_pilot(pilot)
-            self.__pilot_repository.delete_staff(pilot)
+        
+        try:
+            with transaction(self.conn):
+                self.__pilot_repository.delete_pilot(pilot)
+                self.__pilot_repository.delete_staff(pilot)
+        except ForeignKeyDependencyViolation as e:
+            raise ConstraintViolation(e)
 
     def add_time_log_record(self, staff_id: int, effective_date: date, flight_hours: float):
         with transaction(self.conn):
@@ -114,7 +119,7 @@ class PilotService:
 
         if pilots:
             for pilot in pilots:
-                pilot_choices.append((pilot["staff_id"], f"{pilot['family_name']}, {pilot['first_name']}"))
+                pilot_choices.append((pilot.staff_id, f"{pilot.family_name}, {pilot.first_name}"))
 
         return pilot_choices
 
@@ -187,16 +192,16 @@ class PilotService:
         # Populate table rows
         for pilot in pilots:
             table.add_row([
-                pilot["staff_id"],
-                pilot["family_name"],
-                pilot["first_name"],
-                pilot["employee_number"],
-                pilot["employment_status"],
-                pilot["employment_start_date"],
-                pilot["employment_end_date"],
-                pilot["license_number"],
-                pilot["license_type"],
-                pilot["license_expiration_date"]
+                pilot.staff_id,
+                pilot.family_name,
+                pilot.first_name,
+                pilot.employee_number,
+                pilot.employment_status,
+                pilot.employment_start_date,
+                pilot.employment_end_date,
+                pilot.license_number,
+                pilot.license_type,
+                pilot.license_expiration_date
             ])
 
         # Set table formatting

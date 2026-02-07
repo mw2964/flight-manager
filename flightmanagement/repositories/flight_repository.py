@@ -6,11 +6,24 @@ from flightmanagement.repositories.base_repository import BaseRepository
 class FlightRepository(BaseRepository):
 
     FLIGHT_SEARCH_FIELDS = {
-        'aircraft_type_id',
-        'registration',
-        'manufacturer_serial_no',
-        'icao_hex',
-        'aircraft_status'
+        'flight_id',
+        'aircraft_id',
+        'origin_location_id',
+        'destination_location_id',
+        'departure_gate_id',
+        'arrival_gate_id',
+        'captain_id',
+        'first_officer_id',
+        'flight_number',
+        'scheduled_departure_date',
+        'scheduled_departure_time',
+        'scheduled_arrival_date',
+        'scheduled_arrival_time',
+        'confirmed_departure_date',
+        'confirmed_departure_time',
+        'confirmed_arrival_date',
+        'confirmed_arrival_time',
+        'flight_status'
     }
 
     def __init__(self, conn):

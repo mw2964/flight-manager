@@ -28,9 +28,6 @@ class Flight:
         if not self.__is_valid_flight_number():
             raise ValueError("Invalid flight number")
         
-        if not self.aircraft_id:
-            raise ValueError("Invalid aircraft ID")
-        
         if not self.origin_location_id:
             raise ValueError("Invalid origin ID")
         
@@ -50,7 +47,7 @@ class Flight:
             raise ValueError("Invalid first officer ID")
 
     def __str__(self):        
-        departure = datetime.strftime(datetime.combine(self.scheduled_departure_date, self.scheduled_arrival_time), "%Y-%m-%d %H:%M")
+        departure = datetime.strftime(datetime.combine(self.scheduled_departure_date, self.scheduled_departure_time), "%Y-%m-%d %H:%M")
         return f"{self.flight_number} (departure: {departure}, status: {self.flight_status})"
 
     def __is_valid_flight_number(self) -> bool:

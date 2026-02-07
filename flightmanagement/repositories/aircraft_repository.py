@@ -21,7 +21,7 @@ class AircraftRepository(BaseRepository):
         super().__init__(conn)
 
     # Core aircraft functionality
-    
+
     def get_aircraft_by_id(self, aircraft_id: int) -> Aircraft | None:
         row = self._execute_fetchone(
             """
@@ -44,7 +44,7 @@ class AircraftRepository(BaseRepository):
         )
         return self.dict_to_aircraft(row)
 
-    def get_aircraft_list(self) -> list:
+    def get_aircraft_list(self) -> list[Aircraft]:
         rows = self._execute_fetchall(
             """
             SELECT *
@@ -52,9 +52,14 @@ class AircraftRepository(BaseRepository):
             ORDER BY registration
             """
         )
-        return rows
 
-    def search_aircraft_on_field(self, field_name: str, value) -> list:        
+        result_list = []
+        for row in rows:
+            result_list.append(self.dict_to_aircraft(row))
+
+        return result_list
+
+    def search_aircraft_on_field(self, field_name: str, value) -> list[Aircraft]:        
         if field_name not in self.AIRCRAFT_SEARCH_FIELDS:
             raise ValueError(f"Invalid search field: {field_name}")
 
@@ -65,7 +70,11 @@ class AircraftRepository(BaseRepository):
             ORDER BY registration
         """
         rows = self._execute_fetchall(sql, (value, ))
-        return rows
+        result_list = []
+        for row in rows:
+            result_list.append(self.dict_to_aircraft(row))
+
+        return result_list
 
     def insert_aircraft(self, aircraft: Aircraft) -> int:        
         row = self._execute_fetchone(

@@ -1,203 +1,161 @@
 import pytest
 from unittest.mock import MagicMock, patch
-
+from datetime import date
 from flightmanagement.ui.pilot_menu import PilotMenu
 from flightmanagement.models.pilot import Pilot
+from flightmanagement.error import UserCancelled
+from flightmanagement.services.pilot_service import ConstraintViolation
 
 @pytest.fixture
-def mock_session():
+def pilot_service():
     return MagicMock()
 
 @pytest.fixture
-def mock_bindings():
-    return MagicMock()
-
-@pytest.fixture
-def mock_pilot_service():
-    service = MagicMock()
-    service.get_pilot_table.return_value = "PILOT TABLE"
-    service.get_pilot_choices.return_value = [(1, "John Smith"), (2, "Sarah Jones")]
-    service.get_pilot_by_id.side_effect = lambda x: Pilot(id=x, first_name="John", family_name="Smith")
-    return service
-
-@pytest.fixture
-def menu(mock_session, mock_bindings, mock_pilot_service):
+def menu(pilot_service):
+    session = MagicMock()
+    bindings = MagicMock()
     return PilotMenu(
-        session=mock_session,
-        bindings=mock_bindings,
-        pilot_service=mock_pilot_service,
+        session=session,
+        bindings=bindings,
+        conn=None,
+        pilot_service=pilot_service,
     )
 
-class FakePrompt:
-    def __init__(self, value=None, cancelled=False):
-        self.value = value
-        self.is_cancelled = cancelled
+@pytest.fixture
+def pilot():
+    return Pilot(
+        staff_id=1,
+        employee_number="E0001",
+        first_name="Jane",
+        family_name="Goodall",
+        employment_start_date=date(2025, 1, 15),
+        employment_end_date=date(2026, 2, 22),
+        employment_status="Current",
+        license_number="TEST001",
+        license_type="TVL",
+        license_expiration_date=date(2029, 12, 31)
+    )
 
 class TestLoad:
 
-    def test_load_back_exits_menu(self, menu, mocker):
-        mocker.patch(
-            "flightmanagement.ui.pilot_menu.choice",
-            return_value="back"
-        )
+    @patch("flightmanagement.ui.pilot_menu.choice")
+    def test_load_routes_to_show(self, mock_choice, menu):
+        mock_choice.side_effect = ["show", "back"]
+        menu._show_option = MagicMock()
 
-        # Should simply exit without error
         menu.load()
 
-    def test_load_show_calls_show_option(self, menu, mocker):
-        mocker.patch(
-            "flightmanagement.ui.pilot_menu.choice",
-            side_effect=["show", "back"]
-        )
-        spy = mocker.spy(menu, "_PilotMenu__show_option")
+        menu._show_option.assert_called_once()
+
+    @patch("flightmanagement.ui.pilot_menu.choice")
+    def test_load_handles_user_cancelled(self, mock_choice, menu):
+        mock_choice.side_effect = ["show", "back"]
+        menu._show_option = MagicMock(side_effect=UserCancelled("cancel"))
+
         menu.load()
 
-        spy.assert_called_once()
+        menu._show_option.assert_called_once()
+
+    @patch("flightmanagement.ui.pilot_menu.choice")
+    def test_load_exits_on_back(self, mock_choice, menu):
+        mock_choice.return_value = "back"
+
+        menu.load()  # should exit cleanly
+
 
 class TestShow:
 
-    def test_show_option_prints_table(self, menu, mocker):
-        menu._PilotMenu__pilot_service.get_pilot_table.return_value = "TABLE"
-        mock_print = mocker.patch("builtins.print")
-        menu._PilotMenu__show_option()
+    def test_show_prints_pilot_table(self, menu, pilot_service, capsys):
+        pilot_service.get_pilot_table.return_value = "PILOT TABLE"
 
-        mock_print.assert_any_call("TABLE")
+        menu._show_option()
+
+        out = capsys.readouterr().out
+        assert "Displaying all pilots" in out
+        assert "PILOT TABLE" in out
 
 class TestSearch:
 
-    def test_search_option_cancelled(self, menu, mocker):
-        mocker.patch(
-            "flightmanagement.ui.pilot_menu.UserPrompt",
-            return_value=FakePrompt(cancelled=True)
-        )
-        result = menu._PilotMenu__search_option()
+    def test_search_pilot_by_registration(self, menu, pilot_service, capsys):
+        menu._prompt_until_valid = MagicMock(return_value="Reed")
+        pilot_service.search_pilots.return_value = [MagicMock()]
+        pilot_service.get_results_view.return_value = "RESULT VIEW"
+        menu._format_results_text = MagicMock(return_value="1 result")
 
-        assert result is False
+        menu._search_option()
 
-    def test_search_option_no_results(self, menu, mocker):
-        mocker.patch(
-            "flightmanagement.ui.pilot_menu.UserPrompt",
-            return_value=FakePrompt("Smith")
-        )
-        menu._PilotMenu__pilot_service.search_pilot.return_value = []
-        result = menu._PilotMenu__search_option()
-
-        assert result is True
-
-    def test_search_option_with_results(self, menu, mocker):
-        mocker.patch(
-            "flightmanagement.ui.pilot_menu.UserPrompt",
-            return_value=FakePrompt("Smith")
+        pilot_service.search_pilots.assert_called_once_with(
+            "family_name", "Reed"
         )
 
-        pilot = Pilot(
-            id=1,
-            first_name="John",
-            family_name="Smith"
-        )
-        menu._PilotMenu__pilot_service.search_pilot.return_value = [pilot]
-        menu._PilotMenu__pilot_service.get_results_view.return_value = "RESULTS"
-        result = menu._PilotMenu__search_option()
-
-        assert result is True
+        out = capsys.readouterr().out
+        assert "Search for a pilot" in out
 
 class TestAdd:
 
-    @patch("flightmanagement.ui.pilot_menu.UserPrompt")
-    def test_add_pilot_cancelled(self, mock_prompt, menu):
-        mock_prompt.return_value = FakePrompt(cancelled=True)
+    def test_add_pilot_success(self, menu, pilot_service, capsys):
+        new_pilot = MagicMock()
+        menu._prompt_add_pilot = MagicMock(return_value=new_pilot)
+        pilot_service.add_pilot.return_value = 42
 
-        result = menu._PilotMenu__add_option()
+        menu._add_option()
 
-        assert result is False
-
-    @patch("flightmanagement.ui.pilot_menu.UserPrompt")
-    def test_add_pilot_success(self, mock_prompt, menu, mock_pilot_service):
-        mock_prompt.side_effect = [
-            FakePrompt("John"),             # first_name
-            FakePrompt("Smith"),            # family_name
-        ]
-
-        result = menu._PilotMenu__add_option()
-
-        assert result is True
-        mock_pilot_service.add_pilot.assert_called_once()
+        pilot_service.add_pilot.assert_called_once_with(new_pilot)
+        out = capsys.readouterr().out
+        assert "successfully added" in out
+        assert "42" in out
 
 class TestUpdate:
 
-    @patch("flightmanagement.ui.pilot_menu.UserPrompt")
-    def test_update_cancelled_on_selection(self, mock_prompt, menu):
-        mock_prompt.return_value = FakePrompt(cancelled=True)
+    def test_update_pilot_success(self, menu, pilot_service, pilot, capsys):
+        menu._get_pilot_from_selection = MagicMock(return_value=pilot)
+        updated = MagicMock()
+        menu._prompt_update_pilot = MagicMock(return_value=updated)
 
-        result = menu._PilotMenu__update_option()
+        menu._update_option()
 
-        assert result is False
-
-    @patch("flightmanagement.ui.pilot_menu.UserPrompt")
-    def test_update_pilot_success(self, mock_prompt, menu, mock_pilot_service):
-        # Existing pilot returned from selection
-        existing_pilot = Pilot(
-            id=1,
-            first_name="John",
-            family_name="Smith"
-        )
-        mock_pilot_service.get_pilot_by_id.return_value = existing_pilot
-
-        # Prompt sequence:
-        # 1. Select pilot ID
-        # 2+. Update prompts
-        mock_prompt.side_effect = [
-            FakePrompt(value=1),    # pilot selection
-            FakePrompt("Sarah"),    # first_name
-            FakePrompt("Jones")     # family_name
-        ]
-
-        result = menu._PilotMenu__update_option()
-
-        assert result is True
-        mock_pilot_service.update_pilot.assert_called_once()
-
-        updated_pilot = mock_pilot_service.update_pilot.call_args[0][0]
-        assert updated_pilot.id == 1
-        assert updated_pilot.first_name == "Sarah"
+        pilot_service.update_pilot.assert_called_once_with(updated)
+        out = capsys.readouterr().out
+        assert "Record successfully updated" in out
 
 class TestDelete:
 
-    @patch("flightmanagement.ui.pilot_menu.UserPrompt")
-    def test_delete_pilot_success(self, mock_prompt, menu, mock_pilot_service):
-        pilot = Pilot(id=1, first_name="John", family_name="Smith")
-        mock_pilot_service.get_pilot_by_id.return_value = pilot
+    def test_delete_pilot_success(self, menu, pilot_service, pilot, capsys):
+        menu._prompt_delete_pilot = MagicMock(return_value=pilot)
 
-        mock_prompt.side_effect = [
-            FakePrompt(value=1),     # pilot selection
-            FakePrompt(value=True),  # confirm delete
-        ]
+        menu._delete_option()
 
-        result = menu._PilotMenu__delete_option()
+        pilot_service.delete_pilot.assert_called_once_with(pilot)
+        out = capsys.readouterr().out
+        assert "successfully deleted" in out
 
-        assert result is True
-        mock_pilot_service.delete_pilot.assert_called_once_with(pilot)
+    def test_delete_pilot_constraint_violation(
+        self, menu, pilot_service, pilot, capsys
+    ):
+        menu._prompt_delete_pilot = MagicMock(return_value=pilot)
+        pilot_service.delete_pilot.side_effect = ConstraintViolation()
 
-    @patch("flightmanagement.ui.pilot_menu.UserPrompt")
-    def test_delete_not_confirmed(self, mock_prompt, menu):
-        mock_prompt.side_effect = [
-            FakePrompt(value=1),        # pilot choice
-            FakePrompt(value=False)     # confirmation
-        ]
+        menu._delete_option()
 
-        result = menu._PilotMenu__delete_option()
+        out = capsys.readouterr().out
+        assert "Error deleting pilot" in out
 
-        assert result is False
+class TestGetPilotFromSelection:
 
-    @patch("flightmanagement.ui.pilot_menu.UserPrompt")
-    def test_delete_confirmed(self, mock_prompt, menu, mock_pilot_service):
-        mock_prompt.side_effect = [
-            FakePrompt(value=1),     # pilot choice
-            FakePrompt(value=True),  # confirmation
-        ]
+    def test_get_pilot_from_selection(self, menu, pilot_service, pilot):
+        menu._prompt_until_valid = MagicMock(return_value=1)
+        pilot_service.get_pilot_by_id.return_value = pilot
 
-        result = menu._PilotMenu__delete_option()
+        result = menu._get_pilot_from_selection()
 
-        assert result is True
-        mock_pilot_service.delete_pilot.assert_called_once()
+        assert result is pilot
+        pilot_service.get_pilot_by_id.assert_called_once_with(1)
+
+    def test_get_pilot_missing_id_raises(self, menu, pilot_service):
+        bad_pilot = MagicMock(staff_id=None)
+        menu._prompt_until_valid = MagicMock(return_value=1)
+        pilot_service.get_pilot_by_id.return_value = bad_pilot
+
+        with pytest.raises(ValueError):
+            menu._get_pilot_from_selection()
 

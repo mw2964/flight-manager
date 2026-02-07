@@ -1,5 +1,6 @@
 import pandas as pd
 from prettytable import PrettyTable, TableStyle, ALL, NONE
+from flightmanagement.error import ConstraintViolation, ForeignKeyDependencyViolation
 from flightmanagement.repositories.location_repository import LocationRepository
 from flightmanagement.models.location import Location
 from flightmanagement.db.db import transaction
@@ -23,8 +24,12 @@ class LocationService:
     def delete_location(self, location: Location):
         if location.location_id is None:
             raise ValueError("Location to delete lacks an ID")
-        with transaction(self.conn):
-            self.__location_repository.delete_location(location)
+        
+        try:
+            with transaction(self.conn):
+                self.__location_repository.delete_location(location)
+        except ForeignKeyDependencyViolation as e:
+            raise ConstraintViolation(e)
 
     def get_location_table(self) -> str:
         locations = self.__location_repository.get_location_list()
