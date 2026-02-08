@@ -66,7 +66,7 @@ class UserPrompt:
             self.is_cancelled = True
             return
 
-        self.__string_value = str(result) if result else None
+        self.__string_value = str(result).strip() if result else None
 
     def get_str(self) -> str | None:
         return self.__string_value

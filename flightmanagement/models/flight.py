@@ -1,6 +1,7 @@
 from datetime import datetime, date, time
 from dataclasses import dataclass
 import re
+from flightmanagement.error import FieldValidationError, DomainValidationError
 
 @dataclass(frozen = True)
 class Flight:    
@@ -25,52 +26,39 @@ class Flight:
     confirmed_arrival_time: time | None = None
     
     def __post_init__(self):
-        if not self.__is_valid_flight_number():
-            raise ValueError("Invalid flight number")
-        
-        if not self.origin_location_id:
-            raise ValueError("Invalid origin ID")
-        
-        if not self.destination_location_id or self.destination_location_id == self.origin_location_id:
-            raise ValueError("Invalid destination ID")
-        
-        if not self.__is_valid_status():
-            raise ValueError("Invalid status")
-
-        if not self.__is_valid_scheduled_arrival_time():
-            raise ValueError(f"Scheduled arrival time is not later than scheduled departure time")
-
-        if not self.__is_valid_actual_arrival_time():
-            raise ValueError("Actual arrival time is not later than actual departure time")
-
-        if self.captain_id and self.first_officer_id == self.captain_id:
-            raise ValueError("Invalid first officer ID")
+        self._validate_fields()
+        self._validate_domain()
 
     def __str__(self):        
         departure = datetime.strftime(datetime.combine(self.scheduled_departure_date, self.scheduled_departure_time), "%Y-%m-%d %H:%M")
         return f"{self.flight_number} (departure: {departure}, status: {self.flight_status})"
 
-    def __is_valid_flight_number(self) -> bool:
-        if self.flight_number and re.fullmatch(r"ZMY[0-9]+", self.flight_number):
-            return True
-        return False
+    def _validate_fields(self) -> None:
+        if self.flight_number and not re.fullmatch(r"ZMY[0-9]+", self.flight_number):
+            raise FieldValidationError("flight_number", "Flight number must be 'ZMY' followed by a number.")
+        
+        if not self.origin_location_id:
+            raise FieldValidationError("origin_location_id", "Origin location is missing.")
+        
+        if not self.destination_location_id:
+            raise FieldValidationError("destination_location_id", "Desination location is missing.")
+        
+        if self.destination_location_id == self.origin_location_id:
+            raise FieldValidationError("destination_location_id", "Destination must be different to the origin.")
+        
+        if self.flight_status not in ["Scheduled", "On time", "Delayed", "Boarding", "Closed", "Departed", "Arrived"]:
+            raise ValueError("Invalid status.")
+        
+        if self.captain_id and self.first_officer_id == self.captain_id:
+            raise FieldValidationError("first_officer_id", "First officer must be different to the selected captain.")
 
-    def __is_valid_status(self) -> bool:
-        if self.flight_status in ["Scheduled", "On time", "Delayed", "Boarding", "Closed", "Departed", "Arrived"]:
-            return True
-        return False
+    def _validate_domain(self) -> None:
+        if datetime.combine(self.scheduled_arrival_date, self.scheduled_arrival_time) <= datetime.combine(self.scheduled_departure_date, self.scheduled_departure_time):
+            raise DomainValidationError(f"Scheduled arrival time must be after the scheduled departure time.")
 
-    def __is_valid_scheduled_arrival_time(self):     
-        if datetime.combine(self.scheduled_arrival_date, self.scheduled_arrival_time) > datetime.combine(self.scheduled_departure_date, self.scheduled_departure_time):
-            return True
-        return False
-    
-    def __is_valid_actual_arrival_time(self):
-        if self.confirmed_arrival_date is None or self.confirmed_arrival_time is None or self.confirmed_departure_date is None or self.confirmed_departure_time is None:
-            return True
-        if datetime.combine(self.confirmed_arrival_date, self.confirmed_arrival_time) > datetime.combine(self.confirmed_departure_date, self.confirmed_departure_time):
-            return True
-        return False
+        if self.confirmed_arrival_date is not None and self.confirmed_arrival_time is not None and self.confirmed_departure_date is not None and self.confirmed_departure_time is not None:
+            if datetime.combine(self.confirmed_arrival_date, self.confirmed_arrival_time) <= datetime.combine(self.confirmed_departure_date, self.confirmed_departure_time):
+                raise DomainValidationError("Confirmed arrival time must be after the confirmed departure time.")
 
     def to_dict(self) -> dict:
         data = {

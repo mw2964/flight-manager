@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, date
 import re
+from flightmanagement.error import FieldValidationError, DomainValidationError
 
 @dataclass(frozen = True)
 class Pilot:
@@ -17,19 +18,47 @@ class Pilot:
     license_expiration_date: date | None = None
 
     def __post_init__(self):
-        if not self.__is_valid_name(self.first_name):
+        self._validate_fields()
+        self._validate_domain()
+
+        if not self._is_valid_name(self.first_name):
             raise ValueError("Invalid first name")
         
-        if not self.__is_valid_name(self.family_name):
+        if not self._is_valid_name(self.family_name):
             raise ValueError("Invalid family name")
 
     def __str__(self):
         return f"{self.first_name} {self.family_name}"
 
-    def __is_valid_name(self, name: str | None) -> bool:
-        if name and re.fullmatch(r"[A-Za-z\s-]+", name):
-            return True
-        return False
+    def _validate_fields(self) -> None:
+        if not self.first_name:
+            raise FieldValidationError("first_name", "First name is missing.")
+
+        if not self._is_valid_name(self.first_name):
+            raise FieldValidationError("first_name", "Name may only contain letters (including diacritics), hyphens and apostrophes.")
+        
+        if not self.family_name:
+            raise FieldValidationError("family_name", "Family name is missing.")
+        
+        if not self._is_valid_name(self.family_name):
+            raise FieldValidationError("family_name", "Name may only contain letters (including diacritics), hyphens and apostrophes.")
+    
+        if not self.employment_start_date:
+            raise FieldValidationError("employment_start_date", "Employment start date is missing.")
+        
+        if not self.employment_status:
+            raise FieldValidationError("employment_status", "Employment status is missing.")
+
+    def _validate_domain(self) -> None:
+        if self.employment_status == "Current" and self.employment_end_date is not None:
+            raise DomainValidationError("Current employees cannot have an employment end date.")
+        
+        if self.employment_status == "Left" and self.employment_end_date is None:
+            raise DomainValidationError("Employees who have left must have an employment end date.")
+
+    def _is_valid_name(self, string: str) -> bool:        
+        # Return true if all characters are letters, spaces, hyphens or apostrophes
+        return all(char.isalpha() or char in {" ", "-", "'"} for char in string)
 
     def to_dict_staff(self) -> dict:
         data = {

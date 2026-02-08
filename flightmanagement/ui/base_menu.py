@@ -14,7 +14,6 @@ class BaseMenu:
     _menu_options: list
     _menu_name: str
     
-
     def __init__(self, session, key_bindings, conn):
         self._session = session
         self._key_bindings = key_bindings
@@ -55,7 +54,7 @@ class BaseMenu:
 
                 return value
 
-            except (ValueError) as e:
+            except ValueError as e:
                 raise FieldValidationError(field=field, message=str(e))
         
     def _prompt_delete_confirmation(self) -> None:
@@ -92,7 +91,7 @@ class BaseMenu:
         return f"\n{line}\n"
     
     def _retry_message(self, e):
-        return self._indent_string(str(e) + " Please try again (or hit CTRL-C to cancel).", 3)
+        return self._indent_string(str(e) + " Please try again (or hit CTRL-C to cancel).\n", 3)
 
     def _indent_string(self, string: str, spaces: int) -> str:
         return " " * spaces + string

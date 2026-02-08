@@ -1,6 +1,6 @@
 import pandas as pd
 from prettytable import PrettyTable, TableStyle, ALL, NONE
-from flightmanagement.error import ConstraintViolation, ForeignKeyDependencyViolation
+from flightmanagement.error import MissingData, DependentRecords, DuplicateRecord, InvalidData, ForeignKeyDependencyViolation, ForeignKeyInvalidViolation, UniqueConstraintViolation, CheckConstraintViolation, MissingNotNullViolation
 from flightmanagement.repositories.location_repository import LocationRepository
 from flightmanagement.models.location import Location
 from flightmanagement.db.db import transaction
@@ -14,12 +14,30 @@ class LocationService:
         )
 
     def add_location(self, location: Location) -> int:
-        with transaction(self.conn):
-            return self.__location_repository.insert_location(location)        
+        try:
+            with transaction(self.conn):
+                return self.__location_repository.insert_location(location)
+        except (ForeignKeyDependencyViolation, ForeignKeyInvalidViolation) as e:
+            raise DependentRecords(e)
+        except UniqueConstraintViolation as e:
+            raise DuplicateRecord(e)
+        except CheckConstraintViolation as e:
+            raise InvalidData(e)
+        except MissingNotNullViolation as e:
+            raise MissingData(e)
 
     def update_location(self, location: Location):
-        with transaction(self.conn):
-            self.__location_repository.update_location(location)
+        try: 
+            with transaction(self.conn):
+                self.__location_repository.update_location(location)
+        except (ForeignKeyDependencyViolation, ForeignKeyInvalidViolation) as e:
+            raise DependentRecords(e)
+        except UniqueConstraintViolation as e:
+            raise DuplicateRecord(e)
+        except CheckConstraintViolation as e:
+            raise InvalidData(e)
+        except MissingNotNullViolation as e:
+            raise MissingData(e)
 
     def delete_location(self, location: Location):
         if location.location_id is None:
@@ -29,7 +47,7 @@ class LocationService:
             with transaction(self.conn):
                 self.__location_repository.delete_location(location)
         except ForeignKeyDependencyViolation as e:
-            raise ConstraintViolation(e)
+            raise DependentRecords(e)
 
     def get_location_table(self) -> str:
         locations = self.__location_repository.get_location_list()
@@ -111,29 +129,17 @@ class LocationService:
             table.add_row([
                 location.location_id,
                 location.location_type,
-                location.iata_airport_code,
-                location.icao_location_code,
+                location.iata_airport_code if location.iata_airport_code else '',
+                location.icao_location_code if location.icao_location_code else '',
                 location.location_name,
-                location.town_or_city,
-                location.state_or_county,
+                location.town_or_city if location.town_or_city else '',
+                location.state_or_county if location.state_or_county else '',
                 location.country,
-                location.geographic_region,
-                location.decimal_latitude,
-                location.decimal_longitude
+                location.geographic_region if location.geographic_region else '',
+                location.decimal_latitude if location.decimal_latitude else '',
+                location.decimal_longitude if location.decimal_longitude else ''
             ])
-               
-        # Set table formatting
-        table.set_style(TableStyle.SINGLE_BORDER)
-        table.align = "l"
-        table.max_width = 20
-        table.hrules = ALL
-        table.vrules = NONE
-
-        indented_table = ""
-        for row in table.get_string().split("\n"):
-            indented_table += (" " * 5) + row + "\n"
-
-        return str(indented_table)
+        return self._format_table(table)
     
     def get_results_view_pandas(self, locations: list[Location]) -> str:                
         
@@ -143,3 +149,18 @@ class LocationService:
         df = pd.DataFrame.from_records([location.to_dict() for location in locations])        
 
         return df.to_string()
+
+    def _format_table(self, table: PrettyTable) -> str:
+
+        # Set table formatting
+        table.set_style(TableStyle.SINGLE_BORDER)
+        table.align = "l"
+        table.max_width = 20
+        table.hrules = ALL
+        table.vrules = NONE
+        
+        indented_table = ""
+        for row in table.get_string().split("\n"):
+            indented_table += (" " * 5) + row + "\n"
+        
+        return indented_table

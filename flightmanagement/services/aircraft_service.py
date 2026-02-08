@@ -1,6 +1,6 @@
 from prettytable import PrettyTable, TableStyle, ALL, NONE
 from flightmanagement.repositories.aircraft_repository import AircraftRepository
-from flightmanagement.error import ConstraintViolation, ForeignKeyDependencyViolation
+from flightmanagement.error import MissingData, DependentRecords, DuplicateRecord, InvalidData, ForeignKeyDependencyViolation, ForeignKeyInvalidViolation, UniqueConstraintViolation, CheckConstraintViolation, MissingNotNullViolation
 from flightmanagement.models.aircraft import Aircraft
 from flightmanagement.db.db import transaction
 
@@ -13,12 +13,30 @@ class AircraftService:
         )
 
     def add_aircraft(self, aircraft: Aircraft) -> int:
-        with transaction(self.conn):
-            return self.__aircraft_repository.insert_aircraft(aircraft)
+        try:
+            with transaction(self.conn):
+                return self.__aircraft_repository.insert_aircraft(aircraft)
+        except (ForeignKeyDependencyViolation, ForeignKeyInvalidViolation) as e:
+            raise DependentRecords(e)
+        except UniqueConstraintViolation as e:
+            raise DuplicateRecord(e)
+        except CheckConstraintViolation as e:
+            raise InvalidData(e)
+        except MissingNotNullViolation as e:
+            raise MissingData(e)
 
     def update_aircraft(self, aircraft: Aircraft):
-        with transaction(self.conn):
-            self.__aircraft_repository.update_aircraft(aircraft)
+        try:
+            with transaction(self.conn):
+                self.__aircraft_repository.update_aircraft(aircraft)
+        except (ForeignKeyDependencyViolation, ForeignKeyInvalidViolation) as e:
+            raise DependentRecords(e)
+        except UniqueConstraintViolation as e:
+            raise DuplicateRecord(e)
+        except CheckConstraintViolation as e:
+            raise InvalidData(e)
+        except MissingNotNullViolation as e:
+            raise MissingData(e)
 
     def delete_aircraft(self, aircraft: Aircraft):
         if aircraft.aircraft_id is None:
@@ -28,7 +46,7 @@ class AircraftService:
             with transaction(self.conn):
                 self.__aircraft_repository.delete_aircraft(aircraft)
         except ForeignKeyDependencyViolation as e:
-            raise ConstraintViolation(e)
+            raise DependentRecords(e)
 
     def get_aircraft_table(self) -> str:
         aircraft = self.__aircraft_repository.get_aircraft_list()
@@ -93,17 +111,19 @@ class AircraftService:
                 aircraft_type.icao_type if aircraft_type else "",
                 item.aircraft_status
             ])
-              
+        return self._format_table(table)
+    
+    def _format_table(self, table: PrettyTable) -> str:
+
         # Set table formatting
         table.set_style(TableStyle.SINGLE_BORDER)
         table.align = "l"
         table.max_width = 20
         table.hrules = ALL
         table.vrules = NONE
-
+        
         indented_table = ""
         for row in table.get_string().split("\n"):
             indented_table += (" " * 5) + row + "\n"
         
-        return str(indented_table)
-    
+        return indented_table

@@ -158,7 +158,7 @@ class TestSearchOperations:
         results = flight_repository.search_on_field("flight_status", "Arrived")
 
         assert len(results) == 2
-        assert all(a.flight_status == "Arrived" for a in results)
+        assert all(a['flight_status'] == "Arrived" for a in results)
 
     def test_search_on_field_returns_none_when_no_matches(self, flight_repository):
         assert flight_repository.search_on_field("flight_status", "Unknown") == []

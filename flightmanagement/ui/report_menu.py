@@ -1,34 +1,39 @@
-from prompt_toolkit import PromptSession
-from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.shortcuts import choice
+from flightmanagement.ui.base_menu import BaseMenu
 from flightmanagement.services.report_service import ReportService
 
-class ReportMenu:
+class ReportMenu(BaseMenu):
 
-    __MENU_NAME = "Main -> Reports"
-    __MENU_OPTIONS = [
-        ("pilot_stats", "Pilot statistics"),
-        ("back", "Back to main menu")
-    ]
+    def __init__(self, session, bindings, conn = None, report_service = None):
+        super().__init__(session, bindings, conn)
 
-    def __init__(self, session: PromptSession, bindings: KeyBindings, conn):
-        self.__report_service = ReportService(conn)
-        self.__session = session
-        self.__bindings = bindings
+        self._report_service = report_service or ReportService(conn)
+        self._menu_name = "Main -> Reports"
+        self._menu_options = [
+            ("pilot_stats", "Pilot statistics"),
+            ("back", "Back to main menu")
+        ]
 
     def load(self):
         
         while True:
 
-            __choose_menu = choice(
-                message = format_title(self.__MENU_NAME),
-                options = self.__MENU_OPTIONS
+            _selected_option = choice(
+                message = self._format_title(self._menu_name),
+                options = self._menu_options
             )
 
-            if __choose_menu == "pilot_stats":
-                pass
+            if _selected_option == "pilot_stats":
+                print()
+                search_text = self._prompt_until_valid(
+                    prompt_text = "Enter a search term:",
+                    getter = lambda p: p.get_str(),
+                    field = "search_text"
+                )
+                print()
+                self._report_service.search_flights(search_text)
 
-            elif __choose_menu == "back":
+            elif _selected_option == "back":
                 break
             else:
                 print("Invalid Choice")

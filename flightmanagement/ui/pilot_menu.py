@@ -1,7 +1,7 @@
 from prompt_toolkit.shortcuts import choice
 from typing import Union
 from datetime import date
-from flightmanagement.error import FieldValidationError, DomainValidationError, UserCancelled, ConstraintViolation
+from flightmanagement.error import FieldValidationError, DomainValidationError, UserCancelled, MissingData, DependentRecords, DuplicateRecord, InvalidData
 from flightmanagement.ui.base_menu import BaseMenu, Unset
 from flightmanagement.services.pilot_service import PilotService
 from flightmanagement.models.pilot import Pilot
@@ -18,6 +18,7 @@ class PilotMenu(BaseMenu):
             ("search", "Search pilots"),
             ("add", "Add a pilot"),
             ("update", "Update a pilot"),
+            ("view_schedule", "View pilot flight schedule"),
             ("update_time_logs", "Update flight time logs"),
             ("update_leave_bookings", "Update leave bookings"),
             ("delete", "Remove a pilot"),
@@ -37,6 +38,8 @@ class PilotMenu(BaseMenu):
                     self._add_option()
                 elif _selected_option == "update":
                     self._update_option()
+                elif _selected_option == "view_schedule":
+                    self._view_schedule_option()
                 elif _selected_option == "update_time_logs":
                     self._update_time_logs_option()
                 elif _selected_option == "update_leave_bookings":
@@ -67,9 +70,17 @@ class PilotMenu(BaseMenu):
     def _add_option(self) -> None:
         print("\n>> Add a pilot (or hit CTRL+C to cancel)\n")
 
-        new = self._prompt_add_pilot()        
-        new_id = self._pilot_service.add_pilot(new)
-        print(f"\nNew record successfully added (staff ID: {new_id}).\n")
+        new = self._prompt_add_pilot()
+
+        try:
+            new_id = self._pilot_service.add_pilot(new)
+            print(f"\nNew record successfully added (staff ID: {new_id}).\n")
+        except MissingData as e:
+            print("\nRecord insert failed: missing mandatory data.")
+        except DuplicateRecord as e:
+            print("\nRecord insert failed: duplicated information.")
+        except InvalidData as e:
+            print("\nRecord insert failed: invalid information.")
        
     def _update_option(self) -> None:
         print("\n>> Update a pilot (or hit CTRL+C to cancel)\n")
@@ -78,9 +89,27 @@ class PilotMenu(BaseMenu):
         pilot = self._get_pilot_from_selection()
         print(f"\nEditing information (staff ID {pilot.staff_id})\n")
 
-        update = self._prompt_update_pilot(pilot)        
-        self._pilot_service.update_pilot(update)
-        print("\nRecord successfully updated.\n")
+        update = self._prompt_update_pilot(pilot)
+
+        try:
+            self._pilot_service.update_pilot(update)
+            print("\nRecord successfully updated.\n")
+        except MissingData as e:
+            print("\nRecord update failed: missing mandatory data.")
+        except DuplicateRecord as e:
+            print("\nRecord update failed: duplicated information.")
+        except InvalidData as e:
+            print("\nRecord update failed: invalid information.")
+
+    def _view_schedule_option(self) -> None:
+        print("\n>> View a pilot's flight schedule (or hit CTRL+C to cancel)\n")
+
+        # Prompt for the pilot to edit
+        pilot = self._get_pilot_from_selection()
+        print(f"\nViewing flight schedule for {pilot.first_name} {pilot.family_name}\n")
+        if pilot.staff_id is not None:
+            print(self._pilot_service.get_pilot_schedule(pilot.staff_id))
+        
 
     def _update_time_logs_option(self) -> None:
         print("\n>> Update flight time logs (or hit CTRL+C to cancel)\n")
@@ -113,15 +142,32 @@ class PilotMenu(BaseMenu):
 
             if option == 1:            
                 record_to_add = self._prompt_add_time_log_record(pilot.staff_id)
-                self._pilot_service.add_time_log_record(pilot.staff_id, record_to_add[0], record_to_add[1])
-                print("\nFlight time log record successfully added:\n")
-                print(self._pilot_service.get_flight_logs_table(pilot.staff_id))
 
+                try:
+                    self._pilot_service.add_time_log_record(pilot.staff_id, record_to_add[0], record_to_add[1])
+                    print("\nFlight time log record successfully added:\n")
+                except MissingData as e:
+                    print("\nRecord insert failed: missing mandatory data.")
+                except DuplicateRecord as e:
+                    print("\nRecord insert failed: duplicated information.")
+                except InvalidData as e:
+                    print("\nRecord insert failed: invalid information.")
+
+                print(self._pilot_service.get_flight_logs_table(pilot.staff_id))
             
             elif option == 2:
                 record_to_update = self._prompt_update_time_log_record(pilot.staff_id)
-                self._pilot_service.update_time_log_record(pilot.staff_id, record_to_update[0], record_to_update[1])
-                print("\nFlight time log record successfully updated:\n")
+
+                try:
+                    self._pilot_service.update_time_log_record(pilot.staff_id, record_to_update[0], record_to_update[1])
+                    print("\nFlight time log record successfully updated:\n")
+                except MissingData as e:
+                    print("\nRecord update failed: missing mandatory data.")
+                except DuplicateRecord as e:
+                    print("\nRecord update failed: duplicated information.")
+                except InvalidData as e:
+                    print("\nRecord update failed: invalid information.")
+
                 print(self._pilot_service.get_flight_logs_table(pilot.staff_id))
 
             elif option == 3:
@@ -164,14 +210,32 @@ class PilotMenu(BaseMenu):
 
             if option == 1:            
                 record_to_add = self._prompt_add_leave_booking_record(pilot.staff_id)
-                self._pilot_service.add_leave_booking_record(pilot.staff_id, record_to_add[0], record_to_add[1])
-                print("\nLeave booking successfully added:\n")
+
+                try:
+                    self._pilot_service.add_leave_booking_record(pilot.staff_id, record_to_add[0], record_to_add[1])
+                    print("\nLeave booking successfully added:\n")
+                except MissingData as e:
+                    print("\nRecord insert failed: missing mandatory data.")
+                except DuplicateRecord as e:
+                    print("\nRecord insert failed: duplicated information.")
+                except InvalidData as e:
+                    print("\nRecord insert failed: invalid information.")
+
                 print(self._pilot_service.get_leave_bookings_table(pilot.staff_id))
             
             elif option == 2:
                 record_to_update = self._prompt_update_leave_booking_record(pilot.staff_id)
-                self._pilot_service.update_leave_booking_record(pilot.staff_id, record_to_update[0], record_to_update[1])
-                print("\nLeave booking successfully updated:\n")
+
+                try:
+                    self._pilot_service.update_leave_booking_record(pilot.staff_id, record_to_update[0], record_to_update[1])
+                    print("\nLeave booking successfully updated:\n")
+                except MissingData as e:
+                    print("\nRecord update failed: missing mandatory data.")
+                except DuplicateRecord as e:
+                    print("\nRecord update failed: duplicated information.")
+                except InvalidData as e:
+                    print("\nRecord update failed: invalid information.")
+
                 print(self._pilot_service.get_leave_bookings_table(pilot.staff_id))
 
             elif option == 3:
@@ -193,8 +257,8 @@ class PilotMenu(BaseMenu):
         try:
             self._pilot_service.delete_pilot(pilot)
             print("\nRecord successfully deleted.\n")
-        except ConstraintViolation as e:
-            print("\nError deleting pilot: the pilot still has related records.")
+        except DependentRecords as e:
+            print("\nCannot delete pilot while there are still related flight records.")
 
     def _prompt_add_pilot(self) -> Pilot:
 

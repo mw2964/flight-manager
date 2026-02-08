@@ -1,6 +1,6 @@
 from datetime import date, datetime
 from prettytable import PrettyTable, TableStyle, ALL, NONE
-from flightmanagement.error import ConstraintViolation, ForeignKeyDependencyViolation
+from flightmanagement.error import MissingData, DependentRecords, DuplicateRecord, InvalidData, ForeignKeyDependencyViolation, ForeignKeyInvalidViolation, UniqueConstraintViolation, CheckConstraintViolation, MissingNotNullViolation
 from flightmanagement.repositories.pilot_repository import PilotRepository
 from flightmanagement.models.pilot import Pilot
 from flightmanagement.db.db import transaction
@@ -14,12 +14,30 @@ class PilotService:
         )
 
     def add_pilot(self, pilot: Pilot) -> int:
-        with transaction(self.conn):
-            return self.__pilot_repository.insert_pilot(pilot)
+        try:
+            with transaction(self.conn):
+                return self.__pilot_repository.insert_pilot(pilot)
+        except (ForeignKeyDependencyViolation, ForeignKeyInvalidViolation) as e:
+            raise DependentRecords(e)
+        except UniqueConstraintViolation as e:
+            raise DuplicateRecord(e)
+        except CheckConstraintViolation as e:
+            raise InvalidData(e)
+        except MissingNotNullViolation as e:
+            raise MissingData(e)
 
     def update_pilot(self, pilot: Pilot):
-        with transaction(self.conn):
-            self.__pilot_repository.update_pilot(pilot)
+        try:
+            with transaction(self.conn):
+                self.__pilot_repository.update_pilot(pilot)
+        except (ForeignKeyDependencyViolation, ForeignKeyInvalidViolation) as e:
+            raise DependentRecords(e)
+        except UniqueConstraintViolation as e:
+            raise DuplicateRecord(e)
+        except CheckConstraintViolation as e:
+            raise InvalidData(e)
+        except MissingNotNullViolation as e:
+            raise MissingData(e)
 
     def delete_pilot(self, pilot: Pilot):
         if pilot.staff_id is None:
@@ -30,23 +48,41 @@ class PilotService:
                 self.__pilot_repository.delete_pilot(pilot)
                 self.__pilot_repository.delete_staff(pilot)
         except ForeignKeyDependencyViolation as e:
-            raise ConstraintViolation(e)
+            raise DependentRecords(e)
 
     def add_time_log_record(self, staff_id: int, effective_date: date, flight_hours: float):
-        with transaction(self.conn):
-            self.__pilot_repository.insert_flight_log_record(
-                staff_id = staff_id,
-                effective_date = effective_date,
-                flight_hours = flight_hours
-            )
+        try:
+            with transaction(self.conn):
+                self.__pilot_repository.insert_flight_log_record(
+                    staff_id = staff_id,
+                    effective_date = effective_date,
+                    flight_hours = flight_hours
+                )
+        except (ForeignKeyDependencyViolation, ForeignKeyInvalidViolation) as e:
+            raise DependentRecords(e)
+        except UniqueConstraintViolation as e:
+            raise DuplicateRecord(e)
+        except CheckConstraintViolation as e:
+            raise InvalidData(e)
+        except MissingNotNullViolation as e:
+            raise MissingData(e)
 
     def update_time_log_record(self, staff_id: int, effective_date: date, flight_hours: float):
-        with transaction(self.conn):
-            self.__pilot_repository.update_flight_log_record(
-                staff_id = staff_id,
-                effective_date = effective_date,
-                flight_hours = flight_hours
-            )
+        try:
+            with transaction(self.conn):
+                self.__pilot_repository.update_flight_log_record(
+                    staff_id = staff_id,
+                    effective_date = effective_date,
+                    flight_hours = flight_hours
+                )
+        except (ForeignKeyDependencyViolation, ForeignKeyInvalidViolation) as e:
+            raise DependentRecords(e)
+        except UniqueConstraintViolation as e:
+            raise DuplicateRecord(e)
+        except CheckConstraintViolation as e:
+            raise InvalidData(e)
+        except MissingNotNullViolation as e:
+            raise MissingData(e)
 
     def delete_time_log_record(self, staff_id: int, effective_date: date):
         with transaction(self.conn):
@@ -56,20 +92,38 @@ class PilotService:
             )
 
     def add_leave_booking_record(self, staff_id: int, leave_date: date, leave_type: str):
-        with transaction(self.conn):
-            self.__pilot_repository.insert_leave_booking(
-                staff_id = staff_id,
-                leave_date = leave_date,
-                leave_type = leave_type
-            )
+        try:
+            with transaction(self.conn):
+                self.__pilot_repository.insert_leave_booking(
+                    staff_id = staff_id,
+                    leave_date = leave_date,
+                    leave_type = leave_type
+                )
+        except (ForeignKeyDependencyViolation, ForeignKeyInvalidViolation) as e:
+            raise DependentRecords(e)
+        except UniqueConstraintViolation as e:
+            raise DuplicateRecord(e)
+        except CheckConstraintViolation as e:
+            raise InvalidData(e)
+        except MissingNotNullViolation as e:
+            raise MissingData(e)
 
     def update_leave_booking_record(self, staff_id: int, leave_date: date, leave_type: str):
-        with transaction(self.conn):
-            self.__pilot_repository.update_leave_booking(
-                staff_id = staff_id,
-                leave_date = leave_date,
-                leave_type = leave_type
-            )
+        try:
+            with transaction(self.conn):
+                self.__pilot_repository.update_leave_booking(
+                    staff_id = staff_id,
+                    leave_date = leave_date,
+                    leave_type = leave_type
+                )
+        except (ForeignKeyDependencyViolation, ForeignKeyInvalidViolation) as e:
+            raise DependentRecords(e)
+        except UniqueConstraintViolation as e:
+            raise DuplicateRecord(e)
+        except CheckConstraintViolation as e:
+            raise InvalidData(e)
+        except MissingNotNullViolation as e:
+            raise MissingData(e)
 
     def delete_leave_booking_record(self, staff_id: int, leave_date: date):
         with transaction(self.conn):
@@ -165,6 +219,10 @@ class PilotService:
 
         return record_choices
 
+    def get_pilot_schedule(self, staff_id: int) -> str:
+        results = self.__pilot_repository.get_pilot_schedule_by_id(staff_id)
+        return self.get_schedule_view(results)
+
     def search_pilots(self, field_name: str, value) -> list[Pilot]:
         return self.__pilot_repository.search_on_field(field_name, value)
 
@@ -197,26 +255,48 @@ class PilotService:
                 pilot.first_name,
                 pilot.employee_number,
                 pilot.employment_status,
-                pilot.employment_start_date,
-                pilot.employment_end_date,
-                pilot.license_number,
-                pilot.license_type,
-                pilot.license_expiration_date
+                pilot.employment_start_date.strftime("%d/%m/%Y"),
+                pilot.employment_end_date.strftime("%d/%m/%Y") if pilot.employment_end_date else '',
+                pilot.license_number if pilot.license_number else '',
+                pilot.license_type if pilot.license_type else '',
+                pilot.license_expiration_date.strftime("%d/%m/%Y") if pilot.license_expiration_date else '',
             ])
-
-        # Set table formatting
-        table.set_style(TableStyle.SINGLE_BORDER)
-        table.align = "l"
-        table.max_width = 20
-        table.hrules = ALL
-        table.vrules = NONE
+        return self._format_table(table)
     
-        indented_table = ""
-        for row in table.get_string().split("\n"):
-            indented_table += (" " * 5) + row + "\n"
+    def get_schedule_view(self, flights: list) -> str:
+        if flights is None or len(flights) == 0:
+            return ""
+        
+        # Initialise the table
+        table = PrettyTable([
+            "Flight number",
+            "Flight status",
+            "Dept. (scheduled)",            
+            "From",
+            "To",
+            "Arr. (scheduled)",
+            "Pilot role"
+        ])
 
-        return str(indented_table)
-    
+        # Populate table rows
+        for row in flights:
+            # Format fields
+            departure_date_formatted = datetime.strptime(row['scheduled_departure_date'],"%Y-%m-%d").strftime("%d/%m/%Y")
+            arrival_date_formatted = datetime.strptime(row['scheduled_arrival_date'],"%Y-%m-%d").strftime("%d/%m/%Y")
+            departure = f"{departure_date_formatted}\n{row['scheduled_departure_time']}"
+            arrival = f"{arrival_date_formatted}\n{row['scheduled_arrival_time']}"
+
+            table.add_row([
+                row["flight_number"],
+                row["flight_status"],
+                departure,
+                row["origin_location"],
+                row["destination_location"],
+                arrival,
+                row["pilot_role"]               
+            ])
+        return self._format_table(table)
+
     def get_log_results_view(self, logs: list) -> str:
         if logs is None or len(logs) == 0:
             return ""
@@ -233,19 +313,7 @@ class PilotService:
                 record["effective_date"],
                 record["flight_hours"]
             ])
-
-        # Set table formatting
-        table.set_style(TableStyle.SINGLE_BORDER)
-        table.align = "l"
-        table.max_width = 20
-        table.hrules = ALL
-        table.vrules = NONE
-    
-        indented_table = ""
-        for row in table.get_string().split("\n"):
-            indented_table += (" " * 5) + row + "\n"
-
-        return str(indented_table)
+        return self._format_table(table)
     
     def get_leave_results_view(self, logs: list) -> str:
         if logs is None or len(logs) == 0:
@@ -263,6 +331,12 @@ class PilotService:
                 record["leave_date"],
                 record["leave_type"]
             ])
+        return self._format_table(table)
+
+    def display_record(self, pilot: Pilot) -> str:
+        return f"\n> Pilot ID: {pilot.staff_id}\n> First name: {pilot.first_name}\n> Family name: {pilot.family_name}"
+    
+    def _format_table(self, table: PrettyTable) -> str:
 
         # Set table formatting
         table.set_style(TableStyle.SINGLE_BORDER)
@@ -270,12 +344,9 @@ class PilotService:
         table.max_width = 20
         table.hrules = ALL
         table.vrules = NONE
-    
+        
         indented_table = ""
         for row in table.get_string().split("\n"):
             indented_table += (" " * 5) + row + "\n"
-
-        return str(indented_table)
-
-    def display_record(self, pilot: Pilot) -> str:
-        return f"\n> Pilot ID: {pilot.staff_id}\n> First name: {pilot.first_name}\n> Family name: {pilot.family_name}"
+        
+        return indented_table

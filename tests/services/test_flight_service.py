@@ -118,15 +118,6 @@ class TestUseRepository:
             "flight_number", "ZMY123"
         )
 
-    def test_get_flight_table_uses_repository(self, flightservice, sample_flight):
-        flightservice._FlightService__flight_repository.get_flight_list.return_value = [
-            sample_flight
-        ]
-
-        result = flightservice.get_flight_table()
-
-        assert "ZMY123" in result
-
 class TestReturnData:
 
     def test_get_flight_by_id(self, flightservice):
@@ -155,15 +146,4 @@ class TestReturnData:
 
         assert result == []
 
-    def test_get_results_view_empty_list(self, flightservice):
-        assert flightservice.get_results_view([]) == ""
-
-    def test_get_results_view_none(self, flightservice):
-        assert flightservice.get_results_view(None) == ""
-
-    def test_get_results_view_contains_flight_data(self, flightservice, sample_flight):
-        output = flightservice.get_results_view([sample_flight])
-
-        assert "ZMY123" in output
-        assert "2026-01-01 16:55" in output
 

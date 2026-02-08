@@ -47,57 +47,10 @@ def flight():
 class TestLoad:
 
     @patch("flightmanagement.ui.flight_menu.choice")
-    def test_load_routes_to_show(self, mock_choice, menu):
-        mock_choice.side_effect = ["show", "back"]
-        menu._show_option = MagicMock()
-
-        menu.load()
-
-        menu._show_option.assert_called_once()
-
-    @patch("flightmanagement.ui.flight_menu.choice")
-    def test_load_handles_user_cancelled(self, mock_choice, menu):
-        mock_choice.side_effect = ["show", "back"]
-        menu._show_option = MagicMock(side_effect=UserCancelled("cancel"))
-
-        menu.load()
-
-        menu._show_option.assert_called_once()
-
-    @patch("flightmanagement.ui.flight_menu.choice")
     def test_load_exits_on_back(self, mock_choice, menu):
         mock_choice.return_value = "back"
 
         menu.load()  # should exit cleanly
-
-
-class TestShow:
-
-    def test_show_prints_flight_table(self, menu, flight_service, capsys):
-        flight_service.get_flight_table.return_value = "FLIGHTS TABLE"
-
-        menu._show_option()
-
-        out = capsys.readouterr().out
-        assert "Displaying all flights" in out
-        assert "FLIGHTS TABLE" in out
-
-class TestSearch:
-
-    def test_search_flight_by_code(self, menu, flight_service, capsys):
-        menu._prompt_until_valid = MagicMock(return_value="ZMY123")
-        flight_service.search_flights.return_value = [MagicMock()]
-        flight_service.get_results_view.return_value = "RESULT VIEW"
-        menu._format_results_text = MagicMock(return_value="1 result")
-
-        menu._search_option()
-
-        flight_service.search_flights.assert_called_once_with(
-            "flight_number", "ZMY123"
-        )
-
-        out = capsys.readouterr().out
-        assert "Search for a flight" in out
 
 class TestAdd:
 

@@ -47,7 +47,50 @@ class PilotRepository(BaseRepository):
 
         return result_list
 
-        return rows
+    def get_pilot_schedule_by_id(self, staff_id: int) -> list:
+        rows = self._execute_fetchall(
+            """
+            SELECT
+                a.flight_id,
+                a.pilot_role,
+                f.flight_number,
+                f.origin_location,
+                f.destination_location,
+                f.scheduled_departure_date,
+                f.scheduled_departure_time,
+                f.scheduled_arrival_date,
+                f.scheduled_arrival_time,
+                f.flight_status
+            FROM
+                (SELECT
+                    flight_id,
+                    'captain' as pilot_role
+                FROM flights
+                WHERE captain_id = ?
+                UNION
+                SELECT
+                    flight_id,
+                    'first officer' as pilot_role
+                FROM flights
+                WHERE first_officer_id = ?
+                UNION
+                SELECT
+                    DISTINCT flight_id,
+                    'relief pilot' as pilot_role
+                FROM flight_relief_pilots
+                WHERE staff_id = ?
+            ) a
+            INNER JOIN vw_flight_summary f ON f.flight_id = a.flight_id
+            ORDER BY f.scheduled_arrival_date, f.scheduled_arrival_time
+            """,
+            (staff_id, staff_id, staff_id)
+        )
+
+        result_list = []
+        for row in rows:
+            result_list.append(dict(row))
+
+        return result_list
 
     def search_on_field(self, field_name: str, value) -> list:
         if field_name not in self.PILOT_SEARCH_FIELDS:

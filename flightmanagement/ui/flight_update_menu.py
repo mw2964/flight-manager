@@ -1,7 +1,8 @@
+import pandas as pd
 from datetime import datetime, date, time
 from typing import Union, cast
 from prompt_toolkit.shortcuts import choice
-from flightmanagement.error import FieldValidationError, DomainValidationError, UserCancelled, ConstraintViolation, FlightNotFound
+from flightmanagement.error import FieldValidationError, DomainValidationError, UserCancelled, MissingData, DependentRecords, DuplicateRecord, InvalidData, FlightNotFound
 from flightmanagement.ui.base_menu import BaseMenu, Unset
 from flightmanagement.services.flight_service import FlightService
 from flightmanagement.services.aircraft_service import AircraftService
@@ -68,10 +69,10 @@ class FlightUpdateMenu(BaseMenu):
                 continue
     
     def _show_flight_summary(self) -> None:        
-        flight = self._flight_service.get_flight_by_id(self._flight_id)
-        if flight is None:
-            raise FlightNotFound 
-        print(self._flight_service.get_results_view([flight]))
+        results = self._flight_service.search_flights("flight_id", self._flight_id)
+        df = pd.json_normalize(results)
+
+        print(self._flight_service.get_results_view(df))
 
     def _assign_pilot_option(self) -> None:
         print("\n>> Assign a pilot (or hit CTRL+C to cancel)\n")
@@ -99,6 +100,8 @@ class FlightUpdateMenu(BaseMenu):
             prompt_text = "What would you like to do?",
             getter = lambda p: p.get_int(),
             field = "option",
+            is_picklist = True,
+            required = True,
             options = [
                 (1, ("Add a relief pilot")),
                 (2, ("Remove a relief pilot"))
@@ -129,10 +132,17 @@ class FlightUpdateMenu(BaseMenu):
         # Prompt the user to edit fields
         update = self._prompt_update_aircraft(flight)
 
-        self._flight_service.update_flight(update)
-        print("\nAircraft successfully updated:\n")
-        self._show_flight_summary()
-    
+        try:
+            self._flight_service.update_flight(update)
+            print("\nAircraft successfully updated:\n")
+            self._show_flight_summary()
+        except MissingData as e:
+            print("\nRecord update failed: missing mandatory data.")
+        except DuplicateRecord as e:
+            print("\nRecord update failed: duplicated information.")
+        except InvalidData as e:
+            print("\nRecord update failed: invalid information.")
+        
     def _update_status_option(self) -> None:
         print("\n>> Update the flight status (or hit CTRL+C to cancel)\n")
 
@@ -143,9 +153,16 @@ class FlightUpdateMenu(BaseMenu):
         # Prompt the user to edit fields
         update = self._prompt_update_status(flight)
 
-        self._flight_service.update_flight(update)
-        print("\nStatus successfully updated:\n")
-        self._show_flight_summary()
+        try:
+            self._flight_service.update_flight(update)
+            print("\nStatus successfully updated:\n")
+            self._show_flight_summary()
+        except MissingData as e:
+            print("\nRecord update failed: missing mandatory data.")
+        except DuplicateRecord as e:
+            print("\nRecord update failed: duplicated information.")
+        except InvalidData as e:
+            print("\nRecord update failed: invalid information.")
 
     def _update_scheduled_times_option(self) -> None:
         print("\n>> Update the scheduled departure and arrival times (or hit CTRL+C to cancel)\n")
@@ -157,9 +174,16 @@ class FlightUpdateMenu(BaseMenu):
         # Prompt the user to edit fields
         update = self._prompt_update_scheduled_times(flight)
 
-        self._flight_service.update_flight(update)
-        print("\nFlight details successfully updated:\n")
-        self._show_flight_summary()
+        try:
+            self._flight_service.update_flight(update)
+            print("\nFlight details successfully updated:\n")
+            self._show_flight_summary()
+        except MissingData as e:
+            print("\nRecord update failed: missing mandatory data.")
+        except DuplicateRecord as e:
+            print("\nRecord update failed: duplicated information.")
+        except InvalidData as e:
+            print("\nRecord update failed: invalid information.")
 
     def _log_departure_option(self) -> None:
         print("\n>> Log the actual departure time and set status to 'departed' (or hit CTRL+C to cancel)\n")
@@ -171,9 +195,16 @@ class FlightUpdateMenu(BaseMenu):
         # Prompt the user to edit fields
         update = self._prompt_log_departure(flight)
 
-        self._flight_service.update_flight(update)
-        print("\nFlight details successfully updated:\n")
-        self._show_flight_summary()
+        try:
+            self._flight_service.update_flight(update)
+            print("\nFlight details successfully updated:\n")
+            self._show_flight_summary()
+        except MissingData as e:
+            print("\nRecord update failed: missing mandatory data.")
+        except DuplicateRecord as e:
+            print("\nRecord update failed: duplicated information.")
+        except InvalidData as e:
+            print("\nRecord update failed: invalid information.")
     
     def _log_arrival_option(self) -> None:
         print("\n>> Log the actual arrival time and set status to 'arrived' (or hit CTRL+C to cancel)\n")
@@ -185,9 +216,16 @@ class FlightUpdateMenu(BaseMenu):
         # Prompt the user to edit fields
         update = self._prompt_log_arrival(flight)
 
-        self._flight_service.update_flight(update)
-        print("\nFlight details successfully updated:\n")
-        self._show_flight_summary()
+        try:
+            self._flight_service.update_flight(update)
+            print("\nFlight details successfully updated:\n")
+            self._show_flight_summary()
+        except MissingData as e:
+            print("\nRecord update failed: missing mandatory data.")
+        except DuplicateRecord as e:
+            print("\nRecord update failed: duplicated information.")
+        except InvalidData as e:
+            print("\nRecord update failed: invalid information.")
 
     def _update_all_option(self) -> None:
         print("\n>> Update a flight (or hit CTRL+C to cancel)\n")
@@ -199,9 +237,16 @@ class FlightUpdateMenu(BaseMenu):
         # Prompt the user to edit fields
         update = self._prompt_update_flight(flight)
 
-        self._flight_service.update_flight(update)
-        print("\nFlight details successfully updated.\n")
-        self._show_flight_summary()
+        try:
+            self._flight_service.update_flight(update)
+            print("\nFlight details successfully updated.\n")
+            self._show_flight_summary()
+        except MissingData as e:
+            print("\nRecord update failed: missing mandatory data.")
+        except DuplicateRecord as e:
+            print("\nRecord update failed: duplicated information.")
+        except InvalidData as e:
+            print("\nRecord update failed: invalid information.")
         
     def _prompt_log_departure(self, flight: Flight) -> Flight:
 
@@ -434,6 +479,7 @@ class FlightUpdateMenu(BaseMenu):
                         prompt_text = "Select a flight status:",
                         getter = lambda p: p.get_str(),
                         field = "flight_status",
+                        is_picklist = True,
                         options = [
                             ("Scheduled", ("Scheduled")),
                             ("Delayed", ("Delayed")),
@@ -878,6 +924,7 @@ class FlightUpdateMenu(BaseMenu):
                     )    
 
                 if flight_status is unset:
+                    print()
                     flight_status = self._prompt_until_valid(
                         prompt_text = "Select a flight status:",
                         getter = lambda p: p.get_str(),

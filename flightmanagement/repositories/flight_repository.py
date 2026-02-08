@@ -5,27 +5,6 @@ from flightmanagement.repositories.base_repository import BaseRepository
 
 class FlightRepository(BaseRepository):
 
-    FLIGHT_SEARCH_FIELDS = {
-        'flight_id',
-        'aircraft_id',
-        'origin_location_id',
-        'destination_location_id',
-        'departure_gate_id',
-        'arrival_gate_id',
-        'captain_id',
-        'first_officer_id',
-        'flight_number',
-        'scheduled_departure_date',
-        'scheduled_departure_time',
-        'scheduled_arrival_date',
-        'scheduled_arrival_time',
-        'confirmed_departure_date',
-        'confirmed_departure_time',
-        'confirmed_arrival_date',
-        'confirmed_arrival_time',
-        'flight_status'
-    }
-
     def __init__(self, conn):
         super().__init__(conn)
     
@@ -39,22 +18,30 @@ class FlightRepository(BaseRepository):
             (flight_id, )
         )
         return self.dict_to_flight(row)
+    
+    def get_flight_summary_by_id(self, flight_id: int) -> dict:
+        row = self._execute_fetchone(
+            """
+            SELECT *
+            FROM vw_flight_summary
+            WHERE flight_id = ?
+            """,
+            (flight_id, )
+        )
+        return dict(row)
 
-    def search_on_field(self, field_name: str, value) -> list[Flight]:
-        if field_name not in self.FLIGHT_SEARCH_FIELDS:
-            raise ValueError(f"Invalid search field: {field_name}")
-
+    def search_on_field(self, field_name: str, value) -> list[dict]:
         sql = f"""
             SELECT *
-            FROM flights
+            FROM vw_flight_summary
             WHERE {field_name} = ?
-            ORDER BY scheduled_departure_date DESC, scheduled_departure_time DESC
+            ORDER BY scheduled_departure_date DESC
         """
         rows = self._execute_fetchall(sql, (value, ))
         
         result_list = []
         for row in rows:
-            result_list.append(self.dict_to_flight(row))
+            result_list.append(dict(row))
 
         return result_list
 
@@ -70,6 +57,21 @@ class FlightRepository(BaseRepository):
         result_list = []
         for row in rows:
             result_list.append(self.dict_to_flight(row))
+
+        return result_list
+
+    def get_flight_summary_list(self) -> list[dict]:
+        rows = self._execute_fetchall(
+            """
+            SELECT *
+            FROM vw_flight_summary
+            ORDER BY scheduled_departure_date DESC
+            """
+        )
+
+        result_list = []
+        for row in rows:
+            result_list.append(dict(row))
 
         return result_list
 

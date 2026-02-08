@@ -43,7 +43,19 @@ class MissingNotNullViolation(RepositoryError):
 class ForeignKeyDependencyViolation(RepositoryError):
     pass
 
-class ConstraintViolation(Exception):
+class ServiceError(Exception):
+    pass
+
+class DependentRecords(ServiceError):
+    pass
+
+class DuplicateRecord(ServiceError):
+    pass
+
+class InvalidData(ServiceError):
+    pass
+
+class MissingData(ServiceError):
     pass
 
 class FlightNotFound(ValueError):

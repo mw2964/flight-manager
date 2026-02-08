@@ -1,6 +1,8 @@
 from datetime import datetime
+import pandas as pd
+from pandas import DataFrame
 from prettytable import PrettyTable, TableStyle, ALL, NONE
-from flightmanagement.error import ConstraintViolation, ForeignKeyDependencyViolation
+from flightmanagement.error import MissingData, DependentRecords, DuplicateRecord, InvalidData, ForeignKeyDependencyViolation, ForeignKeyInvalidViolation, UniqueConstraintViolation, CheckConstraintViolation, MissingNotNullViolation
 from flightmanagement.repositories.aircraft_repository import AircraftRepository
 from flightmanagement.repositories.location_repository import LocationRepository
 from flightmanagement.repositories.flight_repository import FlightRepository
@@ -19,13 +21,33 @@ class FlightService:
         self.__location_repository = LocationRepository(self.conn)
         self.__pilot_repository = PilotRepository(self.conn)
 
+    # Edit and delete
+
     def add_flight(self, flight: Flight) -> int:
-        with transaction(self.conn):
-            return self.__flight_repository.insert_flight(flight)
+        try:
+            with transaction(self.conn):
+                return self.__flight_repository.insert_flight(flight)
+        except (ForeignKeyDependencyViolation, ForeignKeyInvalidViolation) as e:
+            raise DependentRecords(e)
+        except UniqueConstraintViolation as e:
+            raise DuplicateRecord(e)
+        except CheckConstraintViolation as e:
+            raise InvalidData(e)
+        except MissingNotNullViolation as e:
+            raise MissingData(e)
 
     def update_flight(self,flight: Flight):
-        with transaction(self.conn):
-            self.__flight_repository.update_flight(flight)
+        try:
+            with transaction(self.conn):
+                self.__flight_repository.update_flight(flight)
+        except (ForeignKeyDependencyViolation, ForeignKeyInvalidViolation) as e:
+            raise DependentRecords(e)
+        except UniqueConstraintViolation as e:
+            raise DuplicateRecord(e)
+        except CheckConstraintViolation as e:
+            raise InvalidData(e)
+        except MissingNotNullViolation as e:
+            raise MissingData(e)
 
     def delete_flight(self, flight: Flight):
         if flight.flight_id is None:
@@ -35,107 +57,7 @@ class FlightService:
             with transaction(self.conn):
                 self.__flight_repository.delete_flight(flight)
         except ForeignKeyDependencyViolation as e:
-            raise ConstraintViolation(e)
-
-    def get_flight_table(self) -> str:
-        flights = self.__flight_repository.get_flight_list()
-
-        if flights is None:
-            return ""
-        
-        return self.get_results_view(flights)
-
-    def get_flight_by_id(self, id: int) -> Flight | None:
-        return self.__flight_repository.get_flight_by_id(id)
-
-    def get_aircraft(self, aircraft_registration: str) -> int | None:
-        aircraft = self.__aircraft_repository.get_aircraft_by_registration(aircraft_registration)        
-        if aircraft:
-            return aircraft.aircraft_id
-        
-    def get_location(self, location_code: str) -> int | None:
-        location = self.__location_repository.get_location_by_code(location_code)        
-        if location:
-            return location.location_id
-    
-    def search_flights(self, field_name: str, value) -> list[Flight]:
-        return self.__flight_repository.search_on_field(field_name, value)
-
-    def get_flight_choices(self, flight_number: str = "") -> list:
-        flights = self.__flight_repository.get_flight_list()
-        
-        flight_choices = []
-
-        if flights:
-            for flight in flights:
-                if flight_number == "" or flight.flight_number == flight_number:                    
-                    flight_choices.append((flight.flight_id, self.get_flight_summary(flight)))
-
-        return flight_choices
-    
-    def get_results_view(self, flights: list[Flight]) -> str:
-        if flights is None or len(flights) == 0:
-            return ""
-        
-        # Initialise the table
-        table = PrettyTable([
-            "Flight ID",
-            "Flight number",
-            "Aircraft",
-            "Origin",
-            "Destination",
-            "Captain",
-            "First officer",
-            "Departure (scheduled)",
-            "Arrival (scheduled)",
-            "Departure (actual)",
-            "Arrival (actual)",
-            "Status"
-            ],
-        )        
-        
-        # Populate table rows
-        for flight in flights:
-            table.add_row([
-                flight.flight_id,
-                flight.flight_number,
-                str(self.__aircraft_repository.get_aircraft_by_id(flight.aircraft_id)).replace(" (", "\n(") if flight.aircraft_id else None,
-                str(self.__location_repository.get_location_by_id(flight.origin_location_id)).replace(" (", "\n("),
-                str(self.__location_repository.get_location_by_id(flight.destination_location_id)).replace(" (", "\n("),
-                self.__pilot_repository.get_pilot_by_id(flight.captain_id) if flight.captain_id else "",
-                self.__pilot_repository.get_pilot_by_id(flight.first_officer_id) if flight.first_officer_id else "",
-                f"{flight.scheduled_departure_date.strftime("%Y-%m-%d")} {flight.scheduled_departure_time.strftime("%H:%M")}",
-                f"{flight.scheduled_arrival_date.strftime("%Y-%m-%d")} {flight.scheduled_arrival_time.strftime("%H:%M")}",
-                f"{flight.confirmed_departure_date.strftime("%Y-%m-%d") if flight.confirmed_departure_date else None} {flight.confirmed_departure_time.strftime("%H:%M") if flight.confirmed_departure_time else None}",
-                f"{flight.confirmed_arrival_date.strftime("%Y-%m-%d") if flight.confirmed_arrival_date else None} {flight.confirmed_arrival_time.strftime("%H:%M") if flight.confirmed_arrival_time else None}",
-                flight.flight_status
-            ])
-
-        # Set table formatting
-        table.set_style(TableStyle.SINGLE_BORDER)
-        table.align = "l"
-        table.max_width = 20
-        table.hrules = ALL
-        table.vrules = NONE
-        
-        indented_table = ""
-        for row in table.get_string().split("\n"):
-            indented_table += (" " * 5) + row + "\n"
-        
-        return str(indented_table)
-    
-    def get_flight_summary(self, flight: Flight) -> str:
-        origin_location = self.__location_repository.get_location_by_id(flight.origin_location_id)        
-        destination_location = self.__location_repository.get_location_by_id(flight.destination_location_id)
-
-        origin_code = origin_location.iata_airport_code if origin_location is not None else ""
-        destination_code = destination_location.iata_airport_code if destination_location is not None else ""
-
-        departure = f"{flight.scheduled_departure_date.strftime("%Y-%m-%d")} {flight.scheduled_departure_time.strftime("%H:%M")}"
-
-        spaces = 10 - len(flight.flight_number)
-
-        return f"{flight.flight_number}{' ' * spaces}{origin_code} to {destination_code} | Departure: {departure} | Status: {flight.flight_status}"
+            raise DependentRecords(e)
 
     def assign_pilot_to_flight(self, flight: Flight):
         with transaction(self.conn):
@@ -148,6 +70,124 @@ class FlightService:
     def remove_relief_pilot(self, flight: Flight, staff_id: int):
         with transaction(self.conn):
             self.__flight_repository.delete_relief_pilot(flight, staff_id)
+
+    # Retrieve flight information
+
+    def get_flight_table(self) -> str:
+        data = self.__flight_repository.get_flight_summary_list()
+
+        if data is None:
+            return ""
+        
+        df = pd.json_normalize(data)
+        
+        return self.get_results_view(df)
+
+    def get_flight_by_id(self, id: int) -> Flight | None:
+        return self.__flight_repository.get_flight_by_id(id)
+    
+    def get_flight_summary_by_id(self, id: int) -> dict:
+        return self.__flight_repository.get_flight_summary_by_id(id)
+    
+    def search_flights(self, field_name: str, value) -> list[dict]:
+        return self.__flight_repository.search_on_field(field_name, value)
+
+    def get_flights_full_text(self, search_text: str | None) -> DataFrame:
+        data = self.__flight_repository.get_flight_summary_list()
+        df = pd.json_normalize(data)
+
+        if search_text is not None:
+            mask = df.apply(lambda row: row.astype(str).str.contains(search_text, case=False).any(), axis=1)
+
+            # Filtered dataframe
+            filtered_df = df[mask]
+            return(filtered_df)
+        else:
+            return(df)
+
+    def get_flight_choices(self, flight_number: str = "", id_list: list | None = None) -> list:
+        flights = self.__flight_repository.get_flight_summary_list()
+        
+        flight_choices = []
+
+        if flights:
+            for flight in flights:
+                if id_list is not None and flight["flight_id"] not in id_list:
+                    continue
+                if flight_number == "" or flight["flight_number"] == flight_number:                    
+                    flight_choices.append((flight["flight_id"], self.get_flight_summary(flight)))
+
+        return flight_choices
+    
+    def get_results_view(self, df) -> str:
+                
+        # Initialise the table
+        table = PrettyTable([
+            "ID",
+            "Flight no.",
+            "Aircraft",
+            "From",
+            "To",
+            "Pilots",
+            "Dept. (scheduled)",
+            "Arr. (scheduled)",
+            "Status"
+            ],
+        )        
+        
+        # Populate table rows
+        for i, row in df.iterrows():
+
+            # Format and combine some fields for readability and to reduce table width
+            origin = f"{row['origin_location']}\n({row['origin_town_or_city']})"
+            destination = f"{row['destination_location']}\n({row['destination_town_or_city']})"
+
+            pilots = ""
+            if row['captain_name'] != "":
+                pilots += f"{row['captain_name']} (c)"
+            if row['first_officer_name'] != "":
+                if len(pilots) > 0:
+                    pilots += "\n"
+                pilots += f"{row['first_officer_name']} (c)"
+            if row['relief_pilots'] != "":
+                if len(pilots) > 0:
+                    pilots += "\n"
+                pilots += f"{row['relief_pilots'].replace(", ", "\n")}"
+
+            departure_date_formatted = datetime.strptime(row['scheduled_departure_date'],"%Y-%m-%d").strftime("%d/%m/%Y")
+            arrival_date_formatted = datetime.strptime(row['scheduled_arrival_date'],"%Y-%m-%d").strftime("%d/%m/%Y")
+            departure = f"{departure_date_formatted}\n{row['scheduled_departure_time']}"
+            arrival = f"{arrival_date_formatted}\n{row['scheduled_arrival_time']}"
+
+            table.add_row([
+                row["flight_id"],
+                row["flight_number"],
+                row["aircraft_registration"],
+                origin,
+                destination,
+                pilots,
+                departure,
+                arrival,
+                row['flight_status']
+            ])
+        return self._format_table(table)
+    
+    def get_flight_summary(self, flight: dict) -> str:        
+        departure = f"{datetime.strptime(flight["scheduled_departure_date"], '%Y-%m-%d').strftime("%d/%m/%Y")} {flight["scheduled_departure_time"]}"
+        spaces = 10 - len(flight["flight_number"])
+        return f"{flight["flight_number"]}{' ' * spaces}{flight["origin_location"]} to {flight["destination_location"]} | Departure: {departure} | Status: {flight["flight_status"]}"
+
+    # Retrieve related information
+
+    def get_aircraft(self, aircraft_registration: str) -> int | None:
+        aircraft = self.__aircraft_repository.get_aircraft_by_registration(aircraft_registration)        
+        if aircraft:
+            return aircraft.aircraft_id
+        
+    def get_location(self, location_code: str) -> int | None:
+        location = self.__location_repository.get_location_by_code(location_code)        
+        if location:
+            return location.location_id
 
     def get_flight_relief_pilots(self, flight: Flight) -> list:
         if flight.flight_id is None:
@@ -179,3 +219,20 @@ class FlightService:
                 pilot_choices.append((pilot.staff_id, str(pilot)))
 
         return pilot_choices
+    
+    # Helper functions
+
+    def _format_table(self, table: PrettyTable) -> str:
+
+        # Set table formatting
+        table.set_style(TableStyle.SINGLE_BORDER)
+        table.align = "l"
+        table.max_width = 20
+        table.hrules = ALL
+        table.vrules = NONE
+        
+        indented_table = ""
+        for row in table.get_string().split("\n"):
+            indented_table += (" " * 5) + row + "\n"
+        
+        return indented_table

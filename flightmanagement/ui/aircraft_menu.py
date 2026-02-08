@@ -1,8 +1,8 @@
 from prompt_toolkit.shortcuts import choice
 from typing import Union
-from flightmanagement.error import FieldValidationError, DomainValidationError, UserCancelled, MissingMandatoryValueError
+from flightmanagement.error import FieldValidationError, DomainValidationError, UserCancelled, MissingData, DependentRecords, DuplicateRecord, InvalidData
 from flightmanagement.ui.base_menu import BaseMenu, Unset
-from flightmanagement.services.aircraft_service import AircraftService, ConstraintViolation
+from flightmanagement.services.aircraft_service import AircraftService
 from flightmanagement.models.aircraft import Aircraft
 
 class AircraftMenu(BaseMenu):
@@ -62,8 +62,16 @@ class AircraftMenu(BaseMenu):
         print("\n>> Add an aircraft (or hit CTRL+C to cancel)\n")
 
         new = self._prompt_add_aircraft()
-        new_id = self._aircraft_service.add_aircraft(new)
-        print(f"\nNew aircraft successfully added (aircraft ID: {new_id}).\n")
+
+        try:
+            new_id = self._aircraft_service.add_aircraft(new)
+            print(f"\nNew aircraft successfully added (aircraft ID: {new_id}).\n")
+        except MissingData as e:
+            print("\nRecord insert failed: missing mandatory data.")
+        except DuplicateRecord as e:
+            print("\nRecord insert failed: duplicated information.")
+        except InvalidData as e:
+            print("\nRecord insert failed: invalid information.")
 
     def _update_option(self) -> None:
         print("\n>> Update an aircraft (or hit CTRL+C to cancel)\n")
@@ -73,8 +81,16 @@ class AircraftMenu(BaseMenu):
         print(f"\nEditing information (aircraft ID {aircraft.aircraft_id})\n")
 
         update = self._prompt_update_aircraft(aircraft)
-        self._aircraft_service.update_aircraft(update)
-        print("\nRecord successfully updated.\n")
+
+        try:
+            self._aircraft_service.update_aircraft(update)
+            print("\nRecord successfully updated.\n")
+        except MissingData as e:
+            print("\nRecord update failed: missing mandatory data.")
+        except DuplicateRecord as e:
+            print("\nRecord update failed: duplicated information.")
+        except InvalidData as e:
+            print("\nRecord update failed: invalid information.")
 
     def _delete_option(self) -> None:
         print("\n>> Delete an aircraft (or hit CTRL+C to cancel)\n")
@@ -86,8 +102,8 @@ class AircraftMenu(BaseMenu):
         try:
             self._aircraft_service.delete_aircraft(aircraft)
             print("\nRecord successfully deleted.\n")
-        except ConstraintViolation as e:
-            print("\nError deleting aircraft: the aircraft still has related records.")
+        except DependentRecords as e:
+            print("\nCannot delete aircraft while there are still related flight records.")
         
     def _prompt_add_aircraft(self) -> Aircraft:
         

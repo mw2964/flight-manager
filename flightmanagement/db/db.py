@@ -32,7 +32,10 @@ def initialise_schema(conn):
 
     with transaction(conn):
 
-        # Drop the tables if they already exist
+        # Drop the tables and views if they already exist
+        conn.execute("DROP VIEW IF EXISTS vw_staff_pilots")
+        conn.execute("DROP VIEW IF EXISTS vw_aircraft")
+        conn.execute("DROP VIEW IF EXISTS vw_flight_summary")
         conn.execute("DROP TABLE IF EXISTS flight_relief_pilots")
         conn.execute("DROP TABLE IF EXISTS flights")
         conn.execute("DROP TABLE IF EXISTS flight_time_logs")
@@ -45,7 +48,7 @@ def initialise_schema(conn):
         conn.execute("DROP TABLE IF EXISTS terminals")
         conn.execute("DROP TABLE IF EXISTS locations")
 
-        # Create the tables
+        # Create the tables and indices
         conn.execute("""
             CREATE TABLE IF NOT EXISTS aircraft_types (
                 aircraft_type_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,6 +69,7 @@ def initialise_schema(conn):
                 aircraft_status TEXT NOT NULL CHECK(aircraft_status IN ('Active', 'Inactive', 'Decommissioned'))
             )          
         """)
+        conn.execute('CREATE INDEX idx_aircraft_aircraft_type_id ON aircraft(aircraft_type_id)')
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS locations (
@@ -82,6 +86,7 @@ def initialise_schema(conn):
                 decimal_longitude REAL
             )
         """)
+        conn.execute('CREATE INDEX idx_locations_location_type ON locations(location_type)')
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS terminals (
@@ -112,6 +117,7 @@ def initialise_schema(conn):
                 employment_end_date DATE CHECK(employment_end_date IS date(employment_end_date) AND (employment_status <> 'Left' OR employment_end_date IS NOT NULL))
             )
         """)
+        conn.execute('CREATE INDEX idx_staff_name ON staff(first_name, family_name)')
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS leave_bookings (
@@ -121,6 +127,7 @@ def initialise_schema(conn):
                 PRIMARY KEY (staff_id, leave_date)
             )
         """)
+        conn.execute('CREATE INDEX idx_leave_bookings_leave_date ON leave_bookings(leave_date)')
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS pilots (
@@ -139,6 +146,7 @@ def initialise_schema(conn):
                 PRIMARY KEY (staff_id, effective_date)
             )
         """)
+        conn.execute('CREATE INDEX idx_flight_time_logs_effective_date ON flight_time_logs(effective_date)')
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS flights (
@@ -163,6 +171,19 @@ def initialise_schema(conn):
                 UNIQUE(flight_number, scheduled_departure_date)
             )
         """)
+        conn.execute('CREATE INDEX idx_flights_aircraft_id ON flights(aircraft_id)')
+        conn.execute('CREATE INDEX idx_flights_origin_location_id ON flights(origin_location_id)')
+        conn.execute('CREATE INDEX idx_flights_destination_location_id ON flights(destination_location_id)')
+        conn.execute('CREATE INDEX idx_flights_departure_gate_id ON flights(departure_gate_id)')
+        conn.execute('CREATE INDEX idx_flights_arrival_gate_id ON flights(arrival_gate_id)')
+        conn.execute('CREATE INDEX idx_flights_captain_id ON flights(captain_id)')
+        conn.execute('CREATE INDEX idx_flights_first_officer_id ON flights(first_officer_id)')
+        conn.execute('CREATE INDEX idx_flights_flight_number ON flights(flight_number)')
+        conn.execute('CREATE INDEX idx_flights_flight_status ON flights(flight_status)')
+        conn.execute('CREATE INDEX idx_flights_scheduled_departure ON flights(scheduled_departure_date, scheduled_departure_time)')
+        conn.execute('CREATE INDEX idx_flights_scheduled_arrival ON flights(scheduled_arrival_date, scheduled_arrival_time)')
+        conn.execute('CREATE INDEX idx_flights_confirmed_departure ON flights(confirmed_departure_date, confirmed_departure_time)')
+        conn.execute('CREATE INDEX idx_flights_confirmed_arrival ON flights(confirmed_arrival_date, confirmed_arrival_time)')
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS flight_relief_pilots (
@@ -171,8 +192,11 @@ def initialise_schema(conn):
                 PRIMARY KEY (flight_id, staff_id)
             )
         """)
+        conn.execute('CREATE INDEX idx_flight_relief_pilots_staff_id ON flight_relief_pilots(staff_id)')
+
 
         # Create views
+
         conn.execute("""
             CREATE VIEW IF NOT EXISTS vw_staff_pilots AS
                 SELECT *
@@ -187,31 +211,52 @@ def initialise_schema(conn):
                 NATURAL JOIN aircraft_types;
         """)
 
-        '''
         conn.execute("""
-            CREATE VIEW IF NOT EXISTS vw_denormalised_flights AS 
-                SELECT 
-                    f.id AS flight_id,
-                    f.flight_number,
-                    ac.registration AS aircraft_registration,
-                    CONCAT(ac.manufacturer, ' ', ac.model) AS aircraft_type,
-                    apo.code AS origin,
-                    apd.code AS destination,
-                    IFNULL(f.departure_time_scheduled, '') AS departure_time_scheduled,
-                    IFNULL(f.arrival_time_scheduled, '') AS arrival_time_scheduled,
-                    IFNULL(f.departure_time_actual, '') AS departure_time_actual,
-                    IFNULL(f.arrival_time_actual, '') AS arrival_time_actual,
-                    CONCAT(p.first_name, ' ', p.family_name) AS pilot,
-                    CONCAT(cp.first_name, ' ', cp.family_name) AS copilot,
-                    f.status AS status
-                FROM flight f
-                LEFT JOIN aircraft ac ON ac.id = f.aircraft_id
-                LEFT JOIN pilot p ON p.id = f.pilot_id
-                LEFT JOIN pilot cp ON cp.id = f.copilot_id
-                LEFT JOIN airport apo ON apo.id = f.origin_id
-                LEFT JOIN airport apd ON apd.id = f.destination_id
+            CREATE VIEW IF NOT EXISTS vw_flight_summary AS
+            SELECT
+                f.flight_id,
+                f.flight_number,
+                ifnull(a.registration, '') as aircraft_registration,
+                trim(ifnull(coalesce(a.manufacturer, '') || ' ' || coalesce(a.model, ''), '')) AS aircraft_type,
+                ifnull(coalesce(o.iata_airport_code, o.icao_location_code), '') as origin_location,
+                ifnull(o.town_or_city, '') AS origin_town_or_city,
+                ifnull(dt.terminal_name, '') as departure_terminal,
+                ifnull(dg.gate_number, '') as departure_gate,    
+                ifnull(d.iata_airport_code, d.icao_location_code) as destination_location,
+                ifnull(d.town_or_city, '') AS destination_town_or_city,
+                ifnull(at.terminal_name, '') as arrival_terminal,
+                ifnull(ag.gate_number, '') as arrival_gate,
+                ifnull(cp.first_name || ' ' || cp.family_name, '') AS captain_name,
+                ifnull(fo.first_name || ' ' || fo.family_name, '') AS first_officer_name,
+                ifnull(rp.relief_pilots, '') AS relief_pilots,
+                f.scheduled_departure_date,
+                f.scheduled_departure_time,
+                f.scheduled_arrival_date,
+                f.scheduled_arrival_time,
+                f.confirmed_departure_date,
+                f.confirmed_departure_time,
+                f.confirmed_arrival_date,
+                f.confirmed_arrival_time,
+                f.flight_status
+            FROM flights f
+            LEFT JOIN vw_aircraft a ON a.aircraft_id = f.aircraft_id
+            LEFT JOIN locations o ON o.location_id = f.origin_location_id
+            LEFT JOIN gates dg ON dg.gate_id = f.departure_gate_id
+            LEFT JOIN terminals dt ON dt.terminal_id = dg.terminal_id
+            LEFT JOIN gates ag ON ag.gate_id = f.arrival_gate_id
+            LEFT JOIN terminals at ON at.terminal_id = ag.terminal_id
+            LEFT JOIN locations d ON d.location_id = f.destination_location_id
+            LEFT JOIN vw_staff_pilots cp ON cp.staff_id = f.captain_id
+            LEFT JOIN vw_staff_pilots fo ON fo.staff_id = f.first_officer_id
+            LEFT JOIN (
+                SELECT
+                    frp.flight_id,
+                    group_concat(vsp.first_name || ' ' || vsp.family_name, ', ') AS relief_pilots
+                FROM flight_relief_pilots frp
+                JOIN vw_staff_pilots vsp ON vsp.staff_id = frp.staff_id
+                GROUP BY frp.flight_id
+            ) rp ON rp.flight_id = f.flight_id
         """)
-        '''
 
     #conn.commit()
 
@@ -284,8 +329,8 @@ def seed_database_data(conn):
                 (3, 'Terminal 1'),
                 (3, 'Terminal 2'),
                 (3, 'Terminal 3'),
-                (4, 'Single Terminal'),
-                (5, 'Single Terminal'),
+                (4, 'Terminal 1'),
+                (5, 'Terminal 1'),
                 (6, 'Terminal 1'),
                 (6, 'Terminal 2'),
                 (7, 'Terminal 1'),
@@ -297,8 +342,8 @@ def seed_database_data(conn):
                 (7, 'Terminal 2F'),
                 (7, 'Terminal 2G'),
                 (7, 'Terminal 3'),
-                (8, 'Single Terminal'),
-                (9, 'Single Terminal'),
+                (8, 'Terminal 1'),
+                (9, 'Terminal 1'),
                 (10, 'Terminal 1'),
                 (10, 'Terminal 2'),
                 (10, 'Terminal 3'),

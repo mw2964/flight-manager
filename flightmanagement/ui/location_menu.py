@@ -1,6 +1,6 @@
 from prompt_toolkit.shortcuts import choice
 from typing import Union
-from flightmanagement.error import FieldValidationError, DomainValidationError, UserCancelled, ConstraintViolation
+from flightmanagement.error import FieldValidationError, DomainValidationError, UserCancelled, MissingData, DependentRecords, DuplicateRecord, InvalidData
 from flightmanagement.ui.base_menu import BaseMenu, Unset
 from flightmanagement.services.location_service import LocationService
 from flightmanagement.models.location import Location
@@ -62,8 +62,16 @@ class LocationMenu(BaseMenu):
         print("\n>> Add a destination (or hit CTRL+C to cancel)\n")
 
         new = self._prompt_add_location()
-        new_id = self._location_service.add_location(new)
-        print(f"\nNew record successfully added (Location ID {new_id}).\n")
+
+        try:
+            new_id = self._location_service.add_location(new)
+            print(f"\nNew record successfully added (Location ID {new_id}).\n")
+        except MissingData as e:
+            print("\nRecord insert failed: missing mandatory data.")
+        except DuplicateRecord as e:
+            print("\nRecord insert failed: duplicated information.")
+        except InvalidData as e:
+            print("\nRecord insert failed: invalid information.")
 
     def _update_option(self) -> None:
         print("\n>> Update a destination (or hit CTRL+C to cancel)\n")
@@ -73,8 +81,16 @@ class LocationMenu(BaseMenu):
         print(f"\nEditing information (location ID {location.location_id})\n")
 
         update = self._prompt_update_location(location)
-        self._location_service.update_location(update)
-        print("\nRecord successfully updated.\n")
+
+        try:
+            self._location_service.update_location(update)
+            print("\nRecord successfully updated.\n")
+        except MissingData as e:
+            print("\nRecord update failed: missing mandatory data.")
+        except DuplicateRecord as e:
+            print("\nRecord update failed: duplicated information.")
+        except InvalidData as e:
+            print("\nRecord update failed: invalid information.")
 
     def _delete_option(self) -> None:
         print("\n>> Delete a destination (or hit CTRL+C to cancel)\n")
@@ -86,8 +102,8 @@ class LocationMenu(BaseMenu):
         try:
             self._location_service.delete_location(location)
             print("\nRecord successfully deleted.\n")
-        except ConstraintViolation as e:
-            print("\nError deleting destination: the destination still has related records.")
+        except DependentRecords as e:
+            print("\nCannot delete destination while there are still related flight records.")
 
     def _prompt_add_location(self) -> Location:
 
