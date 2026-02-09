@@ -200,21 +200,6 @@ class AircraftRepository(BaseRepository):
             (aircraft_type.aircraft_type_id, )
         )
     
-    def search_aircraft_type_on_field(self, field_name: str, value) -> list[AircraftType]:
-        sql = f"""
-            SELECT *
-            FROM aircraft_types
-            WHERE {field_name} = ?
-            ORDER BY manufacturer, model
-        """
-        results = self._execute_fetchall(sql, (value, ))        
-        
-        result_list = []
-        for row in results:
-            result_list.append(self.dict_to_aircraft_type(row))
-
-        return result_list
-        
     def dict_to_aircraft_type(self, data: dict | None) -> AircraftType | None:
         if data is None or len(data) == 0:
             return None

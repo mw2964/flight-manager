@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import pandas as pd
 from pandas import DataFrame
 from prettytable import PrettyTable
@@ -149,7 +149,7 @@ class FlightService:
             if row['first_officer_name'] != "":
                 if len(pilots) > 0:
                     pilots += "\n"
-                pilots += f"{row['first_officer_name']} (c)"
+                pilots += f"{row['first_officer_name']} (fo)"
             if row['relief_pilots'] != "":
                 if len(pilots) > 0:
                     pilots += "\n"
@@ -176,7 +176,8 @@ class FlightService:
     def get_flight_summary(self, flight: dict) -> str:        
         departure = f"{datetime.strptime(flight["scheduled_departure_date"], '%Y-%m-%d').strftime("%d/%m/%Y")} {flight["scheduled_departure_time"]}"
         spaces = 10 - len(flight["flight_number"])
-        return f"{flight["flight_number"]}{' ' * spaces}{flight["origin_location"]} to {flight["destination_location"]} | Departure: {departure} | Status: {flight["flight_status"]}"
+        id_spaces = 3 - len(str(flight["flight_id"]))
+        return f"Flight ID {flight["flight_id"]}{' ' * id_spaces} -> {flight["flight_number"]}{' ' * spaces}{flight["origin_location"]} to {flight["destination_location"]} | Departure: {departure} | Status: {flight["flight_status"]}"
 
     # Retrieve related information
 
@@ -206,17 +207,36 @@ class FlightService:
 
         return relief_pilots
 
-    def get_available_pilot_choices(self, departure_time: datetime, arrival_time: datetime, unavailable_pilots: list = [], flight_id: int | None = None) -> list:
+    def get_available_pilot_choices(self, departure_time: datetime, arrival_time: datetime, already_on_flight: list = [], flight_id: int | None = None) -> list:
         
         # Get list of pilots that are available for the scheduled flight
-        pilots = self.__flight_repository.get_available_pilots(departure_time, arrival_time, flight_id if flight_id else -1)
+        # pilots = self.__flight_repository.get_available_pilots(departure_time, arrival_time, flight_id if flight_id else -1)
         
-        pilot_choices = []
-        if pilots:
-            for pilot in pilots:
-                # Skip pilots already assigned to the flight
-                if pilot.staff_member_id in unavailable_pilots:
-                    continue
-                pilot_choices.append((pilot.staff_member_id, str(pilot)))
+        # Get pilots who are on leave on the flight date
+        on_leave_ids = self.__pilot_repository.get_staff_on_leave_by_date_range(departure_time.date(), arrival_time.date())
 
-        return pilot_choices
+        # Get pilots who are on overlapping flights
+        overlapping_ids = self.__pilot_repository.get_staff_on_flights_by_date_range(departure_time, arrival_time)
+
+        # Combine the two lists (removing duplicates)
+        unavailable_pilot_ids = list(set(on_leave_ids) | set(overlapping_ids))
+
+        all_pilots = self.__pilot_repository.get_pilot_list()
+
+        available_pilot_choices = []
+        if all_pilots:
+            for pilot in all_pilots:
+
+                # Skip pilots already assigned to the flight or in the unavailable list
+                if pilot.staff_member_id in already_on_flight or pilot.staff_member_id in unavailable_pilot_ids:
+                    continue
+
+                # Skip pilots who have already exceeded their 28-day rolling flight time limit at the time of departure
+                # (according to hours already logged)
+                from_date = departure_time.date() - timedelta(days=28)
+                if self.__pilot_repository.get_pilot_flight_hours_for_period(pilot.staff_member_id, from_date, departure_time.date()) >= 100:
+                    continue
+                
+                available_pilot_choices.append((pilot.staff_member_id, str(pilot)))
+
+        return available_pilot_choices

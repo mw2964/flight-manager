@@ -1,6 +1,6 @@
 from flightmanagement.repositories.base_repository import BaseRepository
 from flightmanagement.models.pilot import Pilot
-from datetime import date
+from datetime import date, datetime
 
 class PilotRepository(BaseRepository):
 
@@ -80,8 +80,82 @@ class PilotRepository(BaseRepository):
 
         return result_list
 
-    def search_on_field(self, field_name: str, value) -> list:
+    def get_staff_on_leave_by_date_range(self, date_from: date, date_to: date) -> list[int]:
+        rows = self._execute_fetchall(
+            """
+            SELECT staff_member_id
+            FROM leave_bookings
+            WHERE leave_date >= ?
+            AND leave_date <= ?
+            """,
+            (date_from.strftime("%Y-%m-%d"), date_to.strftime("%Y-%m-%d"))
+        )
 
+        result_list = []
+        for row in rows:
+            result_list.append(row["staff_member_id"])
+
+        return result_list
+    
+    def get_staff_on_flights_by_date_range(self, date_from: datetime, date_to: datetime) -> list[int]:
+        rows = self._execute_fetchall(
+            """
+            SELECT captain_id, first_officer_id
+            FROM flights
+            WHERE datetime(scheduled_departure_date || ' ' || scheduled_departure_time) <= ?
+            AND datetime(scheduled_arrival_date || ' ' || scheduled_arrival_time) >= ?
+            """,
+            (
+                date_to,
+                date_from
+            )
+        )
+
+        result_list = []
+        for row in rows:
+            if row["captain_id"] and row["captain_id"] not in result_list:                
+                result_list.append(row["captain_id"])
+            if row["first_officer_id"] and row["first_officer_id"] not in result_list:
+                result_list.append(row["first_officer_id"])
+
+        rows = self._execute_fetchall(
+            """
+            SELECT staff_member_id
+            FROM flight_relief_pilots
+            WHERE flight_id IN (
+                SELECT flight_id
+                FROM flights
+                WHERE datetime(scheduled_departure_date || ' ' || scheduled_departure_time) <= ?
+                AND datetime(scheduled_arrival_date || ' ' || scheduled_arrival_time) >= ?
+            )
+            """,
+            (
+                date_to,
+                date_from
+            )
+        )
+
+        for row in rows:
+            if row["staff_member_id"] and row["staff_member_id"] not in result_list:
+                result_list.append(row["staff_member_id"])
+
+        return result_list
+
+    def get_pilot_flight_hours_for_period(self, staff_member_id: int, start_date: date, end_date: date) -> float:
+        row = self._execute_fetchone(
+            """
+            SELECT
+                coalesce(SUM(flight_hours), 0.0) AS total_hours
+            FROM flight_time_logs
+            WHERE staff_member_id = ?
+            AND effective_date >= ?
+            AND effective_date <= ?
+            """,
+            (staff_member_id, start_date, end_date)
+        )
+        return float(row["total_hours"])
+
+    def search_on_field(self, field_name: str, value) -> list:
         sql = f"""
             SELECT *
             FROM vw_staff_pilots

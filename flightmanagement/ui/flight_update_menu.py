@@ -29,6 +29,7 @@ class FlightUpdateMenu(BaseMenu):
             ("log_departure", "Log departure"),
             ("log_arrival", "Log arrival"),
             ("update_all", "Update all flight details"),
+            ("delete_flight", "Delete this flight"),
             ("back", "Back to flights menu")
         ]
 
@@ -62,6 +63,9 @@ class FlightUpdateMenu(BaseMenu):
                     self._log_arrival_option()
                 elif _selected_option == "update_all":
                     self._update_all_option()
+                elif _selected_option == "delete_flight":
+                    if self._delete_option():
+                        return
                 elif _selected_option == "back":
                     return
             except UserCancelled as e:
@@ -248,6 +252,24 @@ class FlightUpdateMenu(BaseMenu):
         except InvalidData as e:
             print("\nRecord update failed: invalid information.")
         
+    def _delete_option(self) -> bool:
+        print("\n>> Delete a flight (or hit CTRL+C to cancel)\n")
+
+        # Prompt for the flight to delete
+        flight = self._prompt_delete_flight()
+        
+        try:
+            # Delete the flight
+            self._flight_service.delete_flight(flight)
+            print("\nRecord successfully deleted.\n")
+
+            # Return to the main flight menu
+            return True
+
+        except DependentRecords as e:
+            print("\nCannot delete flight while there are still related records in other tables.")
+            return False
+
     def _prompt_log_departure(self, flight: Flight) -> Flight:
 
         unset = Unset()
@@ -607,7 +629,7 @@ class FlightUpdateMenu(BaseMenu):
                             departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
                             arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
                             flight_id = flight.flight_id,
-                            unavailable_pilots = excluded_pilots
+                            already_on_flight = excluded_pilots
                         ),
                         default_value = flight.captain_id
                     )
@@ -627,7 +649,7 @@ class FlightUpdateMenu(BaseMenu):
                             departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
                             arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
                             flight_id = flight.flight_id,
-                            unavailable_pilots = excluded_pilots
+                            already_on_flight = excluded_pilots
                         ),
                         default_value = flight.first_officer_id
                     )
@@ -707,7 +729,7 @@ class FlightUpdateMenu(BaseMenu):
                     departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
                     arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
                     flight_id = flight.flight_id,
-                    unavailable_pilots = excluded_pilots
+                    already_on_flight = excluded_pilots
                 )
         )
         print()
@@ -835,7 +857,7 @@ class FlightUpdateMenu(BaseMenu):
                             departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
                             arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
                             flight_id = flight.flight_id,
-                            unavailable_pilots = excluded_pilots
+                            already_on_flight = excluded_pilots
                         ),
                         default_value = flight.captain_id if flight.captain_id is not None else -1
                     )
@@ -853,7 +875,7 @@ class FlightUpdateMenu(BaseMenu):
                             departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
                             arrival_time = datetime.combine(flight.scheduled_arrival_date, flight.scheduled_arrival_time),
                             flight_id = flight.flight_id,
-                            unavailable_pilots = excluded_pilots
+                            already_on_flight = excluded_pilots
                         ),
                         default_value = flight.first_officer_id if flight.first_officer_id is not None else -1,
                         is_picklist = True,
@@ -1025,3 +1047,17 @@ class FlightUpdateMenu(BaseMenu):
                 confirmed_arrival_date = unset
                 confirmed_arrival_time = unset
                 flight_status = unset
+
+    def _prompt_delete_flight(self) -> Flight:
+
+        print("You are about to delete this flight:\n")
+        self._show_flight_summary()
+
+        # Delete will be cancelled if the user doesn't confirm
+        self._prompt_delete_confirmation()
+        
+        flight = self._flight_service.get_flight_by_id(self._flight_id)
+        if flight is None:
+            raise ValueError("Error retrieving flight.")
+
+        return flight

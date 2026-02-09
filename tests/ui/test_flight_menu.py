@@ -65,31 +65,6 @@ class TestAdd:
         out = capsys.readouterr().out
         assert "successfully added" in out
 
-class TestUpdate:
-
-    @patch("flightmanagement.ui.flight_menu.FlightUpdateMenu")
-    def test_update_option_loads_update_menu(
-        self, mock_update_menu, menu
-    ):
-        flight = MagicMock()
-        flight.flight_id = 42
-
-        menu._get_flight_from_selection = MagicMock(return_value=flight)
-
-        update_menu_instance = MagicMock()
-        mock_update_menu.return_value = update_menu_instance
-
-        menu._update_option()
-
-        mock_update_menu.assert_called_once_with(
-            menu._session,
-            menu._key_bindings,
-            42,
-            menu._conn,
-        )
-
-        update_menu_instance.load.assert_called_once()
-
 class TestDelete:
 
     def test_delete_flight_success(self, menu, flight_service, flight, capsys):

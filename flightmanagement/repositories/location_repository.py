@@ -46,6 +46,24 @@ class LocationRepository(BaseRepository):
         return result_list
 
     def search_on_field(self, field_name: str, value) -> list[Location]:
+
+        # Restrict the values that can be entered into field_name to protect from SQL injection
+        valid_search_fields = [
+            'location_type', 
+            'icao_location_code',
+            'iata_airport_code', 
+            'location_name',
+            'town_or_city',
+            'state_or_county',
+            'country',
+            'geographic_region',
+            'decimal_latitude',
+            'decimal_longitude'
+        ]
+
+        if field_name not in valid_search_fields:
+            raise ValueError(f"Invalid search field: {field_name}")
+
         sql = f"""
             SELECT *
             FROM locations
@@ -173,20 +191,6 @@ class LocationRepository(BaseRepository):
         )      
         return self.dict_to_terminal(row)
 
-    '''
-    def get_terminal_by_name(self, terminal_name: str) -> Terminal | None:
-        cursor = self.conn.execute(
-            """
-            SELECT *
-            FROM terminals
-            WHERE terminal_name = ?
-            """,
-            (terminal_name, )
-        )
-        result = cursor.fetchone()
-        return self.dict_to_terminal(result)
-    '''
-        
     def get_terminal_gates(self, terminal_id) -> list[Gate]:
         rows = self._execute_fetchall(
             """
@@ -261,20 +265,6 @@ class LocationRepository(BaseRepository):
             (gate_id, )
         )     
         return self.dict_to_gate(row)
-
-    '''
-    def get_gate_by_number(self, gate_number: str) -> Gate | None:
-        cursor = self.conn.execute(
-            """
-            SELECT *
-            FROM gates
-            WHERE gate_number = ?
-            """,
-            (gate_number, )
-        )
-        result = cursor.fetchone()
-        return self.dict_to_gate(result)
-    '''
         
     def insert_gate(self, gate: Gate) -> None:        
         self._execute(

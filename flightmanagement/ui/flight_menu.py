@@ -20,10 +20,8 @@ class FlightMenu(BaseMenu):
         self._location_service = location_service or LocationService(conn)
         self._menu_name = "Main -> Manage Flights"
         self._menu_options = [            
-            ("find", "Find flights"),
+            ("find", "Find and update flights"),
             ("add", "Add a flight"),
-            ("update", "Update a flight"),
-            ("delete", "Delete a flight"),
             ("back", "Back to main menu")
         ]
 
@@ -36,10 +34,6 @@ class FlightMenu(BaseMenu):
                     self._search_option()
                 elif _selected_option == "add":
                     self._add_option()
-                elif _selected_option == "update":
-                    self._update_option()
-                elif _selected_option == "delete":
-                    self._delete_option()
                 elif _selected_option == "back":
                     return
             except UserCancelled as e:
@@ -55,12 +49,12 @@ class FlightMenu(BaseMenu):
             is_picklist = True,
             required = True,
             options = [
+                ("full_text", "Full text search"),
                 ("flight_id", "Search by ID"),
                 ("flight_number", "Search by flight number"),
                 ("destination_code", "Search by destination"),
                 ("departure_date", "Search by departure date"),
-                ("flight_status", "Search by flight status"),
-                ("full_text", "Full text search")
+                ("flight_status", "Search by flight status")
             ]
         )
         print()
@@ -84,30 +78,6 @@ class FlightMenu(BaseMenu):
         except InvalidData as e:
             print("\nRecord insert failed: invalid information.")
 
-    def _update_option(self) -> None:
-        print("\n>> Select a flight to update (or hit CTRL+C to cancel)\n")
-
-        # Prompt for the flight to update
-        flight = self._get_flight_from_selection()
-        if flight.flight_id is None:
-            raise ValueError
-
-        # Load the flight update menu
-        FlightUpdateMenu(self._session, self._key_bindings, flight.flight_id, self._conn).load()
-
-    def _delete_option(self) -> None:
-        print("\n>> Delete a flight (or hit CTRL+C to cancel)\n")
-
-        # Prompt for the flight to delete
-        flight = self._prompt_delete_flight()
-        
-        # Delete the flight
-        try:
-            self._flight_service.delete_flight(flight)
-            print("\nRecord successfully deleted.\n")
-        except DependentRecords as e:
-            print("\nCannot delete flight while there are still related records in other tables.")
-    
     def _prompt_find_flights(self, option: str) -> None:
 
         df = None
@@ -347,7 +317,7 @@ class FlightMenu(BaseMenu):
                         options = self._flight_service.get_available_pilot_choices(
                             departure_time = datetime.combine(cast(date, scheduled_departure_date), cast(time, scheduled_departure_time)),
                             arrival_time = datetime.combine(cast(date, scheduled_arrival_date), cast(time, scheduled_arrival_time)),
-                            unavailable_pilots = [captain_id] if captain_id is not unset else []
+                            already_on_flight = [captain_id] if captain_id is not unset else []
                         ),                        
                         is_picklist = True,
                         none_option = True
@@ -407,17 +377,6 @@ class FlightMenu(BaseMenu):
                 scheduled_departure_time = unset
                 scheduled_arrival_date = unset
                 scheduled_arrival_time = unset
-
-    def _prompt_delete_flight(self) -> Flight:
-
-        # Prompt for the flight to delete
-        flight = self._get_flight_from_selection()
-        print()
-
-        # Delete will be cancelled if the user doesn't confirm
-        self._prompt_delete_confirmation()
-        
-        return flight
 
     def _get_flight_from_selection(self, id_list: list | None = None) -> Flight:
 
