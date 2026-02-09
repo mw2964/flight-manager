@@ -110,15 +110,15 @@ class FlightUpdateMenu(BaseMenu):
         print()
 
         if option == 1:            
-            staff_id = self._prompt_add_relief_pilot(flight)
-            self._flight_service.add_relief_pilot(flight, staff_id)
+            staff_member_id = self._prompt_add_relief_pilot(flight)
+            self._flight_service.add_relief_pilot(flight, staff_member_id)
             print("\nRelief pilot successfully added:\n")
             self._show_flight_summary()
         
         elif option == 2:
-            staff_id = self._prompt_remove_relief_pilot(flight)
-            if staff_id:
-                self._flight_service.remove_relief_pilot(flight, staff_id)
+            staff_member_id = self._prompt_remove_relief_pilot(flight)
+            if staff_member_id:
+                self._flight_service.remove_relief_pilot(flight, staff_member_id)
                 print("\nRelief pilot successfully removed:\n")
                 self._show_flight_summary()
 
@@ -677,16 +677,16 @@ class FlightUpdateMenu(BaseMenu):
             print("\nNo relief pilots currently assigned to this flight.\n")
             return None
         
-        staff_id = self._prompt_until_valid(
+        staff_member_id = self._prompt_until_valid(
             prompt_text = "Select the pilot to remove:",
             getter = lambda p: p.get_int(),
-            field = "staff_id",
+            field = "staff_member_id",
             is_picklist = True,
             options = choices
         )
         print()
 
-        return staff_id
+        return staff_member_id
     
     def _prompt_add_relief_pilot(self, flight: Flight) -> int:
         
@@ -698,10 +698,10 @@ class FlightUpdateMenu(BaseMenu):
         if flight.first_officer_id is not None:
             excluded_pilots.append(flight.first_officer_id)
 
-        staff_id = self._prompt_until_valid(
+        staff_member_id = self._prompt_until_valid(
             prompt_text = "Select the pilot to assign:",
             getter = lambda p: p.get_int(),
-            field = "staff_id",
+            field = "staff_member_id",
             is_picklist = True,
             options = self._flight_service.get_available_pilot_choices(
                     departure_time = datetime.combine(flight.scheduled_departure_date, flight.scheduled_departure_time),
@@ -712,7 +712,7 @@ class FlightUpdateMenu(BaseMenu):
         )
         print()
 
-        return self._required(staff_id, "staff_id")
+        return self._required(staff_member_id, "staff_member_id")
 
     def _prompt_update_flight(self, flight: Flight) -> Flight:
 

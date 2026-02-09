@@ -63,13 +63,13 @@ class FlightService:
         with transaction(self.conn):
             self.__flight_repository.update_flight(flight)
 
-    def add_relief_pilot(self, flight: Flight, staff_id: int):
+    def add_relief_pilot(self, flight: Flight, staff_member_id: int):
         with transaction(self.conn):
-            self.__flight_repository.insert_relief_pilot(flight, staff_id)
+            self.__flight_repository.insert_relief_pilot(flight, staff_member_id)
 
-    def remove_relief_pilot(self, flight: Flight, staff_id: int):
+    def remove_relief_pilot(self, flight: Flight, staff_member_id: int):
         with transaction(self.conn):
-            self.__flight_repository.delete_relief_pilot(flight, staff_id)
+            self.__flight_repository.delete_relief_pilot(flight, staff_member_id)
 
     # Retrieve flight information
 
@@ -214,9 +214,9 @@ class FlightService:
         if pilots:
             for pilot in pilots:
                 # Skip pilots already assigned to the flight
-                if pilot.staff_id in unavailable_pilots:
+                if pilot.staff_member_id in unavailable_pilots:
                     continue
-                pilot_choices.append((pilot.staff_id, str(pilot)))
+                pilot_choices.append((pilot.staff_member_id, str(pilot)))
 
         return pilot_choices
     

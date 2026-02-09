@@ -1,12 +1,12 @@
 from pathlib import Path
-import os
 from prompt_toolkit import PromptSession
 from prompt_toolkit.key_binding import KeyBindings
 from flightmanagement.ui.main_menu import MainMenu
 from flightmanagement.db.db import get_connection, initialise_schema, seed_database_data
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-DB_PATH = PROJECT_ROOT / "data" / "FlightManagement.db"
+DB_FOLDER = "data"
+DB_NAME = "FlightManagement.db"
 
 def main():
 
@@ -24,10 +24,11 @@ def main():
         print_welcome()
 
         # Check if the database file already exists in the relevant location
-        db_exists = DB_PATH.exists()
+        db_path = PROJECT_ROOT / "data" / DB_NAME
+        db_exists = db_path.exists()
 
         # Initialise the database connection
-        with get_connection(DB_PATH) as conn:
+        with get_connection(db_path) as conn:
 
             # Initialise the database if the database file didn't exist on application start
             if not db_exists:

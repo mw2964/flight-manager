@@ -40,21 +40,21 @@ class PilotService:
             raise MissingData(e)
 
     def delete_pilot(self, pilot: Pilot):
-        if pilot.staff_id is None:
+        if pilot.staff_member_id is None:
             raise ValueError("Pilot to delete lacks an ID")
         
         try:
             with transaction(self.conn):
                 self.__pilot_repository.delete_pilot(pilot)
-                self.__pilot_repository.delete_staff(pilot)
+                self.__pilot_repository.delete_staff_member(pilot)
         except ForeignKeyDependencyViolation as e:
             raise DependentRecords(e)
 
-    def add_time_log_record(self, staff_id: int, effective_date: date, flight_hours: float):
+    def add_time_log_record(self, staff_member_id: int, effective_date: date, flight_hours: float):
         try:
             with transaction(self.conn):
                 self.__pilot_repository.insert_flight_log_record(
-                    staff_id = staff_id,
+                    staff_member_id = staff_member_id,
                     effective_date = effective_date,
                     flight_hours = flight_hours
                 )
@@ -67,11 +67,11 @@ class PilotService:
         except MissingNotNullViolation as e:
             raise MissingData(e)
 
-    def update_time_log_record(self, staff_id: int, effective_date: date, flight_hours: float):
+    def update_time_log_record(self, staff_member_id: int, effective_date: date, flight_hours: float):
         try:
             with transaction(self.conn):
                 self.__pilot_repository.update_flight_log_record(
-                    staff_id = staff_id,
+                    staff_member_id = staff_member_id,
                     effective_date = effective_date,
                     flight_hours = flight_hours
                 )
@@ -84,18 +84,18 @@ class PilotService:
         except MissingNotNullViolation as e:
             raise MissingData(e)
 
-    def delete_time_log_record(self, staff_id: int, effective_date: date):
+    def delete_time_log_record(self, staff_member_id: int, effective_date: date):
         with transaction(self.conn):
             self.__pilot_repository.delete_flight_log_record(
-                staff_id = staff_id,
+                staff_member_id = staff_member_id,
                 effective_date = effective_date
             )
 
-    def add_leave_booking_record(self, staff_id: int, leave_date: date, leave_type: str):
+    def add_leave_booking_record(self, staff_member_id: int, leave_date: date, leave_type: str):
         try:
             with transaction(self.conn):
                 self.__pilot_repository.insert_leave_booking(
-                    staff_id = staff_id,
+                    staff_member_id = staff_member_id,
                     leave_date = leave_date,
                     leave_type = leave_type
                 )
@@ -108,11 +108,11 @@ class PilotService:
         except MissingNotNullViolation as e:
             raise MissingData(e)
 
-    def update_leave_booking_record(self, staff_id: int, leave_date: date, leave_type: str):
+    def update_leave_booking_record(self, staff_member_id: int, leave_date: date, leave_type: str):
         try:
             with transaction(self.conn):
                 self.__pilot_repository.update_leave_booking(
-                    staff_id = staff_id,
+                    staff_member_id = staff_member_id,
                     leave_date = leave_date,
                     leave_type = leave_type
                 )
@@ -125,20 +125,20 @@ class PilotService:
         except MissingNotNullViolation as e:
             raise MissingData(e)
 
-    def delete_leave_booking_record(self, staff_id: int, leave_date: date):
+    def delete_leave_booking_record(self, staff_member_id: int, leave_date: date):
         with transaction(self.conn):
             self.__pilot_repository.delete_leave_booking(
-                staff_id = staff_id,
+                staff_member_id = staff_member_id,
                 leave_date = leave_date
             )
 
-    def log_record_exists(self, staff_id: int, effective_date: date) -> bool:
-        if self.__pilot_repository.get_flight_log_record_by_staff_id_and_date(staff_id, effective_date):
+    def log_record_exists(self, staff_member_id: int, effective_date: date) -> bool:
+        if self.__pilot_repository.get_flight_log_record_by_staff_member_id_and_date(staff_member_id, effective_date):
             return True
         return False
 
-    def leave_record_exists(self, staff_id: int, leave_date: date) -> bool:
-        if self.__pilot_repository.get_leave_record_by_staff_id_and_date(staff_id, leave_date):
+    def leave_record_exists(self, staff_member_id: int, leave_date: date) -> bool:
+        if self.__pilot_repository.get_leave_record_by_staff_member_id_and_date(staff_member_id, leave_date):
             return True
         return False
 
@@ -150,16 +150,16 @@ class PilotService:
         
         return self.get_results_view(pilots)
     
-    def get_flight_logs_table(self, staff_id: int) -> str:
-        records = self.__pilot_repository.get_flight_logs_by_staff_id(staff_id)
+    def get_flight_logs_table(self, staff_member_id: int) -> str:
+        records = self.__pilot_repository.get_flight_logs_by_staff_member_id(staff_member_id)
 
         if records is None:
             return ""
         
         return self.get_log_results_view(records)
 
-    def get_leave_bookings_table(self, staff_id: int) -> str:
-        records = self.__pilot_repository.get_leave_bookings_by_staff_id(staff_id)
+    def get_leave_bookings_table(self, staff_member_id: int) -> str:
+        records = self.__pilot_repository.get_leave_bookings_by_staff_member_id(staff_member_id)
 
         if records is None:
             return ""
@@ -173,12 +173,12 @@ class PilotService:
 
         if pilots:
             for pilot in pilots:
-                pilot_choices.append((pilot.staff_id, f"{pilot.family_name}, {pilot.first_name}"))
+                pilot_choices.append((pilot.staff_member_id, f"{pilot.family_name}, {pilot.first_name}"))
 
         return pilot_choices
 
-    def get_leave_record_choices(self, staff_id: int) -> list:
-        records = self.__pilot_repository.get_leave_bookings_by_staff_id(staff_id)
+    def get_leave_record_choices(self, staff_member_id: int) -> list:
+        records = self.__pilot_repository.get_leave_bookings_by_staff_member_id(staff_member_id)
         
         record_choices = []
         if records:
@@ -188,28 +188,28 @@ class PilotService:
 
         return record_choices
 
-    def get_time_log_record(self, staff_id: int, effective_date: date) -> dict | None:
-        log_record = self.__pilot_repository.get_flight_log_record_by_staff_id_and_date(staff_id, effective_date)
+    def get_time_log_record(self, staff_member_id: int, effective_date: date) -> dict | None:
+        log_record = self.__pilot_repository.get_flight_log_record_by_staff_member_id_and_date(staff_member_id, effective_date)
         if log_record:
             return {
-                "staff_id": log_record[0],
+                "staff_member_id": log_record[0],
                 "effective_date": date.fromisoformat(log_record[1]),
                 "flight_hours": float(log_record[2])
             }
         return None
 
-    def get_leave_booking_record(self, staff_id: int, leave_date: date) -> dict | None:
-        leave_record = self.__pilot_repository.get_leave_record_by_staff_id_and_date(staff_id, leave_date)
+    def get_leave_booking_record(self, staff_member_id: int, leave_date: date) -> dict | None:
+        leave_record = self.__pilot_repository.get_leave_record_by_staff_member_id_and_date(staff_member_id, leave_date)
         if leave_record:
             return {
-                "staff_id": leave_record[0],
+                "staff_member_id": leave_record[0],
                 "leave_date": date.fromisoformat(leave_record[1]),
                 "leave_type": leave_record[2]
             }
         return None
 
-    def get_log_record_choices(self, staff_id: int) -> list:
-        records = self.__pilot_repository.get_flight_logs_by_staff_id(staff_id)
+    def get_log_record_choices(self, staff_member_id: int) -> list:
+        records = self.__pilot_repository.get_flight_logs_by_staff_member_id(staff_member_id)
         
         record_choices = []
         if records:
@@ -219,8 +219,8 @@ class PilotService:
 
         return record_choices
 
-    def get_pilot_schedule(self, staff_id: int) -> str:
-        results = self.__pilot_repository.get_pilot_schedule_by_id(staff_id)
+    def get_pilot_schedule(self, staff_member_id: int) -> str:
+        results = self.__pilot_repository.get_pilot_schedule_by_id(staff_member_id)
         return self.get_schedule_view(results)
 
     def search_pilots(self, field_name: str, value) -> list[Pilot]:
@@ -235,7 +235,7 @@ class PilotService:
         
         # Initialise the table
         table = PrettyTable([
-            "Staff ID",
+            "Staff member ID",
             "Family name",
             "First name",
             "Employee number",
@@ -250,7 +250,7 @@ class PilotService:
         # Populate table rows
         for pilot in pilots:
             table.add_row([
-                pilot.staff_id,
+                pilot.staff_member_id,
                 pilot.family_name,
                 pilot.first_name,
                 pilot.employee_number,
@@ -334,7 +334,7 @@ class PilotService:
         return self._format_table(table)
 
     def display_record(self, pilot: Pilot) -> str:
-        return f"\n> Pilot ID: {pilot.staff_id}\n> First name: {pilot.first_name}\n> Family name: {pilot.family_name}"
+        return f"\n> Pilot ID: {pilot.staff_member_id}\n> First name: {pilot.first_name}\n> Family name: {pilot.family_name}"
     
     def _format_table(self, table: PrettyTable) -> str:
 

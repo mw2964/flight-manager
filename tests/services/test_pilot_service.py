@@ -16,13 +16,13 @@ def service(mock_conn):
 @pytest.fixture
 def sample_pilot():
     return Pilot(
-        staff_id=1,
+        staff_member_id=1,
         employee_number="E0001",
         first_name="Jane",
         family_name="Goodall",
         employment_start_date=date(2025, 1, 15),
         employment_end_date=date(2026, 2, 22),
-        employment_status="Current",
+        employment_status="Left",
         license_number="TEST001",
         license_type="TVL",
         license_expiration_date=date(2029, 12, 31)
@@ -38,7 +38,7 @@ class TestAddData:
             family_name="Goodall",
             employment_start_date=date(2025, 1, 15),
             employment_end_date=date(2026, 2, 22),
-            employment_status="Current",
+            employment_status="Left",
             license_number="TEST001",
             license_type="TVL",
             license_expiration_date=date(2029, 12, 31)

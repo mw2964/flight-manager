@@ -2,6 +2,7 @@ import pytest
 from datetime import date
 from dataclasses import FrozenInstanceError
 from flightmanagement.models.pilot import Pilot
+from flightmanagement.error import FieldValidationError, DomainValidationError
 
 class TestCreation:
 
@@ -29,7 +30,7 @@ class TestCreation:
             employment_status="Current"
         )
 
-        assert pilot.staff_id is None
+        assert pilot.staff_member_id is None
         assert pilot.employment_end_date is None
         assert pilot.license_number is None
         assert pilot.license_type is None
@@ -51,7 +52,7 @@ class TestAttributeValidation:
 
     @pytest.mark.parametrize("first_name", ["", "123", "Jim2", "Jim2Ben", "Jim@Ben"])
     def test_invalid_first_name_raises_value_error(self, first_name):
-        with pytest.raises(ValueError, match="Invalid first name"):
+        with pytest.raises(FieldValidationError):
             Pilot(
                 employee_number="E0001",
                 first_name=first_name,
@@ -74,7 +75,7 @@ class TestAttributeValidation:
 
     @pytest.mark.parametrize("family_name", ["", "123", "Jones2", "Jones2Smith", "Jones%Smith"])
     def test_invalid_family_name_raises_value_error(self, family_name):
-        with pytest.raises(ValueError, match="Invalid family name"):
+        with pytest.raises(FieldValidationError):
             Pilot(
                 employee_number="E0001",
                 first_name="Jane",

@@ -22,12 +22,12 @@ def pilot_repository(db_conn):
 @pytest.fixture
 def sample_pilot():
     return Pilot(
-        staff_id=1,
+        staff_member_id=1,
         employee_number="E0001",
         first_name="Jane",
         family_name="Goodall",
         employment_start_date=date(2025, 1, 15),
-        employment_end_date=date(2026, 2, 22),
+        employment_end_date=None,
         employment_status="Current",
         license_number="TEST001",
         license_type="TVL",
@@ -39,13 +39,13 @@ class TestReadOperations:
     # READ methods
     def test_get_pilot_by_id_returns_pilot(self, pilot_repository, db_conn):
         db_conn.execute("""
-            INSERT INTO staff (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
+            INSERT INTO staff_members (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
             VALUES
                 ('FC001', 'Alex', 'Morrison', 'Current', '2014-04-13', NULL)
         """)
 
         db_conn.execute("""
-            INSERT INTO pilots (staff_id, license_number, license_type, license_expiration_date)
+            INSERT INTO pilots (staff_member_id, license_number, license_type, license_expiration_date)
             VALUES
                 (1, 'AVLC-09435', 'ATPL', '2029-07-15')
         """)
@@ -53,7 +53,7 @@ class TestReadOperations:
         pilot = pilot_repository.get_pilot_by_id(1)
 
         assert pilot is not None
-        assert pilot.staff_id == 1
+        assert pilot.staff_member_id == 1
 
     def test_get_pilot_by_id_returns_none_when_missing(self, pilot_repository):
         assert pilot_repository.get_pilot_by_id(999) is None
@@ -62,14 +62,14 @@ class TestListOperations:
 
     def test_get_pilot_list_returns_sorted_list(self, pilot_repository, db_conn):
         db_conn.execute("""
-            INSERT INTO staff (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
+            INSERT INTO staff_members (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
             VALUES
                 ('FC001', 'Alex', 'Morrison', 'Current', '2014-04-13', NULL),
                 ('FC002', 'Emily', 'Carter', 'Current', '2021-10-23', NULL)
         """)
 
         db_conn.execute("""
-            INSERT INTO pilots (staff_id, license_number, license_type, license_expiration_date)
+            INSERT INTO pilots (staff_member_id, license_number, license_type, license_expiration_date)
             VALUES
                 (1, 'AVLC-09435', 'ATPL', '2029-07-15'),
                 (2, 'AVLC-09436', 'ATPL', '2034-10-30')
@@ -88,14 +88,14 @@ class TestSearchOperations:
 
     def test_search_on_field_returns_matches(self, pilot_repository, db_conn):
         db_conn.execute("""
-            INSERT INTO staff (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
+            INSERT INTO staff_members (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
             VALUES
                 ('FC001', 'Alex', 'Carter', 'Current', '2014-04-13', NULL),
                 ('FC002', 'Emily', 'Carter', 'Current', '2021-10-23', NULL)
         """)
 
         db_conn.execute("""
-            INSERT INTO pilots (staff_id, license_number, license_type, license_expiration_date)
+            INSERT INTO pilots (staff_member_id, license_number, license_type, license_expiration_date)
             VALUES
                 (1, 'AVLC-09435', 'ATPL', '2029-07-15'),
                 (2, 'AVLC-09436', 'ATPL', '2034-10-30')
@@ -133,19 +133,19 @@ class TestWriteOperations:
 
     def test_update_pilot_updates_fields(self, pilot_repository, db_conn):
         db_conn.execute("""
-            INSERT INTO staff (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
+            INSERT INTO staff_members (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
             VALUES
                 ('FC001', 'Alex', 'Carter', 'Current', '2014-04-13', NULL)
         """)
 
         db_conn.execute("""
-            INSERT INTO pilots (staff_id, license_number, license_type, license_expiration_date)
+            INSERT INTO pilots (staff_member_id, license_number, license_type, license_expiration_date)
             VALUES
                 (1, 'AVLC-09435', 'ATPL', '2029-07-15')
         """)
 
         updated = Pilot(
-            staff_id=1,
+            staff_member_id=1,
             employee_number="E0001",
             first_name="Jane",
             family_name="Goodall",
@@ -158,7 +158,7 @@ class TestWriteOperations:
         )
         pilot_repository.update_pilot(updated)
 
-        row = db_conn.execute("SELECT * FROM vw_staff_pilots WHERE staff_id = 1").fetchone()
+        row = db_conn.execute("SELECT * FROM vw_staff_pilots WHERE staff_member_id = 1").fetchone()
         assert row["employee_number"] == "E0001"
         assert row["first_name"] == "Jane"
         assert row["family_name"] == "Goodall"
@@ -171,21 +171,21 @@ class TestWriteOperations:
 
     def test_update_pilot_prevents_duplicates(self, pilot_repository, db_conn): # TODO - add better exception handling for any uniqueness constraints
         db_conn.execute("""
-            INSERT INTO staff (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
+            INSERT INTO staff_members (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
             VALUES
                 ('FC001', 'Alex', 'Carter', 'Current', '2014-04-13', NULL),
                 ('FC002', 'Emily', 'Carter', 'Current', '2021-10-23', NULL)
         """)
 
         db_conn.execute("""
-            INSERT INTO pilots (staff_id, license_number, license_type, license_expiration_date)
+            INSERT INTO pilots (staff_member_id, license_number, license_type, license_expiration_date)
             VALUES
                 (1, 'AVLC-09435', 'ATPL', '2029-07-15'),
                 (2, 'AVLC-09436', 'ATPL', '2034-10-30')
         """)
 
         updated = Pilot(
-            staff_id=1,
+            staff_member_id=1,
             employee_number="FC002",
             first_name="Alex",
             family_name="Carter",
@@ -202,48 +202,48 @@ class TestWriteOperations:
 
     def test_delete_pilot_removes_row(self, pilot_repository, db_conn, sample_pilot):
         db_conn.execute("""
-            INSERT INTO staff (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
+            INSERT INTO staff_members (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
             VALUES
                 ('FC001', 'Alex', 'Carter', 'Current', '2014-04-13', NULL)
         """)
 
         db_conn.execute("""
-            INSERT INTO pilots (staff_id, license_number, license_type, license_expiration_date)
+            INSERT INTO pilots (staff_member_id, license_number, license_type, license_expiration_date)
             VALUES
                 (1, 'AVLC-09435', 'ATPL', '2029-07-15')
         """)
 
         pilot_repository.delete_pilot(sample_pilot)
 
-        pilot_row = db_conn.execute("SELECT * FROM pilots WHERE staff_id = 1").fetchone()
+        pilot_row = db_conn.execute("SELECT * FROM pilots WHERE staff_member_id = 1").fetchone()
         
         assert pilot_row is None
 
     def test_delete_staff_with_pilot_raises_key_violation(self, pilot_repository, db_conn, sample_pilot):
         db_conn.execute("""
-            INSERT INTO staff (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
+            INSERT INTO staff_members (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
             VALUES
                 ('FC001', 'Alex', 'Carter', 'Current', '2014-04-13', NULL)
         """)
 
         db_conn.execute("""
-            INSERT INTO pilots (staff_id, license_number, license_type, license_expiration_date)
+            INSERT INTO pilots (staff_member_id, license_number, license_type, license_expiration_date)
             VALUES
                 (1, 'AVLC-09435', 'ATPL', '2029-07-15')
         """)
 
         with pytest.raises(ForeignKeyDependencyViolation):
-            pilot_repository.delete_staff(sample_pilot)
+            pilot_repository.delete_staff_member(sample_pilot)
 
     def test_delete_staff_removes_row(self, pilot_repository, db_conn, sample_pilot):
         db_conn.execute("""
-            INSERT INTO staff (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
+            INSERT INTO staff_members (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
             VALUES
                 ('FC001', 'Alex', 'Carter', 'Current', '2014-04-13', NULL)
         """)
 
-        pilot_repository.delete_staff(sample_pilot)
-        staff_row = db_conn.execute("SELECT * FROM staff WHERE staff_id = 1").fetchone()
+        pilot_repository.delete_staff_member(sample_pilot)
+        staff_row = db_conn.execute("SELECT * FROM staff_members WHERE staff_member_id = 1").fetchone()
         
         assert staff_row is None
 

@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 from flightmanagement.ui.aircraft_menu import AircraftMenu
 from flightmanagement.models.aircraft import Aircraft
 from flightmanagement.error import UserCancelled
-from flightmanagement.services.aircraft_service import ConstraintViolation
+from flightmanagement.services.aircraft_service import DependentRecords
 
 @pytest.fixture
 def aircraft_service():
@@ -129,12 +129,12 @@ class TestDelete:
         self, menu, aircraft_service, aircraft, capsys
     ):
         menu._prompt_delete_aircraft = MagicMock(return_value=aircraft)
-        aircraft_service.delete_aircraft.side_effect = ConstraintViolation()
+        aircraft_service.delete_aircraft.side_effect = DependentRecords()
 
         menu._delete_option()
 
         out = capsys.readouterr().out
-        assert "Error deleting aircraft" in out
+        assert "Cannot delete aircraft" in out
 
 class TestGetAircraftFromSelection:
 

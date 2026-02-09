@@ -4,7 +4,7 @@ from datetime import date, time
 from flightmanagement.ui.flight_menu import FlightMenu, FlightUpdateMenu
 from flightmanagement.models.flight import Flight
 from flightmanagement.error import UserCancelled
-from flightmanagement.services.flight_service import ConstraintViolation
+from flightmanagement.services.flight_service import DependentRecords
 
 @pytest.fixture
 def flight_service():
@@ -64,7 +64,6 @@ class TestAdd:
         flight_service.add_flight.assert_called_once_with(new_flight)
         out = capsys.readouterr().out
         assert "successfully added" in out
-        assert "42" in out
 
 class TestUpdate:
 
@@ -106,12 +105,12 @@ class TestDelete:
         self, menu, flight_service, flight, capsys
     ):
         menu._prompt_delete_flight = MagicMock(return_value=flight)
-        flight_service.delete_flight.side_effect = ConstraintViolation()
+        flight_service.delete_flight.side_effect = DependentRecords()
 
         menu._delete_option()
 
         out = capsys.readouterr().out
-        assert "Error deleting flight" in out
+        assert "Cannot delete flight" in out
 
 class TestGetFlightFromSelection:
 

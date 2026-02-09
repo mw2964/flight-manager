@@ -4,7 +4,7 @@ from datetime import date
 from flightmanagement.ui.location_menu import LocationMenu
 from flightmanagement.models.location import Location
 from flightmanagement.error import UserCancelled
-from flightmanagement.services.location_service import ConstraintViolation
+from flightmanagement.services.location_service import DependentRecords
 
 @pytest.fixture
 def location_service():
@@ -134,12 +134,12 @@ class TestDelete:
         self, menu, location_service, location, capsys
     ):
         menu._prompt_delete_location = MagicMock(return_value=location)
-        location_service.delete_location.side_effect = ConstraintViolation()
+        location_service.delete_location.side_effect = DependentRecords()
 
         menu._delete_option()
 
         out = capsys.readouterr().out
-        assert "Error deleting destination" in out
+        assert "Cannot delete destination" in out
 
 class TestGetLocationFromSelection:
 

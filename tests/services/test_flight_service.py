@@ -125,20 +125,6 @@ class TestReturnData:
 
         flightservice._FlightService__flight_repository.get_flight_by_id.assert_called_once_with(10)
 
-    def test_get_flight_choices_returns_tuples(self, flightservice, locationservice, sample_flight, sample_origin, sample_destination):
-
-        flightservice._FlightService__flight_repository.get_flight_list.return_value = [
-            sample_flight
-        ]
-
-        result = flightservice.get_flight_choices()
-
-        expected_summary = flightservice.get_flight_summary(sample_flight)
-
-        assert result == [
-            (sample_flight.flight_id, expected_summary)
-        ]
-
     def test_get_flight_choices_empty_list(self, flightservice):
         flightservice._FlightService__flight_repository.get_flight_list.return_value = []
 

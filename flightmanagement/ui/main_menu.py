@@ -5,7 +5,6 @@ from flightmanagement.ui.location_menu import LocationMenu
 from flightmanagement.ui.aircraft_menu import AircraftMenu
 from flightmanagement.ui.flight_menu import FlightMenu
 from flightmanagement.ui.report_menu import ReportMenu
-from flightmanagement.ui.admin_menu import AdminMenu
 
 class MainMenu(BaseMenu):
     
@@ -42,8 +41,6 @@ class MainMenu(BaseMenu):
                 AircraftMenu(self._session, self._key_bindings, self._conn).load()
             elif __choose_menu == "reports":
                 ReportMenu(self._session, self._key_bindings, self._conn).load()
-            elif __choose_menu == "admin":
-                AdminMenu(self._session, self._key_bindings, self._conn).load()
             elif __choose_menu == "exit":
                 exit(0)
             else:

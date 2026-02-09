@@ -78,7 +78,7 @@ class FlightRepository(BaseRepository):
     def get_relief_pilots_by_flight_id(self, flight_id: int) -> list[int]:
         rows = self._execute_fetchall(
             """
-            SELECT staff_id
+            SELECT staff_member_id
             FROM flight_relief_pilots
             WHERE flight_id = ?
             """,
@@ -87,7 +87,7 @@ class FlightRepository(BaseRepository):
 
         result_list = []
         for row in rows:
-            result_list.append(row["staff_id"])
+            result_list.append(row["staff_member_id"])
 
         return result_list
 
@@ -211,32 +211,32 @@ class FlightRepository(BaseRepository):
             (flight.flight_id, )
         )
     
-    def insert_relief_pilot(self, flight: Flight, staff_id: int):
+    def insert_relief_pilot(self, flight: Flight, staff_member_id: int):
         self._execute(
             """
             INSERT INTO flight_relief_pilots (
                 flight_id,
-                staff_id
+                staff_member_id
             )
             VALUES (
                 :flight_id,
-                :staff_id
+                :staff_member_id
             )
             """,
             {
                 "flight_id": flight.flight_id,
-                "staff_id": staff_id
+                "staff_member_id": staff_member_id
             }
         )
 
-    def delete_relief_pilot(self, flight: Flight, staff_id: int):
+    def delete_relief_pilot(self, flight: Flight, staff_member_id: int):
         self._execute(
             """
             DELETE FROM flight_relief_pilots
             WHERE flight_id = ?
-            AND staff_id = ?
+            AND staff_member_id = ?
             """,
-            (flight.flight_id, staff_id)
+            (flight.flight_id, staff_member_id)
         )
 
     def get_available_pilots(self, departure_time: datetime, arrival_time: datetime, flight_id: int) -> list[Pilot] | None:
@@ -283,8 +283,8 @@ class FlightRepository(BaseRepository):
             )
             SELECT p.*
             FROM vw_staff_pilots p
-            LEFT JOIN conflicting_flights c ON c.pilot_id = p.staff_id
-            LEFT JOIN flight_hours h ON h.pilot_id = p.staff_id
+            LEFT JOIN conflicting_flights c ON c.pilot_id = p.staff_member_id
+            LEFT JOIN flight_hours h ON h.pilot_id = p.staff_member_id
             WHERE c.pilot_id IS NULL
             AND IFNULL(h.hours, 0.0) < (100 - ((unixepoch(?) - unixepoch(?)) / 3600.0))
             """,
@@ -336,7 +336,7 @@ class FlightRepository(BaseRepository):
             return None
 
         return Pilot(
-            staff_id = data["staff_id"],
+            staff_member_id = data["staff_member_id"],
             employee_number = data["employee_number"],
             first_name = data["first_name"],
             family_name = data["family_name"],

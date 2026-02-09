@@ -1,8 +1,6 @@
 import sqlite3
 from pathlib import Path
 from contextlib import contextmanager
-from typing import Optional
-from flightmanagement.config import settings
 
 @contextmanager
 def get_connection(db_path: Path):
@@ -31,22 +29,6 @@ def transaction(conn):
 def initialise_schema(conn):
 
     with transaction(conn):
-
-        # Drop the tables and views if they already exist
-        conn.execute("DROP VIEW IF EXISTS vw_staff_pilots")
-        conn.execute("DROP VIEW IF EXISTS vw_aircraft")
-        conn.execute("DROP VIEW IF EXISTS vw_flight_summary")
-        conn.execute("DROP TABLE IF EXISTS flight_relief_pilots")
-        conn.execute("DROP TABLE IF EXISTS flights")
-        conn.execute("DROP TABLE IF EXISTS flight_time_logs")
-        conn.execute("DROP TABLE IF EXISTS leave_bookings")
-        conn.execute("DROP TABLE IF EXISTS pilots")
-        conn.execute("DROP TABLE IF EXISTS staff")
-        conn.execute("DROP TABLE IF EXISTS aircraft")
-        conn.execute("DROP TABLE IF EXISTS aircraft_types")
-        conn.execute("DROP TABLE IF EXISTS gates")
-        conn.execute("DROP TABLE IF EXISTS terminals")
-        conn.execute("DROP TABLE IF EXISTS locations")
 
         # Create the tables and indices
         conn.execute("""
@@ -107,8 +89,8 @@ def initialise_schema(conn):
         """)
 
         conn.execute("""
-            CREATE TABLE IF NOT EXISTS staff (
-                staff_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            CREATE TABLE IF NOT EXISTS staff_members (
+                staff_member_id INTEGER PRIMARY KEY AUTOINCREMENT,
                 employee_number TEXT NOT NULL UNIQUE,
                 first_name TEXT NOT NULL,
                 family_name TEXT NOT NULL,
@@ -117,21 +99,21 @@ def initialise_schema(conn):
                 employment_end_date DATE CHECK(employment_end_date IS date(employment_end_date) AND (employment_status <> 'Left' OR employment_end_date IS NOT NULL))
             )
         """)
-        conn.execute('CREATE INDEX idx_staff_name ON staff(first_name, family_name)')
+        conn.execute('CREATE INDEX idx_staff_name ON staff_members(first_name, family_name)')
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS leave_bookings (
-                staff_id INTEGER NOT NULL REFERENCES staff(staff_id) ON DELETE CASCADE,
+                staff_member_id INTEGER NOT NULL REFERENCES staff_members(staff_member_id) ON DELETE CASCADE,
                 leave_date DATE NOT NULL CHECK(leave_date IS date(leave_date)),
                 leave_type TEXT CHECK(leave_type IN ('Annual leave', 'Sick leave', 'Parental leave', 'Compassionate leave', 'Study leave')),
-                PRIMARY KEY (staff_id, leave_date)
+                PRIMARY KEY (staff_member_id, leave_date)
             )
         """)
         conn.execute('CREATE INDEX idx_leave_bookings_leave_date ON leave_bookings(leave_date)')
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS pilots (
-                staff_id INTEGER NOT NULL PRIMARY KEY REFERENCES staff(staff_id) ON DELETE RESTRICT,
+                staff_member_id INTEGER NOT NULL PRIMARY KEY REFERENCES staff_members(staff_member_id) ON DELETE RESTRICT,
                 license_number TEXT UNIQUE,
                 license_type TEXT,
                 license_expiration_date DATE CHECK(license_expiration_date = date(license_expiration_date))
@@ -140,10 +122,10 @@ def initialise_schema(conn):
 
         conn.execute("""
             CREATE TABLE IF NOT EXISTS flight_time_logs (
-                staff_id INTEGER NOT NULL REFERENCES pilots(staff_id) ON DELETE CASCADE,
+                staff_member_id INTEGER NOT NULL REFERENCES pilots(staff_member_id) ON DELETE CASCADE,
                 effective_date DATE NOT NULL CHECK(effective_date IS date(effective_date)),
                 flight_hours REAL NOT NULL CHECK(flight_hours <= 24),
-                PRIMARY KEY (staff_id, effective_date)
+                PRIMARY KEY (staff_member_id, effective_date)
             )
         """)
         conn.execute('CREATE INDEX idx_flight_time_logs_effective_date ON flight_time_logs(effective_date)')
@@ -156,8 +138,8 @@ def initialise_schema(conn):
                 destination_location_id INTEGER NOT NULL REFERENCES locations(location_id) ON DELETE RESTRICT,
                 departure_gate_id INTEGER REFERENCES gates(gate_id) ON DELETE SET NULL,
                 arrival_gate_id INTEGER REFERENCES gates(gate_id) ON DELETE SET NULL,
-                captain_id INTEGER REFERENCES pilots(staff_id) ON DELETE RESTRICT,
-                first_officer_id INTEGER REFERENCES pilots(staff_id) ON DELETE RESTRICT,
+                captain_id INTEGER REFERENCES pilots(staff_member_id) ON DELETE RESTRICT,
+                first_officer_id INTEGER REFERENCES pilots(staff_member_id) ON DELETE RESTRICT,
                 flight_number TEXT NOT NULL,
                 scheduled_departure_date DATE NOT NULL CHECK(scheduled_departure_date = date(scheduled_departure_date)),
                 scheduled_departure_time TIME NOT NULL CHECK(scheduled_departure_time GLOB '[0-1][0-9]:[0-5][0-9]' OR scheduled_departure_time GLOB '2[0-3]:[0-5][0-9]'),
@@ -188,11 +170,11 @@ def initialise_schema(conn):
         conn.execute("""
             CREATE TABLE IF NOT EXISTS flight_relief_pilots (
                 flight_id INTEGER NOT NULL REFERENCES flights(flight_id) ON DELETE CASCADE,
-                staff_id INTEGER NOT NULL REFERENCES pilots(staff_id) ON DELETE CASCADE,
-                PRIMARY KEY (flight_id, staff_id)
+                staff_member_id INTEGER NOT NULL REFERENCES pilots(staff_member_id) ON DELETE CASCADE,
+                PRIMARY KEY (flight_id, staff_member_id)
             )
         """)
-        conn.execute('CREATE INDEX idx_flight_relief_pilots_staff_id ON flight_relief_pilots(staff_id)')
+        conn.execute('CREATE INDEX idx_flight_relief_pilots_staff_member_id ON flight_relief_pilots(staff_member_id)')
 
 
         # Create views
@@ -200,7 +182,7 @@ def initialise_schema(conn):
         conn.execute("""
             CREATE VIEW IF NOT EXISTS vw_staff_pilots AS
                 SELECT *
-                FROM staff
+                FROM staff_members
                 NATURAL JOIN pilots;
         """)
 
@@ -246,14 +228,14 @@ def initialise_schema(conn):
             LEFT JOIN gates ag ON ag.gate_id = f.arrival_gate_id
             LEFT JOIN terminals at ON at.terminal_id = ag.terminal_id
             LEFT JOIN locations d ON d.location_id = f.destination_location_id
-            LEFT JOIN vw_staff_pilots cp ON cp.staff_id = f.captain_id
-            LEFT JOIN vw_staff_pilots fo ON fo.staff_id = f.first_officer_id
+            LEFT JOIN vw_staff_pilots cp ON cp.staff_member_id = f.captain_id
+            LEFT JOIN vw_staff_pilots fo ON fo.staff_member_id = f.first_officer_id
             LEFT JOIN (
                 SELECT
                     frp.flight_id,
                     group_concat(vsp.first_name || ' ' || vsp.family_name, ', ') AS relief_pilots
                 FROM flight_relief_pilots frp
-                JOIN vw_staff_pilots vsp ON vsp.staff_id = frp.staff_id
+                JOIN vw_staff_pilots vsp ON vsp.staff_member_id = frp.staff_member_id
                 GROUP BY frp.flight_id
             ) rp ON rp.flight_id = f.flight_id
         """)
@@ -613,7 +595,7 @@ def seed_database_data(conn):
         """)
 
         conn.execute("""
-            INSERT INTO staff (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
+            INSERT INTO staff_members (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
             VALUES
                 ('FC001', 'Alex', 'Morrison', 'Current', '2014-04-13', NULL),
                 ('FC002', 'Emily', 'Carter', 'Current', '2021-10-23', NULL),
@@ -631,7 +613,7 @@ def seed_database_data(conn):
         """)
         
         conn.execute("""
-            INSERT INTO pilots (staff_id, license_number, license_type, license_expiration_date)
+            INSERT INTO pilots (staff_member_id, license_number, license_type, license_expiration_date)
             VALUES
                 (1, 'AVLC-09435', 'ATPL', '2029-07-15'),
                 (2, 'AVLC-09436', 'ATPL', '2034-10-30'),
@@ -646,7 +628,7 @@ def seed_database_data(conn):
         """)
         
         conn.execute("""
-            INSERT INTO leave_bookings (staff_id, leave_date, leave_type)
+            INSERT INTO leave_bookings (staff_member_id, leave_date, leave_type)
             VALUES
                 (2, '2026-01-01', 'Sick leave'),
                 (7, '2026-01-01', 'Annual leave'),
@@ -788,7 +770,7 @@ def seed_database_data(conn):
         """)
         
         conn.execute("""
-            INSERT INTO flight_time_logs (staff_id, effective_date, flight_hours)
+            INSERT INTO flight_time_logs (staff_member_id, effective_date, flight_hours)
             VALUES
                 (2, '2026-01-03', 9.3),
                 (3, '2026-01-04', 16),
@@ -846,7 +828,7 @@ def seed_database_data(conn):
         """)
         
         conn.execute("""
-            INSERT INTO flight_relief_pilots (flight_id, staff_id)
+            INSERT INTO flight_relief_pilots (flight_id, staff_member_id)
             VALUES
                 (9, 1),
                 (9, 10),
@@ -864,5 +846,3 @@ def seed_database_data(conn):
                 (27, 4),
                 (28, 4)
         """)
-    
-    #conn.commit()

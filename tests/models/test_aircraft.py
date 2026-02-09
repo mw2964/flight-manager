@@ -1,6 +1,7 @@
 import pytest
 from dataclasses import FrozenInstanceError
 from flightmanagement.models.aircraft import Aircraft
+from flightmanagement.error import FieldValidationError, DomainValidationError
 
 class TestCreation:
 
@@ -29,7 +30,7 @@ class TestCreation:
 class TestAttributeValidation:
 
     def test_missing_registration_raises_value_error(self):
-        with pytest.raises(ValueError, match="Registration is missing."):
+        with pytest.raises(FieldValidationError):
             Aircraft(
                 aircraft_type_id=1,
                 registration="",
@@ -37,7 +38,7 @@ class TestAttributeValidation:
             )
 
     def test_invalid_registration_raises_value_error(self):
-        with pytest.raises(ValueError, match="Invalid registration."):
+        with pytest.raises(FieldValidationError):
             Aircraft(
                 aircraft_type_id=1,
                 registration="TEST123",
@@ -45,7 +46,7 @@ class TestAttributeValidation:
             )
 
     def test_invalid_status_raises_value_error(self):
-        with pytest.raises(ValueError, match="Aircraft status is missing or invalid."):
+        with pytest.raises(FieldValidationError):
             Aircraft(
                 aircraft_type_id=1,
                 registration="G-TEST",

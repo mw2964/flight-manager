@@ -54,7 +54,7 @@ def insert_test_data(db_conn):
 
 def test_staff_sql():
     return """
-        INSERT INTO staff (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
+        INSERT INTO staff_members (employee_number, first_name, family_name, employment_status, employment_start_date, employment_end_date)
             VALUES
                 ('FC001', 'Alex', 'Morrison', 'Current', '2014-04-13', NULL),
                 ('FC002', 'Emily', 'Carter', 'Current', '2021-10-23', NULL)
@@ -62,7 +62,7 @@ def test_staff_sql():
 
 def test_pilot_sql():
     return """
-        INSERT INTO pilots (staff_id, license_number, license_type, license_expiration_date)
+        INSERT INTO pilots (staff_member_id, license_number, license_type, license_expiration_date)
             VALUES
                 (1, 'AVLC-09435', 'ATPL', '2029-07-15'),
                 (2, 'AVLC-09436', 'ATPL', '2034-10-30')

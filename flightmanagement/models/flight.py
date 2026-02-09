@@ -34,6 +34,9 @@ class Flight:
         return f"{self.flight_number} (departure: {departure}, status: {self.flight_status})"
 
     def _validate_fields(self) -> None:
+        if not self.flight_number:
+            raise FieldValidationError("flight_number", "Flight number is missing.")
+
         if self.flight_number and not re.fullmatch(r"ZMY[0-9]+", self.flight_number):
             raise FieldValidationError("flight_number", "Flight number must be 'ZMY' followed by a number.")
         

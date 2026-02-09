@@ -11,7 +11,7 @@ class Pilot:
     employment_start_date: date
     employment_status: str = "Current"
 
-    staff_id: int | None = None
+    staff_member_id: int | None = None
     employment_end_date: date | None = None
     license_number: str | None = None
     license_type: str | None = None
@@ -60,7 +60,7 @@ class Pilot:
         # Return true if all characters are letters, spaces, hyphens or apostrophes
         return all(char.isalpha() or char in {" ", "-", "'"} for char in string)
 
-    def to_dict_staff(self) -> dict:
+    def to_dict_staff_member(self) -> dict:
         data = {
             "employee_number": self.employee_number,
             "first_name": self.first_name, 
@@ -71,9 +71,9 @@ class Pilot:
         }
         return data
 
-    def to_dict_pilot(self, staff_id: int | None = None) -> dict:
+    def to_dict_pilot(self, staff_member_id: int | None = None) -> dict:
         data = {
-            "staff_id": staff_id,
+            "staff_member_id": staff_member_id,
             "license_number": self.license_number,
             "license_type": self.license_type,
             "license_expiration_date": self.license_expiration_date.strftime("%Y-%m-%d") if self.license_expiration_date else None

@@ -1,7 +1,8 @@
 import pytest
-from datetime import datetime, date, time
+from datetime import date, time
 from dataclasses import FrozenInstanceError
 from flightmanagement.models.flight import Flight
+from flightmanagement.error import FieldValidationError, DomainValidationError
 
 class TestCreation:
 
@@ -65,7 +66,7 @@ class TestAttributeValidation:
 
     @pytest.mark.parametrize("flight_number", [None, "", "ZMY", "Z890", "ABC123", "ZMY 123", " ZMY123", "ZMY123 ", "12ZMY3"])
     def test_invalid_flight_number_raises_value_error(self, flight_number):
-        with pytest.raises(ValueError, match="Invalid flight number"):
+        with pytest.raises(FieldValidationError):
             Flight(
                 flight_number=flight_number,
                 origin_location_id=1,
@@ -78,7 +79,7 @@ class TestAttributeValidation:
             )
 
     def test_scheduled_arrival_before_departure_raises_value_error(self):
-        with pytest.raises(ValueError, match="Scheduled arrival time is not later than scheduled departure time"):
+        with pytest.raises(DomainValidationError):
             Flight(
                 flight_number="ZMY111",
                 origin_location_id=1,
@@ -91,7 +92,7 @@ class TestAttributeValidation:
             )
 
     def test_actual_arrival_before_departure_raises_value_error(self):
-        with pytest.raises(ValueError, match="Actual arrival time is not later than actual departure time"):
+        with pytest.raises(DomainValidationError):
             Flight(
                 flight_number="ZMY111",
                 origin_location_id=1,
@@ -108,7 +109,7 @@ class TestAttributeValidation:
             )
 
     def test_same_origin_and_destination_raises_value_error(self):
-        with pytest.raises(ValueError, match="Invalid destination ID"):
+        with pytest.raises(DomainValidationError):
             Flight(
                 flight_number="ZMY111",
                 origin_location_id=1,
@@ -121,7 +122,7 @@ class TestAttributeValidation:
             )
 
     def test_same_pilot_and_copilot_raises_value_error(self):
-        with pytest.raises(ValueError, match="Invalid first officer ID"):
+        with pytest.raises(DomainValidationError):
             Flight(
                 flight_number="ZMY111",
                 origin_location_id=1,

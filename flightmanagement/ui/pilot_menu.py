@@ -74,7 +74,7 @@ class PilotMenu(BaseMenu):
 
         try:
             new_id = self._pilot_service.add_pilot(new)
-            print(f"\nNew record successfully added (staff ID: {new_id}).\n")
+            print(f"\nNew record successfully added (staff member ID: {new_id}).\n")
         except MissingData as e:
             print("\nRecord insert failed: missing mandatory data.")
         except DuplicateRecord as e:
@@ -87,7 +87,7 @@ class PilotMenu(BaseMenu):
 
         # Prompt for the pilot to edit
         pilot = self._get_pilot_from_selection()
-        print(f"\nEditing information (staff ID {pilot.staff_id})\n")
+        print(f"\nEditing information (staff member ID {pilot.staff_member_id})\n")
 
         update = self._prompt_update_pilot(pilot)
 
@@ -107,8 +107,8 @@ class PilotMenu(BaseMenu):
         # Prompt for the pilot to edit
         pilot = self._get_pilot_from_selection()
         print(f"\nViewing flight schedule for {pilot.first_name} {pilot.family_name}\n")
-        if pilot.staff_id is not None:
-            print(self._pilot_service.get_pilot_schedule(pilot.staff_id))
+        if pilot.staff_member_id is not None:
+            print(self._pilot_service.get_pilot_schedule(pilot.staff_member_id))
         
 
     def _update_time_logs_option(self) -> None:
@@ -117,11 +117,11 @@ class PilotMenu(BaseMenu):
         # Prompt for the pilot
         pilot = self._get_pilot_from_selection()
 
-        if pilot.staff_id is None:
+        if pilot.staff_member_id is None:
             raise ValueError
 
         print(f"\nLog records for {pilot.first_name} {pilot.family_name}:\n")
-        print(self._pilot_service.get_flight_logs_table(pilot.staff_id))
+        print(self._pilot_service.get_flight_logs_table(pilot.staff_member_id))
 
         while True:
 
@@ -141,10 +141,10 @@ class PilotMenu(BaseMenu):
             print()
 
             if option == 1:            
-                record_to_add = self._prompt_add_time_log_record(pilot.staff_id)
+                record_to_add = self._prompt_add_time_log_record(pilot.staff_member_id)
 
                 try:
-                    self._pilot_service.add_time_log_record(pilot.staff_id, record_to_add[0], record_to_add[1])
+                    self._pilot_service.add_time_log_record(pilot.staff_member_id, record_to_add[0], record_to_add[1])
                     print("\nFlight time log record successfully added:\n")
                 except MissingData as e:
                     print("\nRecord insert failed: missing mandatory data.")
@@ -153,13 +153,13 @@ class PilotMenu(BaseMenu):
                 except InvalidData as e:
                     print("\nRecord insert failed: invalid information.")
 
-                print(self._pilot_service.get_flight_logs_table(pilot.staff_id))
+                print(self._pilot_service.get_flight_logs_table(pilot.staff_member_id))
             
             elif option == 2:
-                record_to_update = self._prompt_update_time_log_record(pilot.staff_id)
+                record_to_update = self._prompt_update_time_log_record(pilot.staff_member_id)
 
                 try:
-                    self._pilot_service.update_time_log_record(pilot.staff_id, record_to_update[0], record_to_update[1])
+                    self._pilot_service.update_time_log_record(pilot.staff_member_id, record_to_update[0], record_to_update[1])
                     print("\nFlight time log record successfully updated:\n")
                 except MissingData as e:
                     print("\nRecord update failed: missing mandatory data.")
@@ -168,13 +168,13 @@ class PilotMenu(BaseMenu):
                 except InvalidData as e:
                     print("\nRecord update failed: invalid information.")
 
-                print(self._pilot_service.get_flight_logs_table(pilot.staff_id))
+                print(self._pilot_service.get_flight_logs_table(pilot.staff_member_id))
 
             elif option == 3:
-                record_to_delete = self._prompt_delete_time_log_record(pilot.staff_id)
-                self._pilot_service.delete_time_log_record(pilot.staff_id, record_to_delete)
+                record_to_delete = self._prompt_delete_time_log_record(pilot.staff_member_id)
+                self._pilot_service.delete_time_log_record(pilot.staff_member_id, record_to_delete)
                 print("\nFlight time log record successfully removed:\n")
-                print(self._pilot_service.get_flight_logs_table(pilot.staff_id))
+                print(self._pilot_service.get_flight_logs_table(pilot.staff_member_id))
             
             elif option == 4:
                 break
@@ -185,11 +185,11 @@ class PilotMenu(BaseMenu):
         # Prompt for the pilot
         pilot = self._get_pilot_from_selection()
 
-        if pilot.staff_id is None:
+        if pilot.staff_member_id is None:
             raise ValueError
 
         print(f"\nLeave bookings for {pilot.first_name} {pilot.family_name}:\n")
-        print(self._pilot_service.get_leave_bookings_table(pilot.staff_id))
+        print(self._pilot_service.get_leave_bookings_table(pilot.staff_member_id))
 
         while True:
 
@@ -209,10 +209,10 @@ class PilotMenu(BaseMenu):
             print()
 
             if option == 1:            
-                record_to_add = self._prompt_add_leave_booking_record(pilot.staff_id)
+                record_to_add = self._prompt_add_leave_booking_record(pilot.staff_member_id)
 
                 try:
-                    self._pilot_service.add_leave_booking_record(pilot.staff_id, record_to_add[0], record_to_add[1])
+                    self._pilot_service.add_leave_booking_record(pilot.staff_member_id, record_to_add[0], record_to_add[1])
                     print("\nLeave booking successfully added:\n")
                 except MissingData as e:
                     print("\nRecord insert failed: missing mandatory data.")
@@ -221,13 +221,13 @@ class PilotMenu(BaseMenu):
                 except InvalidData as e:
                     print("\nRecord insert failed: invalid information.")
 
-                print(self._pilot_service.get_leave_bookings_table(pilot.staff_id))
+                print(self._pilot_service.get_leave_bookings_table(pilot.staff_member_id))
             
             elif option == 2:
-                record_to_update = self._prompt_update_leave_booking_record(pilot.staff_id)
+                record_to_update = self._prompt_update_leave_booking_record(pilot.staff_member_id)
 
                 try:
-                    self._pilot_service.update_leave_booking_record(pilot.staff_id, record_to_update[0], record_to_update[1])
+                    self._pilot_service.update_leave_booking_record(pilot.staff_member_id, record_to_update[0], record_to_update[1])
                     print("\nLeave booking successfully updated:\n")
                 except MissingData as e:
                     print("\nRecord update failed: missing mandatory data.")
@@ -236,13 +236,13 @@ class PilotMenu(BaseMenu):
                 except InvalidData as e:
                     print("\nRecord update failed: invalid information.")
 
-                print(self._pilot_service.get_leave_bookings_table(pilot.staff_id))
+                print(self._pilot_service.get_leave_bookings_table(pilot.staff_member_id))
 
             elif option == 3:
-                record_to_delete = self._prompt_delete_leave_booking_record(pilot.staff_id)
-                self._pilot_service.delete_leave_booking_record(pilot.staff_id, record_to_delete)
+                record_to_delete = self._prompt_delete_leave_booking_record(pilot.staff_member_id)
+                self._pilot_service.delete_leave_booking_record(pilot.staff_member_id, record_to_delete)
                 print("\nLeave booking successfully removed:\n")
-                print(self._pilot_service.get_leave_bookings_table(pilot.staff_id))
+                print(self._pilot_service.get_leave_bookings_table(pilot.staff_member_id))
         
             elif option == 4:
                 break
@@ -469,7 +469,7 @@ class PilotMenu(BaseMenu):
                     )
 
                 return Pilot(
-                    staff_id = pilot.staff_id,
+                    staff_member_id = pilot.staff_member_id,
                     first_name = self._required(first_name, "first_name"),
                     family_name = self._required(family_name, "family_name"),
                     employee_number = self._required(employee_number, "employee_number"),
@@ -529,7 +529,7 @@ class PilotMenu(BaseMenu):
 
         return pilot
 
-    def _prompt_add_time_log_record(self, staff_id: int) -> tuple:
+    def _prompt_add_time_log_record(self, staff_member_id: int) -> tuple:
 
         effective_date = None
         flight_hours = None
@@ -544,7 +544,7 @@ class PilotMenu(BaseMenu):
                         required = True
                     )
                 
-                if self._pilot_service.log_record_exists(staff_id, effective_date):
+                if self._pilot_service.log_record_exists(staff_member_id, effective_date):
                     raise FieldValidationError("effective_date", "The pilot already has a log record for this date. Please try again.")
 
                 while flight_hours is None:
@@ -575,7 +575,7 @@ class PilotMenu(BaseMenu):
                 effective_date = None
                 flight_hours = None
 
-    def _prompt_update_time_log_record(self, staff_id: int) -> tuple:
+    def _prompt_update_time_log_record(self, staff_member_id: int) -> tuple:
         
         effective_date = None
         flight_hours = None
@@ -589,11 +589,11 @@ class PilotMenu(BaseMenu):
                         field = "effective_date",
                         required = True,
                         getter = lambda p: p.get_date(),
-                        options = self._pilot_service.get_log_record_choices(staff_id)
+                        options = self._pilot_service.get_log_record_choices(staff_member_id)
                     )       
                     print()
 
-                log_record = self._pilot_service.get_time_log_record(staff_id, effective_date)
+                log_record = self._pilot_service.get_time_log_record(staff_member_id, effective_date)
 
                 while flight_hours is None:
                     flight_hours = self._prompt_until_valid(                            
@@ -624,7 +624,7 @@ class PilotMenu(BaseMenu):
                 effective_date = None
                 flight_hours = None
 
-    def _prompt_delete_time_log_record(self, staff_id: int) -> date:
+    def _prompt_delete_time_log_record(self, staff_member_id: int) -> date:
 
         effective_date = None
 
@@ -635,7 +635,7 @@ class PilotMenu(BaseMenu):
                 field = "effective_date",
                 required = True,
                 getter = lambda p: p.get_date(),
-                options = self._pilot_service.get_log_record_choices(staff_id)
+                options = self._pilot_service.get_log_record_choices(staff_member_id)
             )                   
             print()
 
@@ -644,7 +644,7 @@ class PilotMenu(BaseMenu):
 
         return effective_date
 
-    def _prompt_add_leave_booking_record(self, staff_id: int) -> tuple:
+    def _prompt_add_leave_booking_record(self, staff_member_id: int) -> tuple:
         
         leave_date = None
         leave_type = None
@@ -659,7 +659,7 @@ class PilotMenu(BaseMenu):
                         required = True
                     )
                 
-                if self._pilot_service.leave_record_exists(staff_id, leave_date):
+                if self._pilot_service.leave_record_exists(staff_member_id, leave_date):
                     raise FieldValidationError("effective_date", "The staff member already has a leave booking for this date.")
 
                 while leave_type is None:
@@ -700,7 +700,7 @@ class PilotMenu(BaseMenu):
                 leave_date = None
                 leave_type = None
         
-    def _prompt_update_leave_booking_record(self, staff_id: int) -> tuple:
+    def _prompt_update_leave_booking_record(self, staff_member_id: int) -> tuple:
         
         leave_date = None
         leave_type = None
@@ -714,11 +714,11 @@ class PilotMenu(BaseMenu):
                         field = "leave_date",
                         required = True,
                         prompt_text = "Choose a record to update:",
-                        options = self._pilot_service.get_leave_record_choices(staff_id)
+                        options = self._pilot_service.get_leave_record_choices(staff_member_id)
                     )
                     print()
 
-                leave_record = self._pilot_service.get_leave_booking_record(staff_id, leave_date)
+                leave_record = self._pilot_service.get_leave_booking_record(staff_member_id, leave_date)
 
                 while leave_type is None:
                     leave_type = self._prompt_until_valid(
@@ -756,7 +756,7 @@ class PilotMenu(BaseMenu):
                 leave_date = None
                 leave_type = None 
         
-    def _prompt_delete_leave_booking_record(self, staff_id: int) -> date:
+    def _prompt_delete_leave_booking_record(self, staff_member_id: int) -> date:
 
         leave_date = None
 
@@ -767,7 +767,7 @@ class PilotMenu(BaseMenu):
                 required = True,
                 is_picklist = True,
                 getter = lambda p: p.get_date(),
-                options = self._pilot_service.get_leave_record_choices(staff_id)
+                options = self._pilot_service.get_leave_record_choices(staff_member_id)
             )                 
             print()
 
@@ -795,7 +795,7 @@ class PilotMenu(BaseMenu):
         if pilot is None:
             raise ValueError("No pilot returned from selection.")
         
-        if pilot.staff_id is None:
+        if pilot.staff_member_id is None:
             raise ValueError("Selected pilot missing unique identifier.")
 
         return pilot

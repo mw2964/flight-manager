@@ -4,7 +4,7 @@ from datetime import date
 from flightmanagement.ui.pilot_menu import PilotMenu
 from flightmanagement.models.pilot import Pilot
 from flightmanagement.error import UserCancelled
-from flightmanagement.services.pilot_service import ConstraintViolation
+from flightmanagement.services.pilot_service import DependentRecords
 
 @pytest.fixture
 def pilot_service():
@@ -24,13 +24,13 @@ def menu(pilot_service):
 @pytest.fixture
 def pilot():
     return Pilot(
-        staff_id=1,
+        staff_member_id=1,
         employee_number="E0001",
         first_name="Jane",
         family_name="Goodall",
         employment_start_date=date(2025, 1, 15),
         employment_end_date=date(2026, 2, 22),
-        employment_status="Current",
+        employment_status="Left",
         license_number="TEST001",
         license_type="TVL",
         license_expiration_date=date(2029, 12, 31)
@@ -133,12 +133,12 @@ class TestDelete:
         self, menu, pilot_service, pilot, capsys
     ):
         menu._prompt_delete_pilot = MagicMock(return_value=pilot)
-        pilot_service.delete_pilot.side_effect = ConstraintViolation()
+        pilot_service.delete_pilot.side_effect = DependentRecords()
 
         menu._delete_option()
 
         out = capsys.readouterr().out
-        assert "Error deleting pilot" in out
+        assert "Cannot delete pilot" in out
 
 class TestGetPilotFromSelection:
 
@@ -152,7 +152,7 @@ class TestGetPilotFromSelection:
         pilot_service.get_pilot_by_id.assert_called_once_with(1)
 
     def test_get_pilot_missing_id_raises(self, menu, pilot_service):
-        bad_pilot = MagicMock(staff_id=None)
+        bad_pilot = MagicMock(staff_member_id=None)
         menu._prompt_until_valid = MagicMock(return_value=1)
         pilot_service.get_pilot_by_id.return_value = bad_pilot
 
