@@ -4,18 +4,6 @@ from datetime import date
 
 class PilotRepository(BaseRepository):
 
-    PILOT_SEARCH_FIELDS = {
-        'first_name',
-        'family_name',
-        'employee_number',
-        'employment_status',
-        'employment_start_date',
-        'employment_end_date',
-        'license_number',
-        'license_type',
-        'license_expiration_date'
-    }
-
     def __init__(self, conn):
         super().__init__(conn)
 
@@ -93,8 +81,6 @@ class PilotRepository(BaseRepository):
         return result_list
 
     def search_on_field(self, field_name: str, value) -> list:
-        if field_name not in self.PILOT_SEARCH_FIELDS:
-            raise ValueError(f"Invalid search field: {field_name}")
 
         sql = f"""
             SELECT *

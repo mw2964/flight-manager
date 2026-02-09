@@ -3,20 +3,6 @@ from flightmanagement.repositories.base_repository import BaseRepository
 
 class AircraftRepository(BaseRepository):
 
-    AIRCRAFT_SEARCH_FIELDS = {
-        'aircraft_type_id',
-        'registration',
-        'manufacturer_serial_no',
-        'icao_hex',
-        'aircraft_status'
-    }
-
-    AIRCRAFT_TYPE_SEARCH_FIELDS = {
-        'manufacturer',
-        'model',
-        'icao_type'
-    }
-
     def __init__(self, conn):
         super().__init__(conn)
 
@@ -59,10 +45,7 @@ class AircraftRepository(BaseRepository):
 
         return result_list
 
-    def search_aircraft_on_field(self, field_name: str, value) -> list[Aircraft]:        
-        if field_name not in self.AIRCRAFT_SEARCH_FIELDS:
-            raise ValueError(f"Invalid search field: {field_name}")
-
+    def search_aircraft_on_field(self, field_name: str, value) -> list[Aircraft]:
         sql = f"""
             SELECT *
             FROM vw_aircraft
@@ -218,10 +201,6 @@ class AircraftRepository(BaseRepository):
         )
     
     def search_aircraft_type_on_field(self, field_name: str, value) -> list[AircraftType]:
-
-        if field_name not in self.AIRCRAFT_TYPE_SEARCH_FIELDS:
-            raise ValueError(f"Invalid search field: {field_name}")
-
         sql = f"""
             SELECT *
             FROM aircraft_types

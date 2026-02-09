@@ -3,19 +3,6 @@ from flightmanagement.repositories.base_repository import BaseRepository
 
 class LocationRepository(BaseRepository):
 
-    LOCATION_SEARCH_FIELDS = {
-        'location_type', 
-        'icao_location_code',
-        'iata_airport_code', 
-        'location_name',
-        'town_or_city',
-        'state_or_county',
-        'country',
-        'geographic_region',
-        'decimal_latitude',
-        'decimal_longitude'
-    }
-
     def __init__(self, conn):
         super().__init__(conn)
 
@@ -59,9 +46,6 @@ class LocationRepository(BaseRepository):
         return result_list
 
     def search_on_field(self, field_name: str, value) -> list[Location]:
-        if field_name not in self.LOCATION_SEARCH_FIELDS:
-            raise ValueError(f"Invalid search field: {field_name}")
-
         sql = f"""
             SELECT *
             FROM locations

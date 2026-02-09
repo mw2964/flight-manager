@@ -1,8 +1,9 @@
 from datetime import datetime
 import pandas as pd
 from pandas import DataFrame
-from prettytable import PrettyTable, TableStyle, ALL, NONE
+from prettytable import PrettyTable
 from flightmanagement.error import MissingData, DependentRecords, DuplicateRecord, InvalidData, ForeignKeyDependencyViolation, ForeignKeyInvalidViolation, UniqueConstraintViolation, CheckConstraintViolation, MissingNotNullViolation
+from flightmanagement.services.service_utils import format_table
 from flightmanagement.repositories.aircraft_repository import AircraftRepository
 from flightmanagement.repositories.location_repository import LocationRepository
 from flightmanagement.repositories.flight_repository import FlightRepository
@@ -170,7 +171,7 @@ class FlightService:
                 arrival,
                 row['flight_status']
             ])
-        return self._format_table(table)
+        return format_table(table)
     
     def get_flight_summary(self, flight: dict) -> str:        
         departure = f"{datetime.strptime(flight["scheduled_departure_date"], '%Y-%m-%d').strftime("%d/%m/%Y")} {flight["scheduled_departure_time"]}"
@@ -219,20 +220,3 @@ class FlightService:
                 pilot_choices.append((pilot.staff_member_id, str(pilot)))
 
         return pilot_choices
-    
-    # Helper functions
-
-    def _format_table(self, table: PrettyTable) -> str:
-
-        # Set table formatting
-        table.set_style(TableStyle.SINGLE_BORDER)
-        table.align = "l"
-        table.max_width = 20
-        table.hrules = ALL
-        table.vrules = NONE
-        
-        indented_table = ""
-        for row in table.get_string().split("\n"):
-            indented_table += (" " * 5) + row + "\n"
-        
-        return indented_table

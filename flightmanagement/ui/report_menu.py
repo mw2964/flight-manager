@@ -10,7 +10,9 @@ class ReportMenu(BaseMenu):
         self._report_service = report_service or ReportService(conn)
         self._menu_name = "Main -> Reports"
         self._menu_options = [
-            ("pilot_stats", "Pilot statistics"),
+            ("pilot_stats", "Monthly pilot statistics"),
+            ("flight_stats", "Monthly flight statistics"),
+            ("aircraft_stats", "Monthly aircraft statistics"),
             ("back", "Back to main menu")
         ]
 
@@ -25,13 +27,15 @@ class ReportMenu(BaseMenu):
 
             if _selected_option == "pilot_stats":
                 print()
-                search_text = self._prompt_until_valid(
-                    prompt_text = "Enter a search term:",
-                    getter = lambda p: p.get_str(),
-                    field = "search_text"
-                )
+                print(self._report_service.pilot_hours_report())
+
+            elif _selected_option == "flight_stats":
                 print()
-                self._report_service.search_flights(search_text)
+                print(self._report_service.flight_statistics_report())
+
+            elif _selected_option == "aircraft_stats":
+                print()
+                print(self._report_service.aircraft_statistics_report())
 
             elif _selected_option == "back":
                 break

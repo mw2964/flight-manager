@@ -1,6 +1,7 @@
 import pandas as pd
-from prettytable import PrettyTable, TableStyle, ALL, NONE
+from prettytable import PrettyTable
 from flightmanagement.error import MissingData, DependentRecords, DuplicateRecord, InvalidData, ForeignKeyDependencyViolation, ForeignKeyInvalidViolation, UniqueConstraintViolation, CheckConstraintViolation, MissingNotNullViolation
+from flightmanagement.services.service_utils import format_table
 from flightmanagement.repositories.location_repository import LocationRepository
 from flightmanagement.models.location import Location
 from flightmanagement.db.db import transaction
@@ -139,7 +140,7 @@ class LocationService:
                 location.decimal_latitude if location.decimal_latitude else '',
                 location.decimal_longitude if location.decimal_longitude else ''
             ])
-        return self._format_table(table)
+        return format_table(table)
     
     def get_results_view_pandas(self, locations: list[Location]) -> str:                
         
@@ -149,18 +150,3 @@ class LocationService:
         df = pd.DataFrame.from_records([location.to_dict() for location in locations])        
 
         return df.to_string()
-
-    def _format_table(self, table: PrettyTable) -> str:
-
-        # Set table formatting
-        table.set_style(TableStyle.SINGLE_BORDER)
-        table.align = "l"
-        table.max_width = 20
-        table.hrules = ALL
-        table.vrules = NONE
-        
-        indented_table = ""
-        for row in table.get_string().split("\n"):
-            indented_table += (" " * 5) + row + "\n"
-        
-        return indented_table

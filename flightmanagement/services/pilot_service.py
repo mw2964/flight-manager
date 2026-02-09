@@ -1,6 +1,7 @@
 from datetime import date, datetime
-from prettytable import PrettyTable, TableStyle, ALL, NONE
+from prettytable import PrettyTable
 from flightmanagement.error import MissingData, DependentRecords, DuplicateRecord, InvalidData, ForeignKeyDependencyViolation, ForeignKeyInvalidViolation, UniqueConstraintViolation, CheckConstraintViolation, MissingNotNullViolation
+from flightmanagement.services.service_utils import format_table
 from flightmanagement.repositories.pilot_repository import PilotRepository
 from flightmanagement.models.pilot import Pilot
 from flightmanagement.db.db import transaction
@@ -261,7 +262,7 @@ class PilotService:
                 pilot.license_type if pilot.license_type else '',
                 pilot.license_expiration_date.strftime("%d/%m/%Y") if pilot.license_expiration_date else '',
             ])
-        return self._format_table(table)
+        return format_table(table)
     
     def get_schedule_view(self, flights: list) -> str:
         if flights is None or len(flights) == 0:
@@ -295,7 +296,7 @@ class PilotService:
                 arrival,
                 row["pilot_role"]               
             ])
-        return self._format_table(table)
+        return format_table(table)
 
     def get_log_results_view(self, logs: list) -> str:
         if logs is None or len(logs) == 0:
@@ -313,7 +314,7 @@ class PilotService:
                 record["effective_date"],
                 record["flight_hours"]
             ])
-        return self._format_table(table)
+        return format_table(table)
     
     def get_leave_results_view(self, logs: list) -> str:
         if logs is None or len(logs) == 0:
@@ -331,22 +332,7 @@ class PilotService:
                 record["leave_date"],
                 record["leave_type"]
             ])
-        return self._format_table(table)
+        return format_table(table)
 
     def display_record(self, pilot: Pilot) -> str:
         return f"\n> Pilot ID: {pilot.staff_member_id}\n> First name: {pilot.first_name}\n> Family name: {pilot.family_name}"
-    
-    def _format_table(self, table: PrettyTable) -> str:
-
-        # Set table formatting
-        table.set_style(TableStyle.SINGLE_BORDER)
-        table.align = "l"
-        table.max_width = 20
-        table.hrules = ALL
-        table.vrules = NONE
-        
-        indented_table = ""
-        for row in table.get_string().split("\n"):
-            indented_table += (" " * 5) + row + "\n"
-        
-        return indented_table

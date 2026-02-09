@@ -18,7 +18,6 @@ class MainMenu(BaseMenu):
             ("locations", "Manage destinations"),
             ("aircraft", "Manage aircraft"),
             ("reports", "Reports"),
-            ("admin", "Admin"),
             ("exit", "Exit")
         ]
 
