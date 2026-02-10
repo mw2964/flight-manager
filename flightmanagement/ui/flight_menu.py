@@ -92,7 +92,7 @@ class FlightMenu(BaseMenu):
                         field = "flight_id"
                     )
                     flight_dict = self._flight_service.get_flight_summary_by_id(self._required(flight_id, "flight_id"))
-                    if len(flight_dict) != 0:
+                    if flight_dict is not None:
                         results = [flight_dict]
 
                 elif option == "flight_number":
@@ -230,7 +230,7 @@ class FlightMenu(BaseMenu):
                         field = "aircraft_id",
                         required = True,
                         is_picklist = True,
-                        options = self._aircraft_service.get_aircraft_choices()
+                        options = self._aircraft_service.get_aircraft_choices(active=True)
                     )                
 
                 if origin_location_id is unset:

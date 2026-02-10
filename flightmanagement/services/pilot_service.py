@@ -203,9 +203,9 @@ class PilotService:
         leave_record = self.__pilot_repository.get_leave_record_by_staff_member_id_and_date(staff_member_id, leave_date)
         if leave_record:
             return {
-                "staff_member_id": leave_record[0],
-                "leave_date": date.fromisoformat(leave_record[1]),
-                "leave_type": leave_record[2]
+                "staff_member_id": leave_record["staff_member_id"],
+                "leave_date": date.fromisoformat(leave_record["leave_date"]),
+                "leave_type": leave_record["leave_type"]
             }
         return None
 
@@ -311,7 +311,7 @@ class PilotService:
         # Populate table rows
         for record in logs:
             table.add_row([
-                record["effective_date"],
+                date.fromisoformat(record["effective_date"]).strftime("%d/%m/%Y"),
                 record["flight_hours"]
             ])
         return format_table(table)
@@ -329,7 +329,7 @@ class PilotService:
         # Populate table rows
         for record in logs:
             table.add_row([
-                record["leave_date"],
+                date.fromisoformat(record["leave_date"]).strftime("%d/%m/%Y"),
                 record["leave_type"]
             ])
         return format_table(table)

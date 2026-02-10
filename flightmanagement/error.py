@@ -1,3 +1,5 @@
+# Model validation errors
+
 class DomainValidationError(ValueError):
     pass
 
@@ -5,6 +7,8 @@ class FieldValidationError(DomainValidationError):
     def __init__(self, field: str, message: str):
         self.field = field
         super().__init__(message)
+
+# Data type errors
 
 class MissingMandatoryValueError(ValueError):
     pass
@@ -25,6 +29,8 @@ class UserCancelled(Exception):
     def __init__(self, message = "\n  Action cancelled."):        
         super().__init__(message)
 
+# Repository errors
+
 class RepositoryError(Exception):
     pass
 
@@ -43,6 +49,11 @@ class MissingNotNullViolation(RepositoryError):
 class ForeignKeyDependencyViolation(RepositoryError):
     pass
 
+class FlightNotFound(RepositoryError):
+    pass
+
+# Service errors
+
 class ServiceError(Exception):
     pass
 
@@ -58,5 +69,3 @@ class InvalidData(ServiceError):
 class MissingData(ServiceError):
     pass
 
-class FlightNotFound(ValueError):
-    pass

@@ -55,8 +55,11 @@ class AircraftService:
     def search_aircraft(self, field_name: str, value) -> list:
         return self.__aircraft_repository.search_aircraft_on_field(field_name, value)
     
-    def get_aircraft_choices(self) -> list:
-        aircraft_list = self.__aircraft_repository.get_aircraft_list()
+    def get_aircraft_choices(self, active: bool = False) -> list:
+        if active:
+            aircraft_list = self.__aircraft_repository.get_active_aircraft_list()
+        else:
+            aircraft_list = self.__aircraft_repository.get_aircraft_list()
         
         aircraft_choices = []
 

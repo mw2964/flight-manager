@@ -87,7 +87,7 @@ class FlightService:
     def get_flight_by_id(self, id: int) -> Flight | None:
         return self.__flight_repository.get_flight_by_id(id)
     
-    def get_flight_summary_by_id(self, id: int) -> dict:
+    def get_flight_summary_by_id(self, id: int) -> dict | None:
         return self.__flight_repository.get_flight_summary_by_id(id)
     
     def search_flights(self, field_name: str, value) -> list[dict]:
@@ -181,16 +181,6 @@ class FlightService:
 
     # Retrieve related information
 
-    def get_aircraft(self, aircraft_registration: str) -> int | None:
-        aircraft = self.__aircraft_repository.get_aircraft_by_registration(aircraft_registration)        
-        if aircraft:
-            return aircraft.aircraft_id
-        
-    def get_location(self, location_code: str) -> int | None:
-        location = self.__location_repository.get_location_by_code(location_code)        
-        if location:
-            return location.location_id
-
     def get_flight_relief_pilots(self, flight: Flight) -> list:
         if flight.flight_id is None:
             raise ValueError("Missing flight ID")
@@ -209,14 +199,11 @@ class FlightService:
 
     def get_available_pilot_choices(self, departure_time: datetime, arrival_time: datetime, already_on_flight: list = [], flight_id: int | None = None) -> list:
         
-        # Get list of pilots that are available for the scheduled flight
-        # pilots = self.__flight_repository.get_available_pilots(departure_time, arrival_time, flight_id if flight_id else -1)
-        
         # Get pilots who are on leave on the flight date
         on_leave_ids = self.__pilot_repository.get_staff_on_leave_by_date_range(departure_time.date(), arrival_time.date())
 
         # Get pilots who are on overlapping flights
-        overlapping_ids = self.__pilot_repository.get_staff_on_flights_by_date_range(departure_time, arrival_time)
+        overlapping_ids = self.__pilot_repository.get_staff_on_flights_by_date_range(departure_time, arrival_time, flight_id)
 
         # Combine the two lists (removing duplicates)
         unavailable_pilot_ids = list(set(on_leave_ids) | set(overlapping_ids))

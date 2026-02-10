@@ -62,8 +62,12 @@ class ReportService:
             "Year",
             "Month",
             "Completed flights",
-            "Average departure delay (mins)",
-            "Average arrival delay (mins)"
+            "Ave. dept. delay (mins)",
+            "Min. dept. delay (mins)",
+            "Max. dept. delay (mins)",
+            "Ave. arr. delay (mins)",
+            "Min. arr. delay (mins)",
+            "Max. arr. delay (mins)"
             ],
         )
         
@@ -73,8 +77,12 @@ class ReportService:
                 row["year"],
                 row["month"],
                 row["total_flights"],
-                row["departure_delay_minutes"],
-                row["arrival_delay_minutes"]
+                row["avg_departure_delay"],
+                row["min_departure_delay"],
+                row["max_departure_delay"],
+                row["avg_arrival_delay"],
+                row["min_arrival_delay"],
+                row["max_arrival_delay"]
             ])
         return format_table(table)
 
@@ -83,6 +91,8 @@ class ReportService:
         # Initialise the table
         table = PrettyTable([
             "Aircraft",
+            "Status",
+            "Type",
             "Year",
             "Month",
             "Flights (completed)",
@@ -95,6 +105,8 @@ class ReportService:
         for i, row in df.iterrows():
             table.add_row([
                 row["aircraft_registration"],
+                row["aircraft_status"],
+                row["aircraft_type"],
                 row["year"],
                 row["month"],
                 self._zero_to_blank(row["completed_flights"]),

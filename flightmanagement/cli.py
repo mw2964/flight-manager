@@ -9,6 +9,14 @@ DB_FOLDER = "data"
 DB_NAME = "FlightManagement.db"
 
 def main():
+    """
+    This function serves as the main entry point for the FlightClub application.
+    
+    It initialises the interactive CLI, including custom key bindings to handle user cancellation,
+    displays the welcome screen, and initialises the database connection.
+    If the database does not already exist, it is created and initialised.
+    Finally, it loads the main menu to begin user interaction. 
+    """
 
     try:
         # Initialise the UI prompt session and key bindings to capture cancel actions

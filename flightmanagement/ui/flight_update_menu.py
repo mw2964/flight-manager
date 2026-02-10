@@ -399,7 +399,7 @@ class FlightUpdateMenu(BaseMenu):
                     confirmed_departure_time = flight.confirmed_departure_time,
                     confirmed_arrival_date = flight.confirmed_arrival_date,
                     confirmed_arrival_time = flight.confirmed_arrival_time,
-                    flight_status = "Departed"
+                    flight_status = flight.flight_status
                 )
 
             except FieldValidationError as e:
