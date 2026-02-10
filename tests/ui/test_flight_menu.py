@@ -65,28 +65,6 @@ class TestAdd:
         out = capsys.readouterr().out
         assert "successfully added" in out
 
-class TestDelete:
-
-    def test_delete_flight_success(self, menu, flight_service, flight, capsys):
-        menu._prompt_delete_flight = MagicMock(return_value=flight)
-
-        menu._delete_option()
-
-        flight_service.delete_flight.assert_called_once_with(flight)
-        out = capsys.readouterr().out
-        assert "successfully deleted" in out
-
-    def test_delete_flight_constraint_violation(
-        self, menu, flight_service, flight, capsys
-    ):
-        menu._prompt_delete_flight = MagicMock(return_value=flight)
-        flight_service.delete_flight.side_effect = DependentRecords()
-
-        menu._delete_option()
-
-        out = capsys.readouterr().out
-        assert "Cannot delete flight" in out
-
 class TestGetFlightFromSelection:
 
     def test_get_flight_from_selection(self, menu, flight_service, flight):

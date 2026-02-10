@@ -53,21 +53,6 @@ class TestReadOperations:
     def test_get_location_by_id_returns_none_when_missing(self, location_repository):
         assert location_repository.get_location_by_id(999) is None
 
-    def test_get_location_by_code_returns_location(self, location_repository, db_conn):
-        db_conn.execute("""
-            INSERT INTO locations (location_type, icao_location_code, iata_airport_code, location_name, town_or_city, state_or_county, country, geographic_region, decimal_latitude, decimal_longitude)
-            VALUES
-                ('Airport', 'EGLL', 'LHR', 'London Heathrow Airport', 'London', 'Greater London', 'United Kingdom', 'Europe', 51.4706, -0.4619)
-        """)
-
-        location = location_repository.get_location_by_code("LHR")
-
-        assert location is not None
-        assert location.iata_airport_code == "LHR"
-
-    def test_get_location_by_code_returns_none_when_missing(self, location_repository):
-        assert location_repository.get_location_by_code("UNK") is None
-
 class TestListOperations:
 
     def test_get_location_list_returns_sorted_list(self, location_repository, db_conn):

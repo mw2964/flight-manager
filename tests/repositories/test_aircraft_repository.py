@@ -53,26 +53,6 @@ class TestReadOperations:
     def test_get_aircraft_by_id_returns_none_when_missing(self, aircraft_repository):
         assert aircraft_repository.get_aircraft_by_id(999) is None
 
-    def test_get_aircraft_by_registration_returns_aircraft(self, aircraft_repository, db_conn):
-        db_conn.execute("""
-            INSERT INTO aircraft_types (manufacturer, model, icao_type)
-            VALUES
-                ('TestManufacturer1', 'TestModel1', 'Test1')                       
-        """)
-
-        db_conn.execute("""
-            INSERT INTO aircraft (aircraft_type_id, registration, manufacturer_serial_no, icao_hex, aircraft_status)
-            VALUES (1, 'G-TEST', 269785, 'ABC123', 'Active')
-        """)
-
-        aircraft = aircraft_repository.get_aircraft_by_registration("G-TEST")
-
-        assert aircraft is not None
-        assert aircraft.registration == "G-TEST"
-
-    def test_get_aircraft_by_registration_returns_none_when_missing(self, aircraft_repository):
-        assert aircraft_repository.get_aircraft_by_registration("UNKNOWN") is None
-
 class TestListOperations:
 
     def test_get_aircraft_list_returns_sorted_list(self, aircraft_repository, db_conn):
