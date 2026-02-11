@@ -22,6 +22,9 @@ class AircraftMenu(BaseMenu):
         ]
 
     def load(self):
+        """
+        Load the menu and present the options as a picklist.
+        """
         while True:
             _selected_option = choice(message = self._format_title(self._menu_name), options = self._menu_options)
 

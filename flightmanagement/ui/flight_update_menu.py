@@ -72,13 +72,21 @@ class FlightUpdateMenu(BaseMenu):
                 print(e)
                 continue
     
-    def _show_flight_summary(self) -> None:        
+    def _show_flight_summary(self) -> None:
+        """
+        Print a table summary of the selected flight.
+        """
+
         results = self._flight_service.search_flights("flight_id", self._flight_id)
         df = pd.json_normalize(results)
 
         print(self._flight_service.get_results_view(df))
 
     def _assign_pilot_option(self) -> None:
+        """
+        Assign or reassign a captain and/or first officer to the flight.
+        """
+
         print("\n>> Assign a pilot (or hit CTRL+C to cancel)\n")
 
         flight = self._flight_service.get_flight_by_id(self._flight_id)
@@ -94,6 +102,10 @@ class FlightUpdateMenu(BaseMenu):
         self._show_flight_summary()
 
     def _manage_relief_pilots_option(self) -> None:
+        """
+        Provide options to add and remove relief pilots from the flight.
+        """
+
         print("\n>> Update relief pilots (or hit CTRL+C to cancel)\n")
 
         flight = self._flight_service.get_flight_by_id(self._flight_id)
@@ -113,13 +125,15 @@ class FlightUpdateMenu(BaseMenu):
         )
         print()
 
-        if option == 1:            
+        if option == 1:
+            # Prompt for the pilot to add and link to the flight
             staff_member_id = self._prompt_add_relief_pilot(flight)
             self._flight_service.add_relief_pilot(flight, staff_member_id)
             print("\nRelief pilot successfully added:\n")
             self._show_flight_summary()
         
         elif option == 2:
+            # Prompt for the pilot to remove and unlink from the flight
             staff_member_id = self._prompt_remove_relief_pilot(flight)
             if staff_member_id:
                 self._flight_service.remove_relief_pilot(flight, staff_member_id)
@@ -127,6 +141,10 @@ class FlightUpdateMenu(BaseMenu):
                 self._show_flight_summary()
 
     def _update_aircraft_option(self) -> None:
+        """
+        Assign or change the aircraft for the flight.
+        """
+
         print("\n>> Update the aircraft (or hit CTRL+C to cancel)\n")
 
         flight = self._flight_service.get_flight_by_id(self._flight_id)
@@ -148,6 +166,10 @@ class FlightUpdateMenu(BaseMenu):
             print("\nRecord update failed: invalid information.")
         
     def _update_status_option(self) -> None:
+        """
+        Update the flight status.
+        """
+
         print("\n>> Update the flight status (or hit CTRL+C to cancel)\n")
 
         flight = self._flight_service.get_flight_by_id(self._flight_id)
@@ -169,6 +191,10 @@ class FlightUpdateMenu(BaseMenu):
             print("\nRecord update failed: invalid information.")
 
     def _update_scheduled_times_option(self) -> None:
+        """
+        Update the flight's scheduled departure and arrival dates and times.
+        """
+
         print("\n>> Update the scheduled departure and arrival times (or hit CTRL+C to cancel)\n")
 
         flight = self._flight_service.get_flight_by_id(self._flight_id)
@@ -190,6 +216,11 @@ class FlightUpdateMenu(BaseMenu):
             print("\nRecord update failed: invalid information.")
 
     def _log_departure_option(self) -> None:
+        """
+        Log a flight departure, entering a confirmed departure date and time and setting the flight status
+        to 'Departed'.
+        """    
+
         print("\n>> Log the actual departure time and set status to 'departed' (or hit CTRL+C to cancel)\n")
 
         flight = self._flight_service.get_flight_by_id(self._flight_id)
@@ -211,6 +242,11 @@ class FlightUpdateMenu(BaseMenu):
             print("\nRecord update failed: invalid information.")
     
     def _log_arrival_option(self) -> None:
+        """
+        Log a flight arrival, entering a confirmed arrival date and time and setting the flight status
+        to 'Arrived'.
+        """ 
+
         print("\n>> Log the actual arrival time and set status to 'arrived' (or hit CTRL+C to cancel)\n")
 
         flight = self._flight_service.get_flight_by_id(self._flight_id)
@@ -232,6 +268,10 @@ class FlightUpdateMenu(BaseMenu):
             print("\nRecord update failed: invalid information.")
 
     def _update_all_option(self) -> None:
+        """
+        Update any of the information related to the selected flight.
+        """ 
+
         print("\n>> Update a flight (or hit CTRL+C to cancel)\n")
 
         flight = self._flight_service.get_flight_by_id(self._flight_id)
@@ -253,6 +293,10 @@ class FlightUpdateMenu(BaseMenu):
             print("\nRecord update failed: invalid information.")
         
     def _delete_option(self) -> bool:
+        """
+        Delete the selected flight.
+        """
+
         print("\n>> Delete a flight (or hit CTRL+C to cancel)\n")
 
         # Prompt for the flight to delete
