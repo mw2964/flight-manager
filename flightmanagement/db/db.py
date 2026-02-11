@@ -4,6 +4,12 @@ from contextlib import contextmanager
 
 @contextmanager
 def get_connection(db_path: Path):
+    """
+    Context manager that opens a SQLite connection with foreign key enforcement
+    enabled and rows returned as dictionaries. Ensures the connection is
+    automatically closed after use.
+    """
+
     conn = sqlite3.connect(db_path, timeout=10)
 
     # Set the connection to return table rows as dictionaries rather than lists
@@ -19,6 +25,14 @@ def get_connection(db_path: Path):
 
 @contextmanager
 def transaction(conn):
+    """
+    Transaction context manager to provide transactions for any database operations
+    in the application, avoiding significant code duplication.
+
+    Any database error raised in the course of the transaction results in a roll-back,
+    and an exception is raised to be captured and handled at a higher level.    
+    """
+
     try:        
         yield
         conn.commit()
@@ -27,6 +41,12 @@ def transaction(conn):
         raise
 
 def initialise_schema(conn):
+    """
+    Create each of the tables in the database schema, and add appropriate indices.
+
+    The statements are executed in a specific order that avoids any violation of referential
+    integrity constraints relating to foreign keys.
+    """
 
     with transaction(conn):
 
@@ -179,6 +199,14 @@ def initialise_schema(conn):
 
         # Create views
 
+        """
+        Creates a combined view of the one-to-one related staff_members and pilots tables.
+
+        A natural join is used as the two tables share the staff_member_id primary key, 
+        and we also only require records present in both tables. 'SELECT *' is used
+        rather than explicit field names so that new fields added later to those tables
+        are automatically included.
+        """
         conn.execute("""
             CREATE VIEW IF NOT EXISTS vw_staff_pilots AS
                 SELECT *
@@ -186,6 +214,16 @@ def initialise_schema(conn):
                 NATURAL JOIN pilots;
         """)
 
+        """
+        Creates a view on the aircraft table that includes denormalised data from
+        the aircraft_type table.
+
+        A natural join is used as the aircraft_type relationship is mandatory for aircraft,
+        so all aircraft records will be safely included (and duplicate aircraft_type_id
+        columns in the output are avoided). 'SELECT *' is used
+        rather than explicit field names so that new fields added later to those tables
+        are automatically included.
+        """
         conn.execute("""
             CREATE VIEW IF NOT EXISTS vw_aircraft AS
                 SELECT *
@@ -193,6 +231,19 @@ def initialise_schema(conn):
                 NATURAL JOIN aircraft_types;
         """)
 
+        """
+        Creates a view on the flights table that includes denormalised data from
+        multiple associated tables.
+
+        Not all relationships are mandatory, so left joins are used to ensure that the
+        view returns a row for every row in the flights table. In some cases, date from
+        multiple denormalised fields are concatenated to form a single composite value
+        for display purposes. Similarly, ifnull() and coalesce() functions are used
+        to ensure that any NULL values are returned as blank text, which makes the result
+        set more human-readable. The SELECT fields are explicit in this query because of 
+        a. those concatenation and NULL replacement functions and b. to avoid duplicate
+        key columns resulting from the left joins.
+        """
         conn.execute("""
             CREATE VIEW IF NOT EXISTS vw_flight_summary AS
             SELECT
@@ -245,6 +296,13 @@ def initialise_schema(conn):
 def seed_database_data(conn):
 
     with transaction(conn):
+
+        """
+        All statements below are bulk inserts into the various tables in the database.
+        Using bulk inserts mean that if there is an error on any row, the entire
+        operation is cancelled without inserting any data, which avoids having to 
+        clean up before re-running in the case of any issues.
+        """
 
         conn.execute("""
             INSERT INTO aircraft_types (manufacturer, model, icao_type)

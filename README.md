@@ -40,7 +40,7 @@ Contains persistent application data.
 Core application package.
 
 * **db/**
-  Database configuration, connection and transacation handling, schema creation and seed data insert.
+  Database configuration, connection and transaction handling, schema creation and seed data insert.
 
 * **models/**
   Domain models representing core entities such as flights, airports, pilots, aircraft etc.
